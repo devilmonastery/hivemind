@@ -1,0 +1,40 @@
+# Example CLI Configuration (copy to ~/.hivemind)
+# This file shows all available configuration options for the Hivemind CLI.
+# The CLI uses a kubectl-style context system to manage multiple environments.
+
+# Current active context
+# Use "hivemind config use-context <name>" to switch
+current-context: dev
+
+# Named contexts
+# Each context can have different server settings and rendering preferences
+contexts:
+  # Development context (local server in dev container)
+  dev:
+    server:
+      # Server address (use localhost when running CLI in dev container)
+      address: localhost
+      # Server port (matches dev-server.yaml grpc port)
+      port: 4153
+    rendering:
+      # Terminal markdown theme for snippet display
+      # Options: "auto", "dark", "light", "pink", "notty", "dracula", "tokyo-night"
+      # "auto" automatically adapts to your terminal's light/dark mode
+      theme: auto
+  
+  # Production context (TLS-enabled server)
+  prod:
+    server:
+      # Production server hostname
+      # The CLI automatically uses TLS for non-localhost addresses
+      address: hivemind.dontberu.de
+      # Server name for TLS verification
+      name: hivemind.dontberu.de
+      # Standard HTTPS port
+      port: 443
+    rendering:
+      # "auto" is recommended for production
+      theme: auto
+
+
+

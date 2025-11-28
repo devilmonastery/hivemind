@@ -1,0 +1,182 @@
+syntax = "proto3";
+
+package hivemind.auth.v1;
+
+import "common.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "user.proto";
+
+option go_package = "github.com/devilmonastery/hivemind/api/generated/go/authpb";
+
+// AuthService handles authentication and authorization
+service AuthService {
+  // Get OAuth provider configuration (for CLI auto-discovery)
+  rpc GetOAuthConfig(GetOAuthConfigRequest) returns (GetOAuthConfigResponse);
+
+  // Authorization Code Flow for browser-based CLI authentication
+  rpc ExchangeAuthCode(ExchangeAuthCodeRequest) returns (ExchangeAuthCodeResponse);
+
+  // OIDC authentication (Google, GitHub, Okta, etc.)
+  rpc LoginWithOIDC(LoginWithOIDCRequest) returns (LoginWithOIDCResponse);
+
+  // OAuth token refresh (deprecated - refresh tokens stored server-side)
+  // Use RefreshToken instead, which looks up the refresh token server-side
+  rpc RefreshOAuthToken(RefreshOAuthTokenRequest) returns (RefreshOAuthTokenResponse) {
+    option deprecated = true;
+  }
+
+  // Local authentication (admin users)
+  rpc AuthenticateLocal(AuthenticateLocalRequest) returns (AuthenticateLocalResponse);
+
+  // Token management
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
+  rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
+
+  // User management (admin only)
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
+  rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty);
+}
+
+// OAuth Configuration Messages
+message GetOAuthConfigRequest {
+  // Empty - returns all available OAuth providers
+}
+
+message GetOAuthConfigResponse {
+  repeated OAuthProvider providers = 1;
+}
+
+message OAuthProvider {
+  string name = 1; // Provider name (e.g., "google", "discord")
+  string client_id = 2; // OAuth client ID
+  string authorization_url = 3; // Full OAuth authorization URL template
+}
+
+// Authorization Code Exchange Messages
+message ExchangeAuthCodeRequest {
+  string provider = 1; // OAuth provider name ("google", etc.)
+  string code = 2; // Authorization code from redirect
+  string code_verifier = 3; // PKCE code verifier
+  string redirect_uri = 4; // Must match the one used in auth request
+  string device_name = 5; // Optional device name
+  repeated string scopes = 6; // Requested scopes
+  string timezone = 7; // Client timezone (IANA Time Zone)
+}
+
+message ExchangeAuthCodeResponse {
+  string api_token = 1; // JWT for API access
+  string token_id = 2; // Token identifier
+  hivemind.user.v1.User user = 3; // User information
+  google.protobuf.Timestamp expires_at = 4; // Token expiration
+  bool is_new_user = 5; // True if user was just created
+}
+
+// OIDC Authentication Messages
+message LoginWithOIDCRequest {
+  string provider = 1; // "google", "github", "okta", etc.
+  string id_token = 2; // OIDC ID token from provider
+  string refresh_token = 3; // OAuth refresh token (optional)
+  string device_name = 4; // for API token generation
+  repeated string scopes = 5; // requested scopes
+}
+
+message LoginWithOIDCResponse {
+  string api_token = 1; // server-issued API token
+  string token_id = 2; // for token management
+  hivemind.user.v1.User user = 3; // authenticated user info
+  google.protobuf.Timestamp expires_at = 4;
+  bool is_new_user = 5; // true if user was auto-provisioned
+}
+
+// OAuth Token Refresh Messages
+message RefreshOAuthTokenRequest {
+  string provider = 1; // OAuth provider ("google", etc.)
+  string refresh_token = 2; // OAuth refresh token from provider
+  string device_name = 3; // device name for new token
+}
+
+message RefreshOAuthTokenResponse {
+  string api_token = 1; // new server-issued API token
+  string token_id = 2; // token identifier
+  google.protobuf.Timestamp expires_at = 3;
+  string refresh_token = 4; // new refresh token (if provider rotates them)
+}
+
+// Local Authentication Messages
+message AuthenticateLocalRequest {
+  string username = 1;
+  string password = 2;
+  string device_name = 3; // for API token generation
+  repeated string scopes = 4; // requested scopes
+}
+
+message AuthenticateLocalResponse {
+  string api_token = 1; // server-issued API token
+  string token_id = 2; // for token management
+  hivemind.user.v1.User user = 3; // authenticated user info
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Token Management Messages
+message RefreshTokenRequest {
+  string token_id = 1;
+}
+
+message RefreshTokenResponse {
+  string api_token = 1; // new API token
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+message RevokeTokenRequest {
+  string token_id = 1;
+}
+
+message RevokeTokenResponse {
+  bool success = 1;
+}
+
+message ListTokensRequest {
+  string user_id = 1; // empty means current user
+  bool include_revoked = 2; // include revoked tokens
+}
+
+message ListTokensResponse {
+  repeated hivemind.common.v1.APIToken tokens = 1;
+}
+
+// User Management Messages (Admin only)
+message ListUsersRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string filter = 3; // optional filter expression
+}
+
+message ListUsersResponse {
+  repeated hivemind.user.v1.User users = 1;
+  string next_page_token = 2;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  hivemind.user.v1.User user = 1;
+}
+
+message UpdateUserRoleRequest {
+  string user_id = 1;
+  hivemind.user.v1.Role role = 2;
+}
+
+message UpdateUserRoleResponse {
+  hivemind.user.v1.User user = 1;
+}
+
+message DeleteUserRequest {
+  string user_id = 1;
+}

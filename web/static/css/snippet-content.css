@@ -1,0 +1,78 @@
+/* Minimal snippet content styles for rendered markdown (simple, readable)
+   Applied via the .snippet-content class alongside any existing prose classes.
+*/
+.snippet-content {
+  color: #374151; /* gray-700 */
+  max-width: 65ch;
+}
+.snippet-content p {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+.snippet-content h1,
+.snippet-content h2,
+.snippet-content h3,
+.snippet-content h4,
+.snippet-content h5,
+.snippet-content h6 {
+  color: #111827; /* gray-900 */
+  font-weight: 600;
+  line-height: 1.25;
+}
+.snippet-content h1 { font-size: 1.5em; margin-top: 0; margin-bottom: 0.5em; }
+.snippet-content h2 { font-size: 1.25em; margin-top: 1em; margin-bottom: 0.5em; }
+.snippet-content h3 { font-size: 1.125em; margin-top: 1em; margin-bottom: 0.5em; }
+.snippet-content ul,
+.snippet-content ol {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+  padding-left: 1.5em;
+}
+.snippet-content ul { list-style-type: disc; }
+.snippet-content ol { list-style-type: decimal; }
+.snippet-content li {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+.snippet-content strong { font-weight: 600; color: #111827; }
+.snippet-content em { font-style: italic; }
+.snippet-content code {
+  background-color: #f3f4f6; /* gray-100 */
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: ui-monospace, SFMono-Regular, Monaco, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'Courier New', monospace;
+}
+.snippet-content pre {
+  background-color: #0f172a; /* slate-900 */
+  color: #f9fafb;
+  padding: 1em;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+.snippet-content pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+}
+.snippet-content a {
+  color: #2563eb; /* blue-600 */
+  text-decoration: underline;
+}
+.snippet-content a:hover { color: #1d4ed8; }
+.snippet-content blockquote {
+  border-left: 4px solid #e5e7eb;
+  padding-left: 1em;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+.snippet-content hr {
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}

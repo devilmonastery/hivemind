@@ -1,0 +1,60 @@
+{{template "base" .}}
+
+{{define "title"}}Home - Hivemind{{end}}
+
+{{define "content"}}
+{{if .User}}
+    {{/* Logged in view: Unified Today interface */}}
+    <div class="space-y-6">
+        {{template "home-today-header" .}}
+
+    </div>
+
+{{else}}
+    {{/* Not logged in view */}}
+    <div class="max-w-md mx-auto text-center py-12">
+        {{/* Logo */}}
+        <div class="mb-8">
+            <img src="/static/img/hivemind-brain.png" alt="Hivemind" class="w-32 h-32 mx-auto shadow-neon-magenta rounded-lg">
+        </div>
+        
+        {{/* Welcome text */}}
+        <h1 class="text-5xl font-bold font-heading text-glitch mb-4">
+            WELCOME TO<br>HIVEMIND
+        </h1>
+        <p class="text-gray-400 mb-8 text-lg">
+            Because finding stuff in Discord threads is hard
+        </p>
+        
+        {{/* Login buttons */}}
+        {{if .Providers}}
+        <div class="space-y-3">
+            {{range .Providers}}
+            <a href="/login?provider={{.Name}}" 
+               class="block w-full px-6 py-3 bg-hive-surface border-2 border-neon-cyan hover:bg-neon-cyan text-neon-cyan hover:text-hive-bg font-medium font-mono rounded-lg transition-all duration-200 shadow-neon-cyan hover:shadow-neon-cyan">
+                [ SIGN IN WITH {{.Name | title}} ]
+            </a>
+            {{end}}
+        </div>
+        {{else}}
+        <a href="/login" 
+           class="inline-block px-6 py-3 bg-hive-surface border-2 border-neon-cyan hover:bg-neon-cyan text-neon-cyan hover:text-hive-bg font-medium font-mono rounded-lg transition-all duration-200 shadow-neon-cyan hover:shadow-neon-cyan">
+            [ SIGN IN ]
+        </a>
+        {{end}}
+    </div>
+
+{{end}}
+{{end}}
+
+{{/* Section templates for logged-in view */}}
+{{define "home-today-header"}}
+<div class="mb-4">
+    <h2 class="text-3xl font-bold text-gray-900">Today</h2>
+    <p class="text-gray-600" {{if .User.Timezone}}title="{{.User.Timezone}}"{{end}}>{{.Today}}</p>
+</div>
+{{end}}
+
+{{define "home-scripts"}}
+{{/* No additional scripts needed for home page */}}
+{{end}}

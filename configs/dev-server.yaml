@@ -1,0 +1,60 @@
+# Example Server Configuration
+# This file shows all available configuration options for the gRPC server.
+# Copy this file and customize it for your deployment.
+
+# Database configuration
+database:
+  # PostgreSQL configuration
+  postgres:
+    # Database server hostname
+    host: "postgres"
+    # Database server port
+    port: 5432
+    # Database name
+    database: "hivemind"
+    # Database user
+    user: "postgres"
+    # Database password (can also be set via environment variable)
+    password: "${DB_PASSWORD}"
+    # SSL mode: "disable", "require", "verify-ca", "verify-full"
+    sslmode: "disable"
+
+# gRPC server configuration
+grpc:
+  # Host to bind to (use "0.0.0.0" to listen on all interfaces)
+  host: "127.0.0.1"
+  # Port to listen on
+  port: 4153
+
+# Authentication configuration
+auth:
+  # JWT token configuration
+  jwt:
+    # Secret key for signing JWT tokens
+    # Generate with: openssl rand -base64 32
+    # IMPORTANT: Keep this secret! Anyone with this key can forge tokens.
+    signing_key: "${JWT_SIGNING_KEY}"
+    
+    # Token lifetime (duration string)
+    # Examples: "15m", "1h", "24h", "168h" (7 days)
+    # Recommended: 1h for production, 10m for development (to test refresh)
+    lifetime: "10m"
+  
+  # Encryption key for OAuth refresh tokens (REQUIRED)
+  # Generate with: openssl rand -base64 32
+  # Must be exactly 32 bytes (256 bits) when base64-decoded
+  # IMPORTANT: Keep this secret! Used to encrypt OAuth refresh tokens in database.
+  # Use different keys for dev/staging/prod environments.
+  encryption_key: "${OAUTH_ENCRYPTION_KEY}"
+  
+  # OAuth/OIDC provider configuration
+  providers:
+    - name: discord
+      type: oidc
+      issuer: "https://discord.com"
+      client_id: "${DISCORD_CLIENT_ID}"
+      client_secret: "${DISCORD_CLIENT_SECRET}"
+      scopes: ["openid", "identify", "email"]
+      auto_provision: true
+
+

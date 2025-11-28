@@ -1,0 +1,141 @@
+{{define "nav"}}
+<nav class="bg-hive-surface shadow-lg border-b border-hive-metal">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <div class="flex">
+                <div class="flex-shrink-0 flex items-center">
+                    <a href="/" class="flex items-center space-x-2">
+                        <img src="/static/img/hivemind-brain-256.png" alt="Hivemind Logo" class="h-8 w-8">
+                        <span class="text-xl font-bold font-heading text-glitch">HIVEMIND</span>
+                    </a>
+                </div>
+                <!-- Desktop navigation -->
+                <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                    {{$currentPage := .CurrentPage}}
+                    <!-- Logged out navigation -->
+                    <a href="/" class="{{if eq $currentPage "home"}}border-neon-cyan text-neon-cyan{{else}}border-transparent text-gray-300 hover:border-neon-cyan hover:text-neon-cyan{{end}} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors">
+                        Home
+                    </a>
+                    {{if .User}}
+                        <!-- Logged in navigation -->
+                        <a href="/" class="{{if eq $currentPage "home"}}border-neon-cyan text-neon-cyan{{else}}border-transparent text-gray-300 hover:border-neon-cyan hover:text-neon-cyan{{end}} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors">
+                            Logged-In TBD
+                        </a>
+                    {{else}}
+                    {{end}}
+                </div>
+            </div>
+            <div class="flex items-center">
+                <!-- Mobile menu button -->
+                <div class="sm:hidden">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-neon-cyan hover:bg-hive-bg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-neon-cyan" aria-expanded="false">
+                        <span class="sr-only">Open main menu</span>
+                        <!-- Menu icon -->
+                        <svg id="menu-icon" class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <!-- Close icon -->
+                        <svg id="close-icon" class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                {{if .User}}
+                    {{template "user-menu" .}}
+                {{else}}
+                    <a href="/login" class="inline-flex items-center px-4 py-2 border border-neon-cyan text-sm font-medium rounded-md text-neon-cyan hover:bg-neon-cyan hover:text-hive-bg transition-colors shadow-neon-cyan">
+                        Sign in
+                    </a>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile menu panel -->
+    <div id="mobile-menu" class="sm:hidden hidden">
+        <div class="pt-2 pb-3 space-y-1 bg-hive-surface border-t border-hive-metal">
+            {{$currentPage := .CurrentPage}}
+                <a href="/" class="{{if eq $currentPage "home"}}bg-hive-bg border-neon-cyan text-neon-cyan{{else}}border-transparent text-gray-300 hover:bg-hive-bg hover:border-neon-cyan hover:text-neon-cyan{{end}} block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors">
+                    Home
+                </a>
+            {{if .User}}
+                <!-- Mobile logged in navigation -->
+                <!-- Mobile user menu -->
+                <div class="pt-4 pb-3 border-t border-hive-metal">
+                    <div class="flex items-center px-4">
+                        <div class="flex-shrink-0">
+                            {{if .User.Picture}}
+                                <img class="h-8 w-8 rounded-full" src="{{.User.Picture}}" alt="{{.User.Name}}">
+                            {{else}}
+                                <div class="h-8 w-8 bg-gradient-to-br from-neon-cyan to-neon-magenta rounded-full flex items-center justify-center">
+                                    <span class="text-white font-bold text-sm">
+                                        {{if .User.Name}}{{index .User.Name 0}}{{else if .User.Email}}{{index .User.Email 0}}{{end}}
+                                    </span>
+                                </div>
+                            {{end}}
+                        </div>
+                        <div class="ml-3">
+                            <div class="text-base font-medium text-gray-100">{{if .User.Name}}{{.User.Name}}{{else}}{{.User.Email}}{{end}}</div>
+                            <div class="text-sm font-medium text-gray-400">{{.User.Email}}</div>
+                        </div>
+                    </div>
+                    <div class="mt-3 space-y-1">
+                        <a href="/logout" class="block px-4 py-2 text-base font-medium text-gray-300 hover:text-neon-cyan hover:bg-hive-bg transition-colors">
+                            Sign out
+                        </a>
+                    </div>
+                </div>
+            {{else}}
+                <!-- Mobile logged out navigation -->
+                <a href="/" class="{{if eq $currentPage "home"}}bg-hive-bg border-neon-cyan text-neon-cyan{{else}}border-transparent text-gray-300 hover:bg-hive-bg hover:border-neon-cyan hover:text-neon-cyan{{end}} block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors">
+                    Home
+                </a>
+                <a href="/login" class="border-transparent text-gray-300 hover:bg-hive-bg hover:border-neon-cyan hover:text-neon-cyan block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors">
+                    Sign in
+                </a>
+            {{end}}
+        </div>
+    </div>
+</nav>
+
+<script>
+// Mobile menu toggle functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const menuIcon = document.getElementById('menu-icon');
+    const closeIcon = document.getElementById('close-icon');
+
+    if (mobileMenuButton && mobileMenu) {
+        mobileMenuButton.addEventListener('click', function() {
+            const isHidden = mobileMenu.classList.contains('hidden');
+            
+            if (isHidden) {
+                // Show menu
+                mobileMenu.classList.remove('hidden');
+                menuIcon.classList.add('hidden');
+                closeIcon.classList.remove('hidden');
+                mobileMenuButton.setAttribute('aria-expanded', 'true');
+            } else {
+                // Hide menu
+                mobileMenu.classList.add('hidden');
+                menuIcon.classList.remove('hidden');
+                closeIcon.classList.add('hidden');
+                mobileMenuButton.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        // Close menu when clicking on a link
+        const mobileLinks = mobileMenu.querySelectorAll('a');
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                mobileMenu.classList.add('hidden');
+                menuIcon.classList.remove('hidden');
+                closeIcon.classList.add('hidden');
+                mobileMenuButton.setAttribute('aria-expanded', 'false');
+            });
+        });
+    }
+});
+</script>
+{{end}}

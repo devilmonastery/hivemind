@@ -1,0 +1,91 @@
+{
+  "name": "Hivemind Development",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+
+  // Configure tool-specific properties
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-azuretools.vscode-docker",
+        "bufbuild.vscode-buf",
+        "tamasfe.even-better-toml",
+        "redhat.vscode-yaml",
+        "github.copilot",
+        "github.copilot-chat",
+        "bradlc.vscode-tailwindcss",
+        "otovo-oss.htmx-tags"
+      ],
+      "settings": {
+        "go.toolsManagement.checkForUpdates": "local",
+        "go.useLanguageServer": true,
+        "go.goroot": "/usr/local/go",
+        "[go]": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        },
+        "gopls": {
+          "formatting.gofumpt": true,
+          "ui.semanticTokens": true,
+          "ui.completion.usePlaceholders": true,
+          "build.directoryFilters": [
+            "-node_modules",
+            "-vendor"
+          ],
+          "analyses": {
+            "unusedparams": true,
+            "shadow": true
+          }
+        }
+      }
+    }
+  },
+
+  // Forward ports for development
+  "forwardPorts": [
+    4153,  // gRPC server
+    8080,  // Web server
+    5432   // PostgreSQL
+  ],
+
+  "portsAttributes": {
+    "4153": {
+      "label": "gRPC Server",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Web UI",
+      "onAutoForward": "openBrowser"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    }
+  },
+
+  // Run commands after container creation
+  "postCreateCommand": "go mod download && make proto && make assets",
+
+  // Keep container running
+  "overrideCommand": true,
+
+  // Use 'postStartCommand' to run migrations
+  "postStartCommand": "echo 'Run: make run-server' to start the gRPC server",
+
+  // Set container user
+  "remoteUser": "vscode",
+
+  // Mount docker socket for building images
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  }
+}
