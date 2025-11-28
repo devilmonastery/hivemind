@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package hivemind.tokens.v1;
+
+import "common.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/devilmonastery/hivemind/api/generated/go/tokenspb";
+
+// TokenService handles API token operations
+service TokenService {
+  // Create a new API token (authenticated users can create tokens for themselves)
+  rpc CreateAPIToken(CreateAPITokenRequest) returns (CreateAPITokenResponse);
+
+  // List API tokens for the authenticated user
+  rpc ListAPITokens(ListAPITokensRequest) returns (ListAPITokensResponse);
+
+  // Get details of a specific API token
+  rpc GetAPIToken(GetAPITokenRequest) returns (GetAPITokenResponse);
+
+  // Update API token (rename device, change scopes)
+  rpc UpdateAPIToken(UpdateAPITokenRequest) returns (UpdateAPITokenResponse);
+
+  // Revoke an API token
+  rpc RevokeAPIToken(RevokeAPITokenRequest) returns (google.protobuf.Empty);
+
+  // Validate a token (internal use)
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+
+// hivemind.common.v1.APIToken is imported from common.proto
+
+message CreateAPITokenRequest {
+  string device_name = 1; // required
+  repeated string scopes = 2; // requested scopes
+  int64 expires_in_days = 3; // optional, defaults to 90 days
+}
+
+message CreateAPITokenResponse {
+  string api_token = 1; // raw token (only returned once)
+  hivemind.common.v1.APIToken token_info = 2; // token metadata
+}
+
+message ListAPITokensRequest {
+  bool include_revoked = 1; // include revoked tokens
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListAPITokensResponse {
+  repeated hivemind.common.v1.APIToken tokens = 1;
+  string next_page_token = 2;
+}
+
+message GetAPITokenRequest {
+  string token_id = 1;
+}
+
+message GetAPITokenResponse {
+  hivemind.common.v1.APIToken token = 1;
+}
+
+message UpdateAPITokenRequest {
+  string token_id = 1;
+  string device_name = 2; // optional, update device name
+  repeated string scopes = 3; // optional, update scopes
+}
+
+message UpdateAPITokenResponse {
+  hivemind.common.v1.APIToken token = 1;
+}
+
+message RevokeAPITokenRequest {
+  string token_id = 1;
+}
+
+// Internal validation (used by other services)
+message ValidateTokenRequest {
+  string token = 1; // raw API token
+  repeated string required_scopes = 2; // scopes required for the operation
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;
+  string user_id = 2; // user who owns the token
+  repeated string granted_scopes = 3; // scopes this token has
+  google.protobuf.Timestamp expires_at = 4;
+  hivemind.common.v1.APIToken token_info = 5; // full token info
+}

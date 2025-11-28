@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  /* The specific glitch offset effect */
+  .text-glitch {
+    color: white;
+    text-shadow: 
+      2px 2px 0px #00ffff,  /* Cyan offset to bottom right */
+      -2px -2px 0px #ff00ff; /* Magenta offset to top left */
+  }
+
+  /* A subtle pulse animation for alert lights or sparks */
+  .animate-pulse-fast {
+    animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+/* Custom styles can go here */

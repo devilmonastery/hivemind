@@ -1,0 +1,52 @@
+# Example Web Server Configuration
+# This file shows all available configuration options for the web UI server.
+# Copy this file and customize it for your deployment.
+
+# HTTP server configuration
+server:
+  # Host to bind to (use "0.0.0.0" to listen on all interfaces)
+  host: "localhost"
+  # Port to listen on
+  port: 8080
+
+# gRPC backend configuration
+grpc:
+  # Address of the gRPC server (host:port)
+  # For local development, use "localhost:9091"
+  # For Kubernetes, use the service name: "hivemind-server:9091"
+  address: "localhost:9091"
+  
+  # TLS configuration for gRPC connection
+  # The web server will automatically detect if TLS is needed:
+  # - localhost connections use insecure (no TLS)
+  # - Production hostnames use TLS with system certificates
+  # No explicit configuration needed for most deployments
+
+# OAuth callback configuration
+oauth:
+  # Redirect URI that OAuth providers redirect to after authentication
+  # Must match the redirect URL configured in your OAuth provider settings
+  # Examples:
+  # - Development: "http://localhost:8080/auth/callback"
+  # - Production: "https://hivemind.dontberu.de/auth/callback"
+  redirect_uri: "http://localhost:8080/auth/callback"
+
+# Session management
+session:
+  # Session secret key for encrypting session cookies
+  # Generate with: openssl rand -base64 32
+  # IMPORTANT: Keep this secret! Used to sign session cookies.
+  secret: "your-session-secret-here-change-me"
+
+# Example Production Configuration:
+# In production, use environment variables for secrets and adjust settings:
+#
+# server:
+#   host: "0.0.0.0"
+#   port: 8080
+# grpc:
+#   address: "hivemind-server:9091"
+# oauth:
+#   redirect_uri: "https://hivemind.dontberu.de/auth/callback"
+# session:
+#   secret: ${SESSION_SECRET}

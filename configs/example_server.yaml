@@ -1,0 +1,84 @@
+# Example Server Configuration
+# This file shows all available configuration options for the gRPC server.
+# Copy this file and customize it for your deployment.
+
+# Environment: local, dev, or prod
+environment: "local"
+
+# Vault secrets path (only used when use_vault_secrets is true)
+vault_path: "/mnt/secrets"
+
+# Database configuration
+database:
+  # PostgreSQL configuration
+  postgres:
+    # Database server hostname
+    host: "localhost"
+    # Database server port
+    port: 5432
+    # Database name
+    database: "hivemind"
+    # Database user
+    user: "hivemind"
+    # Database password (can also be set via environment variable)
+    password: "your_password_here"
+    # SSL mode: "disable", "require", "verify-ca", "verify-full"
+    sslmode: "disable"
+
+# gRPC server configuration
+grpc:
+  # Host to bind to (use "0.0.0.0" to listen on all interfaces)
+  host: "127.0.0.1"
+  # Port to listen on
+  port: 9091
+
+# Authentication configuration
+auth:
+  # JWT token configuration
+  jwt:
+    # Secret key for signing JWT tokens
+    # Generate with: openssl rand -base64 32
+    # IMPORTANT: Keep this secret! Anyone with this key can forge tokens.
+    signing_key: "your-secret-key-here-change-me"
+    
+    # Token lifetime (duration string)
+    # Examples: "15m", "1h", "24h", "168h" (7 days)
+    # Recommended: 1h for production, 10m for development (to test refresh)
+    lifetime: "1h"
+  
+  # Encryption key for OAuth refresh tokens (REQUIRED)
+  # Generate with: openssl rand -base64 32
+  # Must be exactly 32 bytes (256 bits) when base64-decoded
+  # IMPORTANT: Keep this secret! Used to encrypt OAuth refresh tokens in database.
+  # Use different keys for dev/staging/prod environments.
+  encryption_key: "your-encryption-key-here-change-me"
+  
+  # OAuth/OIDC provider configuration
+  providers:
+    # Google OAuth
+    - name: google
+      type: oidc
+      issuer: "https://accounts.google.com"
+      client_id: "your-google-client-id"
+      client_secret: "your-google-client-secret"
+      auto_provision: true
+      # Optional: restrict to specific domains
+      # allowed_domains:
+      #   - "example.com"
+      # Optional: restrict to specific users
+      # allowed_users:
+      #   - "user@example.com"
+    
+    # Discord OAuth
+    - name: discord
+      type: oidc
+      issuer: "https://discord.com"
+      client_id: "your-discord-client-id"
+      client_secret: "your-discord-client-secret"
+      auto_provision: true
+      # Optional: restrict to specific users
+      # allowed_users:
+      #   - "user@example.com"
+
+
+

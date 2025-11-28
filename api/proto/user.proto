@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package hivemind.user.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/devilmonastery/hivemind/api/generated/go/userpb";
+
+// User represents a user in the system
+message User {
+  string user_id = 1;
+  string email = 2;
+  string name = 3;
+  string provider = 4; // "google", "github", "discord", "local", etc.
+  Role role = 5;
+  UserType user_type = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_seen = 8;
+  bool disabled = 9; // for soft-disabling users
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_USER = 1;
+  ROLE_ADMIN = 2;
+}
+
+enum UserType {
+  USER_TYPE_UNSPECIFIED = 0;
+  USER_TYPE_OIDC = 1;
+  USER_TYPE_LOCAL = 2;
+  USER_TYPE_SYSTEM = 3;
+}

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package hivemind.common.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/devilmonastery/hivemind/api/generated/go/commonpb";
+
+// Common message types shared across services
+
+message APIToken {
+  string token_id = 1;
+  string user_id = 2;
+  string device_name = 3;
+  repeated string scopes = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp last_used = 7;
+  bool revoked = 8;
+  google.protobuf.Timestamp revoked_at = 9;
+}

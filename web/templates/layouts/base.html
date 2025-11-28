@@ -1,0 +1,54 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{block "title" .}}Hivemind{{end}}</title>
+    
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="{{assetURL "css/styles.css"}}">
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+        
+    <!-- Fonts: Reddit Sans (body), Montserrat (headings), JetBrains Mono (code) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Reddit+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Apply Reddit Sans to all text */
+        body {
+            font-family: "Reddit Sans", sans-serif;
+        }
+        
+        /* Apply JetBrains Mono to code, input fields and textareas */
+        code, pre, input, textarea {
+            font-family: "JetBrains Mono", monospace;
+        }
+        
+        /* Apply Montserrat to headings */
+        h1, h2, h3, h4, h5, h6, .font-heading {
+            font-family: "Montserrat", sans-serif;
+        }
+    </style>
+    
+    <!-- htmx -->
+    <script src="{{assetURL "js/htmx.min.js"}}"></script>
+    
+    <!-- Alpine.js for interactive components -->
+    <script defer src="{{assetURL "js/alpine.min.js"}}"></script>
+    
+    {{block "head" .}}{{end}}
+</head>
+<body class="bg-hive-bg text-gray-100 min-h-screen">
+    {{template "nav" .}}
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {{block "content" .}}{{end}}
+    </main>
+
+    {{block "scripts" .}}{{end}}
+</body>
+</html>
+{{end}}

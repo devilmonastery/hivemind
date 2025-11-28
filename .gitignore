@@ -30,3 +30,19 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Built frontend assets
+web/static/css/styles.css
+web/static/js/htmx.min.js
+web/static/js/alpine.min.js
+
+# Old versioned assets (if migrating)
+web/static/css/tailwindcss-*.min.css
+web/static/js/htmx-*.min.js
+web/static/js/alpine-*.min.js
