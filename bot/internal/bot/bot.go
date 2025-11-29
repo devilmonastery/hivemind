@@ -9,13 +9,16 @@ import (
 
 	"github.com/devilmonastery/hivemind/bot/internal/bot/handlers"
 	"github.com/devilmonastery/hivemind/bot/internal/config"
+	botgrpc "github.com/devilmonastery/hivemind/bot/internal/grpc"
+	"github.com/devilmonastery/hivemind/internal/client"
 )
 
 // Bot represents the Discord bot instance
 type Bot struct {
-	config  *config.Config
-	log     *slog.Logger
-	session *discordgo.Session
+	config     *config.Config
+	log        *slog.Logger
+	session    *discordgo.Session
+	grpcClient *client.Client
 }
 
 // New creates a new Bot instance
@@ -31,10 +34,22 @@ func New(cfg *config.Config, log *slog.Logger) (*Bot, error) {
 		discordgo.IntentsGuildMessages |
 		discordgo.IntentsGuildMembers
 
+	// Create gRPC client for backend communication
+	grpcClient, err := botgrpc.NewClient(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
+	}
+
+	log.Info("connected to backend",
+		slog.String("host", cfg.Backend.GRPCHost),
+		slog.Int("port", cfg.Backend.GRPCPort),
+	)
+
 	bot := &Bot{
-		config:  cfg,
-		log:     log,
-		session: session,
+		config:     cfg,
+		log:        log,
+		session:    session,
+		grpcClient: grpcClient,
 	}
 
 	// Register handlers
@@ -54,7 +69,7 @@ func (b *Bot) registerHandlers() {
 
 	// Interaction handlers
 	b.session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		handlers.HandleInteraction(s, i, b.config, b.log)
+		handlers.HandleInteraction(s, i, b.config, b.log, b.grpcClient)
 	})
 }
 
@@ -68,6 +83,14 @@ func (b *Bot) Start() error {
 
 // Stop gracefully closes the Discord connection
 func (b *Bot) Stop(ctx context.Context) error {
+	// Close gRPC connection
+	if b.grpcClient != nil {
+		if err := b.grpcClient.Close(); err != nil {
+			b.log.Warn("failed to close gRPC client", slog.String("error", err.Error()))
+		}
+	}
+
+	// Close Discord session
 	if b.session != nil {
 		return b.session.Close()
 	}

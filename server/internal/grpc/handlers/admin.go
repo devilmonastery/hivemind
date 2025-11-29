@@ -29,6 +29,21 @@ func NewAdminHandler(userService *services.UserService) *AdminHandler {
 	}
 }
 
+// GetSystemInfo returns basic system information
+func (h *AdminHandler) GetSystemInfo(ctx context.Context, req *emptypb.Empty) (*adminpb.GetSystemInfoResponse, error) {
+	// For now, return basic info
+	// TODO: Add actual metrics and stats
+	return &adminpb.GetSystemInfoResponse{
+		Version:       "0.1.0",
+		StartTime:     timestamppb.New(time.Now().Add(-1 * time.Hour)), // Placeholder
+		UptimeSeconds: 3600,                                            // Placeholder
+		DatabaseType:  "PostgreSQL",
+		TotalUsers:    0, // TODO: Query actual count
+		TotalNotes:    0, // TODO: Query actual count
+		ActiveTokens:  0, // TODO: Query actual count
+	}, nil
+}
+
 // timestampFromTime converts a time.Time to a protobuf timestamp
 func timestampFromTime(t time.Time) *timestamppb.Timestamp {
 	return timestamppb.New(t)

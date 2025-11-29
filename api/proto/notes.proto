@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package hivemind.notes;
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/devilmonastery/hivemind/api/generated/go/notespb";
+
+// NoteService manages private user notes
+service NoteService {
+  // CreateNote creates a new note
+  rpc CreateNote(CreateNoteRequest) returns (Note);
+
+  // GetNote retrieves a note by ID (must be owned by caller)
+  rpc GetNote(GetNoteRequest) returns (Note);
+
+  // ListNotes lists user's notes with optional filtering
+  rpc ListNotes(ListNotesRequest) returns (ListNotesResponse);
+
+  // UpdateNote updates an existing note (must be owned by caller)
+  rpc UpdateNote(UpdateNoteRequest) returns (Note);
+
+  // DeleteNote soft-deletes a note (must be owned by caller)
+  rpc DeleteNote(DeleteNoteRequest) returns (hivemind.common.v1.SuccessResponse);
+
+  // SearchNotes searches user's notes by full-text query
+  rpc SearchNotes(SearchNotesRequest) returns (SearchNotesResponse);
+}
+
+// Note represents a private user note with optional context
+message Note {
+  string id = 1;
+  string title = 2; // Optional
+  string body = 3;
+
+  // Ownership
+  string author_id = 4;
+  string author_username = 5;
+
+  // Context (optional)
+  string guild_id = 6; // NULL for personal notes
+  string channel_id = 7;
+  string channel_name = 8;
+
+  // Reference (optional)
+  string source_msg_id = 9; // Message that inspired this note
+  string source_channel_id = 10;
+  repeated string mentioned_user_ids = 11; // Discord user IDs mentioned
+
+  // Metadata
+  repeated string tags = 12;
+
+  // Timestamps
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+message CreateNoteRequest {
+  string title = 1; // Optional
+  string body = 2;
+  string guild_id = 3; // Optional: NULL for personal notes
+  string channel_id = 4; // Optional
+  string source_msg_id = 5; // Optional
+  repeated string tags = 6;
+}
+
+message GetNoteRequest {
+  string id = 1;
+}
+
+message ListNotesRequest {
+  string guild_id = 1; // Optional: filter by guild, omit for all notes
+  repeated string tags = 2; // Optional: filter by tags
+  int32 limit = 3; // Default: 50
+  int32 offset = 4;
+  string order_by = 5; // "created_at", "updated_at"
+  bool ascending = 6;
+}
+
+message ListNotesResponse {
+  repeated Note notes = 1;
+  int32 total = 2;
+}
+
+message UpdateNoteRequest {
+  string id = 1;
+  string title = 2;
+  string body = 3;
+  repeated string tags = 4;
+}
+
+message DeleteNoteRequest {
+  string id = 1;
+}
+
+message SearchNotesRequest {
+  string query = 1; // Full-text search query
+  string guild_id = 2; // Optional: filter by guild
+  repeated string tags = 3; // Optional: filter by tags
+  int32 limit = 4; // Default: 10
+  int32 offset = 5;
+}
+
+message SearchNotesResponse {
+  repeated Note notes = 1;
+  int32 total = 2;
+}

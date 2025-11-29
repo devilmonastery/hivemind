@@ -19,3 +19,8 @@ message APIToken {
   bool revoked = 8;
   google.protobuf.Timestamp revoked_at = 9;
 }
+
+message SuccessResponse {
+  bool success = 1;
+  string message = 2;
+}

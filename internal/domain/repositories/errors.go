@@ -19,6 +19,12 @@ var (
 	// ErrSnippetNotFound is returned when a snippet cannot be found
 	ErrSnippetNotFound = errors.New("snippet not found")
 
+	// ErrDiscordUserNotFound is returned when a Discord user mapping cannot be found
+	ErrDiscordUserNotFound = errors.New("discord user not found")
+
+	// ErrDiscordGuildNotFound is returned when a Discord guild cannot be found
+	ErrDiscordGuildNotFound = errors.New("discord guild not found")
+
 	// ErrAuditLogNotFound is returned when an audit log cannot be found
 	ErrAuditLogNotFound = errors.New("audit log not found")
 )

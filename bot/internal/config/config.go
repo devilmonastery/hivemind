@@ -23,9 +23,10 @@ type BotConfig struct {
 
 // BackendConfig holds backend server connection details
 type BackendConfig struct {
-	GRPCHost   string `yaml:"grpc_host"`
-	GRPCPort   int    `yaml:"grpc_port"`
-	TLSEnabled bool   `yaml:"tls_enabled"`
+	GRPCHost     string `yaml:"grpc_host"`
+	GRPCPort     int    `yaml:"grpc_port"`
+	TLSEnabled   bool   `yaml:"tls_enabled"`
+	ServiceToken string `yaml:"service_token"` // Service account token for bot auth
 }
 
 // LoggingConfig holds logging configuration

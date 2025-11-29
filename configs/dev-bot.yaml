@@ -4,8 +4,9 @@ bot:
 
 backend:
   grpc_host: "localhost"
-  grpc_port: 9091
+  grpc_port: 4153
   tls_enabled: false
+  service_token: "${DEV_BOT_TOKEN}"  # Dev bot uses shared secret from .env
 
 logging:
   level: "info"

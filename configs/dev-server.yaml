@@ -6,8 +6,8 @@
 database:
   # PostgreSQL configuration
   postgres:
-    # Database server hostname
-    host: "postgres"
+    # Database server hostname (use full container name in dev container)
+    host: "hivemind_devcontainer-postgres-1"
     # Database server port
     port: 5432
     # Database name
@@ -46,6 +46,11 @@ auth:
   # IMPORTANT: Keep this secret! Used to encrypt OAuth refresh tokens in database.
   # Use different keys for dev/staging/prod environments.
   encryption_key: "${OAUTH_ENCRYPTION_KEY}"
+  
+  # Development bot token (DEVELOPMENT ONLY - DO NOT USE IN PRODUCTION)
+  # This allows the bot to authenticate without database-stored tokens
+  # For production, use CLI command: hivemind admin create-service-token
+  dev_bot_token: "${DEV_BOT_TOKEN}"
   
   # OAuth/OIDC provider configuration
   providers:
