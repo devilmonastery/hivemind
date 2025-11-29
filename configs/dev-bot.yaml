@@ -1,0 +1,20 @@
+bot:
+  token: "${DISCORD_BOT_TOKEN}"
+  application_id: "${DISCORD_APPLICATION_ID}"
+
+backend:
+  grpc_host: "localhost"
+  grpc_port: 9091
+  tls_enabled: false
+
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+
+features:
+  enable_quotes: true
+  enable_wiki: true
+  enable_notes: true
+  max_note_size: 10000
+  max_wiki_size: 50000
