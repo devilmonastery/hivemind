@@ -25,8 +25,6 @@ func handleQuote(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog
 		handleQuoteAdd(s, i, subcommand, log, grpcClient)
 	case "random":
 		handleQuoteRandom(s, i, subcommand, log, grpcClient)
-	case "list":
-		handleQuoteList(s, i, subcommand, log, grpcClient)
 	case "search":
 		handleQuoteSearch(s, i, subcommand, log, grpcClient)
 	default:
@@ -164,75 +162,6 @@ func handleQuoteRandom(s *discordgo.Session, i *discordgo.InteractionCreate, sub
 }
 
 // handleQuoteList lists quotes
-func handleQuoteList(s *discordgo.Session, i *discordgo.InteractionCreate, subcommand *discordgo.ApplicationCommandInteractionDataOption, log *slog.Logger, grpcClient *client.Client) {
-	var tags []string
-	limit := int32(10)
-
-	for _, opt := range subcommand.Options {
-		switch opt.Name {
-		case "tags":
-			tagStr := opt.StringValue()
-			parts := strings.Split(tagStr, ",")
-			for _, tag := range parts {
-				tag = strings.TrimSpace(tag)
-				if tag != "" {
-					tags = append(tags, tag)
-				}
-			}
-		case "limit":
-			limit = int32(opt.IntValue())
-		}
-	}
-
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-	})
-	if err != nil {
-		log.Error("Failed to defer response", "error", err)
-		return
-	}
-
-	quoteClient := quotespb.NewQuoteServiceClient(grpcClient.Conn())
-	ctx := discordContextFor(i)
-
-	resp, err := quoteClient.ListQuotes(ctx, &quotespb.ListQuotesRequest{
-		GuildId: i.GuildID,
-		Tags:    tags,
-		Limit:   limit,
-	})
-	if err != nil {
-		log.Error("Failed to list quotes", "error", err)
-		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: fmt.Sprintf("❌ Failed to list quotes: %v", err),
-		})
-		return
-	}
-
-	if len(resp.Quotes) == 0 {
-		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: "No quotes found",
-		})
-		return
-	}
-
-	var content strings.Builder
-	content.WriteString(fmt.Sprintf("💬 Found %d quote(s):\n\n", resp.Total))
-	for idx, quote := range resp.Quotes {
-		content.WriteString(fmt.Sprintf("%d. \"%s\" (by %s)\n", idx+1, quote.Body, quote.AuthorUsername))
-		if len(quote.Tags) > 0 {
-			content.WriteString(fmt.Sprintf("   Tags: %s\n", strings.Join(quote.Tags, ", ")))
-		}
-		content.WriteString("\n")
-	}
-
-	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: content.String(),
-	})
-	if err != nil {
-		log.Error("Failed to send followup", "error", err)
-	}
-}
-
 // handleQuoteSearch searches quotes
 func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, subcommand *discordgo.ApplicationCommandInteractionDataOption, log *slog.Logger, grpcClient *client.Client) {
 	var query string

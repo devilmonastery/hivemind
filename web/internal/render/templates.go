@@ -13,6 +13,9 @@ import (
 	"time"
 )
 
+// Version is set at build time using ldflags
+var Version = "dev"
+
 // TemplateSet holds all parsed page templates
 // Each page is stored as a completely separate template.Template
 // to avoid {{define "content"}} block collisions
@@ -231,7 +234,8 @@ func LoadTemplates(path string) (*TemplateSet, error) {
 			return a / b
 		},
 		"assetURL": func(filename string) string {
-			return "/static/" + filename
+			// Insert version into path for cache busting: /static/{version}/css/styles.css
+			return "/static/" + Version + "/" + filename
 		},
 		"title": func(s string) string {
 			if s == "" {
