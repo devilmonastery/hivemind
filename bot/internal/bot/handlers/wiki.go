@@ -1026,7 +1026,7 @@ func handleWikiUnifiedSelect(s *discordgo.Session, i *discordgo.InteractionCreat
 }
 
 // handleWikiAutocomplete handles autocomplete for wiki commands
-func handleWikiAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleWikiAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client, cache *TitlesCache) {
 	data := i.ApplicationCommandData()
 
 	// Get the focused option
@@ -1051,36 +1051,54 @@ func handleWikiAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate
 
 	query := focusedOption.StringValue()
 
-	// Use lightweight autocomplete RPC
-	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
-	ctx := discordContextFor(i)
+	// Check local cache first
+	cachedTitles := cache.GetWikiTitles(i.GuildID)
 
-	autocompleteResp, err := wikiClient.AutocompleteWikiTitles(ctx, &wikipb.AutocompleteWikiTitlesRequest{
-		Query:   query,
-		GuildId: i.GuildID,
-		Limit:   25, // Discord allows up to 25 autocomplete choices
-	})
-	if err != nil {
-		log.Error("Failed to autocomplete wiki titles", "error", err)
-		return
+	// If cache miss, fetch from server and populate cache
+	if cachedTitles == nil {
+		wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
+		ctx := discordContextFor(i)
+
+		autocompleteResp, err := wikiClient.AutocompleteWikiTitles(ctx, &wikipb.AutocompleteWikiTitlesRequest{
+			GuildId: i.GuildID,
+		})
+		if err != nil {
+			log.Error("Failed to fetch wiki titles for cache", "error", err)
+			return
+		}
+
+		// Convert to cache format
+		cachedTitles = make([]TitleSuggestion, len(autocompleteResp.Suggestions))
+		for idx, suggestion := range autocompleteResp.Suggestions {
+			cachedTitles[idx] = TitleSuggestion{
+				ID:    suggestion.Id,
+				Title: suggestion.Title,
+			}
+		}
+
+		// Store in cache
+		cache.SetWikiTitles(i.GuildID, cachedTitles)
 	}
 
+	// Filter titles locally
+	filtered := FilterTitles(cachedTitles, query, 25)
+
 	// Build autocomplete choices
-	choices := make([]*discordgo.ApplicationCommandOptionChoice, 0, len(autocompleteResp.Suggestions))
-	for _, suggestion := range autocompleteResp.Suggestions {
+	choices := make([]*discordgo.ApplicationCommandOptionChoice, 0, len(filtered))
+	for _, title := range filtered {
 		// Limit title length for display
-		displayTitle := suggestion.Title
+		displayTitle := title.Title
 		if len(displayTitle) > 100 {
 			displayTitle = displayTitle[:97] + "..."
 		}
 
 		choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
 			Name:  displayTitle,
-			Value: suggestion.Title, // Return the full title
+			Value: title.Title, // Return the full title
 		})
 	}
 
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionApplicationCommandAutocompleteResult,
 		Data: &discordgo.InteractionResponseData{
 			Choices: choices,

@@ -691,9 +691,7 @@ func (x *SearchNotesResponse) GetTotal() int32 {
 
 type AutocompleteNoteTitlesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`                    // Partial title to match
-	GuildId       string                 `protobuf:"bytes,2,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"` // Optional: filter by guild
-	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`                   // Default: 25 (Discord autocomplete limit)
+	GuildId       string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"` // Optional: filter by guild
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -728,25 +726,11 @@ func (*AutocompleteNoteTitlesRequest) Descriptor() ([]byte, []int) {
 	return file_notes_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *AutocompleteNoteTitlesRequest) GetQuery() string {
-	if x != nil {
-		return x.Query
-	}
-	return ""
-}
-
 func (x *AutocompleteNoteTitlesRequest) GetGuildId() string {
 	if x != nil {
 		return x.GuildId
 	}
 	return ""
-}
-
-func (x *AutocompleteNoteTitlesRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
 }
 
 type AutocompleteNoteTitlesResponse struct {
@@ -1344,11 +1328,9 @@ const file_notes_proto_rawDesc = "" +
 	"\x06offset\x18\x05 \x01(\x05R\x06offset\"W\n" +
 	"\x13SearchNotesResponse\x12*\n" +
 	"\x05notes\x18\x01 \x03(\v2\x14.hivemind.notes.NoteR\x05notes\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\"f\n" +
-	"\x1dAutocompleteNoteTitlesRequest\x12\x14\n" +
-	"\x05query\x18\x01 \x01(\tR\x05query\x12\x19\n" +
-	"\bguild_id\x18\x02 \x01(\tR\aguildId\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"g\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\":\n" +
+	"\x1dAutocompleteNoteTitlesRequest\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\"g\n" +
 	"\x1eAutocompleteNoteTitlesResponse\x12E\n" +
 	"\vsuggestions\x18\x01 \x03(\v2#.hivemind.notes.NoteTitleSuggestionR\vsuggestions\";\n" +
 	"\x13NoteTitleSuggestion\x12\x0e\n" +

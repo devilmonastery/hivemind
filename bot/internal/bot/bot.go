@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 
@@ -20,6 +21,9 @@ type Bot struct {
 	log        *slog.Logger
 	session    *discordgo.Session
 	grpcClient *client.Client
+
+	// Autocomplete cache
+	titlesCache *handlers.TitlesCache
 }
 
 // New creates a new Bot instance
@@ -48,10 +52,11 @@ func New(cfg *config.Config, log *slog.Logger) (*Bot, error) {
 	)
 
 	bot := &Bot{
-		config:     cfg,
-		log:        log,
-		session:    session,
-		grpcClient: grpcClient,
+		config:      cfg,
+		log:         log,
+		session:     session,
+		grpcClient:  grpcClient,
+		titlesCache: handlers.NewTitlesCache(1 * time.Minute),
 	}
 
 	// Register handlers
@@ -71,7 +76,7 @@ func (b *Bot) registerHandlers() {
 
 	// Interaction handlers
 	b.session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		handlers.HandleInteraction(s, i, b.config, b.log, b.grpcClient)
+		handlers.HandleInteraction(s, i, b.config, b.log, b.grpcClient, b.titlesCache)
 	})
 }
 

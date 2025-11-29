@@ -27,7 +27,7 @@ service NoteService {
   // SearchNotes searches user's notes by full-text query
   rpc SearchNotes(SearchNotesRequest) returns (SearchNotesResponse);
 
-  // AutocompleteNoteTitles returns matching note titles for autocomplete (lightweight)
+  // AutocompleteNoteTitles returns all note titles for a user (bot filters locally)
   rpc AutocompleteNoteTitles(AutocompleteNoteTitlesRequest) returns (AutocompleteNoteTitlesResponse);
 
   // AddNoteMessageReference adds a Discord message reference to a note
@@ -118,9 +118,7 @@ message SearchNotesResponse {
 }
 
 message AutocompleteNoteTitlesRequest {
-  string query = 1; // Partial title to match
-  string guild_id = 2; // Optional: filter by guild
-  int32 limit = 3; // Default: 25 (Discord autocomplete limit)
+  string guild_id = 1; // Optional: filter by guild
 }
 
 message AutocompleteNoteTitlesResponse {
