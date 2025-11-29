@@ -54,33 +54,33 @@ auth:
   encryption_key: "your-encryption-key-here-change-me"
   
   # Development bot token (DEVELOPMENT ONLY)
-  # ⚠️  WARNING: DO NOT USE IN PRODUCTION! ⚠️
-  # This is for local development only. For production, use:
-  #   hivemind admin create-service-token <bot-name> --expires 90d
-  # Comment out or remove this line for production deployments
+  # ⚠️  WARNING: This triggers a security warning and should NOT be used in production! ⚠️
+  # 
+  # WHY THIS WARNING EXISTS:
+  # - Config-based tokens are less secure (visible in config files, logs, version control)
+  # - They can't be easily rotated without restarting the server
+  # - They don't get audited in the database like proper service tokens
+  # 
+  # FOR LOCAL DEVELOPMENT:
+  # - It's OK to use this for convenience during development
+  # - The warning is just a reminder not to use this approach in production
+  # 
+  # FOR PRODUCTION:
+  # - Remove or comment out this dev_bot_token line
+  # - Generate a proper service token using:
+  #     ./bin/hivemind-server token create-service --name "discord-bot" --role bot --config configs/prod-server.yaml
+  # - Store the generated JWT token in your bot's config (service_token field)
+  # - Service tokens are stored in the database and can be revoked if compromised
+  # 
   # dev_bot_token: "dev-only-token-change-me"
   
   # OAuth/OIDC provider configuration
   providers:
-    # Google OAuth
-    - name: google
-      type: oidc
-      issuer: "https://accounts.google.com"
-      client_id: "your-google-client-id"
-      client_secret: "your-google-client-secret"
-      auto_provision: true
-      # Optional: restrict to specific domains
-      # allowed_domains:
-      #   - "example.com"
-      # Optional: restrict to specific users
-      # allowed_users:
-      #   - "user@example.com"
-    
     # Discord OAuth
     - name: discord
       type: oidc
       issuer: "https://discord.com"
-      client_id: "your-discord-application-id"  # Same as Discord Application ID
+      client_id: "your-discord-application-id"  # Same as Discord Client ID
       client_secret: "your-discord-client-secret"
       auto_provision: true
       # Optional: restrict to specific users
