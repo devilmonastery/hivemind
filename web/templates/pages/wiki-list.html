@@ -1,0 +1,81 @@
+{{define "wiki-list"}}
+{{template "base" .}}
+{{end}}
+
+{{define "title"}}Wiki Pages - Hivemind{{end}}
+
+{{define "content"}}
+<div class="max-w-6xl mx-auto">
+  <!-- Header -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-neon-green mb-2">Wiki Pages</h1>
+    <p class="text-gray-400">Collaborative knowledge base from your guilds</p>
+  </div>
+
+  <!-- Wiki Pages List -->
+  {{if .Pages}}
+  <div class="space-y-4">
+    {{range .Pages}}
+    <div class="border-2 border-hive-metal rounded-lg p-4 bg-hive-surface hover:border-neon-green transition-colors">
+      <div class="flex justify-between items-start mb-2">
+        <div class="flex-1">
+          <h2 class="text-xl font-semibold text-neon-green mb-1">
+            <a href="/wiki?guild_id={{.GuildId}}&title={{.Title}}" class="hover:underline">{{.Title}}</a>
+          </h2>
+          
+          <div class="flex items-center gap-3 text-sm text-gray-400 mb-2">
+            <span>Created {{formatDate .CreatedAt}}</span>
+            {{if ne .CreatedAt .UpdatedAt}}
+            <span>•</span>
+            <span>Updated {{formatDate .UpdatedAt}}</span>
+            {{end}}
+            <span>•</span>
+            <span class="text-purple-400">{{.GuildName}}</span>
+            {{if .AuthorUsername}}
+            <span>•</span>
+            <span>by {{.AuthorUsername}}</span>
+            {{end}}
+          </div>
+
+          <!-- Body Preview -->
+          <div class="text-gray-300 text-sm mb-2">
+            {{if gt (len .Body) 250}}
+            {{slice .Body 0 250}}...
+            {{else}}
+            {{.Body}}
+            {{end}}
+          </div>
+
+          <!-- Tags -->
+          {{if .Tags}}
+          <div class="flex flex-wrap gap-2 mt-2">
+            {{range .Tags}}
+            <span class="px-2 py-1 bg-green-900/30 text-neon-green text-xs rounded">#{{.}}</span>
+            {{end}}
+          </div>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+
+  <!-- Total count -->
+  {{if gt .Total 25}}
+  <div class="mt-6 text-center text-gray-400 text-sm">
+    Showing 25 of {{.Total}} wiki pages
+  </div>
+  {{end}}
+
+  {{else}}
+  <!-- Empty State -->
+  <div class="text-center py-12">
+    <svg class="mx-auto h-12 w-12 text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+    <h3 class="text-lg font-medium text-gray-300 mb-2">No wiki pages yet</h3>
+    <p class="text-gray-400">Wiki pages from your Discord guilds will appear here.</p>
+  </div>
+  {{end}}
+</div>
+{{end}}

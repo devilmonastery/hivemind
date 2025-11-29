@@ -7,6 +7,38 @@ import (
 	wikipb "github.com/devilmonastery/hivemind/api/generated/go/wikipb"
 )
 
+// WikiListPage displays recent wiki pages from guilds the user is in
+func (h *Handler) WikiListPage(w http.ResponseWriter, r *http.Request) {
+	// Get authenticated client
+	client, err := h.getClient(r, w)
+	if err != nil {
+		log.Printf("Failed to create client: %v", err)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	defer client.Close()
+
+	// Fetch recent wiki pages (limit 25 for now)
+	wikiClient := wikipb.NewWikiServiceClient(client.Conn())
+	resp, err := wikiClient.ListWikiPages(r.Context(), &wikipb.ListWikiPagesRequest{
+		Limit:     25,
+		OrderBy:   "updated_at",
+		Ascending: false,
+	})
+	if err != nil {
+		log.Printf("Failed to fetch wiki pages: %v", err)
+		http.Error(w, "Failed to fetch wiki pages", http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare template data
+	data := h.newTemplateData(r)
+	data["Pages"] = resp.Pages
+	data["Total"] = resp.Total
+
+	h.renderTemplate(w, "wiki-list.html", data)
+}
+
 // WikiPage displays a single wiki page with its references
 func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
 	// Get wiki page title and guild_id from query params
