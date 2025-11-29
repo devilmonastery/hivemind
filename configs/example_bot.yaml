@@ -1,5 +1,21 @@
 # Example bot configuration
 # Copy this to dev-bot.yaml and fill in your values
+#
+# IMPORTANT: After configuring, you must register the bot's slash commands:
+#   Local development:
+#     make bot-register GUILD=your-guild-id    # Registers commands to a specific guild (instant)
+#   
+#   Production:
+#     ./hivemind-bot register --config /config/bot.yaml    # Registers commands globally (takes ~1 hour)
+#   
+#   In Docker:
+#     docker exec <container-name> ./hivemind-bot register --config /config/bot.yaml
+#   
+#   In Kubernetes:
+#     kubectl exec deployment/hivemind-bot -- ./hivemind-bot register --config /config/bot.yaml
+#
+# Guild-specific registration is recommended for development (instant updates).
+# Global registration is recommended for production (available in all servers).
 
 bot:
   # Get your bot token from https://discord.com/developers/applications

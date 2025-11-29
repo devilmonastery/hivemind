@@ -136,21 +136,21 @@ db-shell:
 ## docker-server: Build Docker image for server
 docker-server:
 	@echo "Building Docker image for server: $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
-	@docker build -f Dockerfile.server -t $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) .
+	@docker build --platform linux/amd64 -f Dockerfile.server -t $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) .
 	@docker tag $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-server:latest
 	@echo "Built $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
 
 ## docker-web: Build Docker image for web
 docker-web:
 	@echo "Building Docker image for web: $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
-	@docker build -f Dockerfile.web --build-arg VERSION=$(DOCKER_VERSION) -t $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) .
+	@docker build --platform linux/amd64 -f Dockerfile.web --build-arg VERSION=$(DOCKER_VERSION) -t $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) .
 	@docker tag $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-web:latest
 	@echo "Built $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
 
 ## docker-bot: Build Docker image for bot
 docker-bot:
 	@echo "Building Docker image for bot: $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
-	@docker build -f Dockerfile.bot -t $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) .
+	@docker build --platform linux/amd64 -f Dockerfile.bot -t $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) .
 	@docker tag $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-bot:latest
 	@echo "Built $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
 
