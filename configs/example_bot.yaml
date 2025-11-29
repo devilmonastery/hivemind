@@ -34,7 +34,10 @@ backend:
   grpc_host: "localhost"
   grpc_port: 9091
   tls_enabled: false
-  # Service account token for bot authentication
+  
+  # Service account token for bot authentication (REQUIRED)
+  # The bot will not start without this token configured.
+  # 
   # For local dev: use the service token from dev-server.yaml (services.bot.token)
   # For production: generate a token using:
   #   ./bin/hivemind-server token create-service --name "discord-bot" --role bot --config configs/prod-server.yaml
