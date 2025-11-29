@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"log/slog"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 
@@ -61,24 +62,31 @@ func handleComponent(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *
 		slog.String("user_id", i.Member.User.ID),
 	)
 
-	// Handle wiki select menu: wiki_select:query
-	if len(customID) > 12 && customID[:12] == "wiki_select:" {
-		query := customID[12:]
-		handleWikiSelectMenu(s, i, query, cfg, log, grpcClient)
+	// Split customID by colon to get the handler type
+	parts := strings.SplitN(customID, ":", 2)
+	if len(parts) < 1 {
+		log.Warn("invalid custom_id format", slog.String("custom_id", customID))
 		return
 	}
 
-	// Handle wiki result action buttons
-	if len(customID) > 16 && customID[:16] == "wiki_action_btn:" {
+	handlerType := parts[0]
+	remainder := ""
+	if len(parts) > 1 {
+		remainder = parts[1]
+	}
+
+	switch handlerType {
+	case "wiki_select":
+		handleWikiSelectMenu(s, i, remainder, cfg, log, grpcClient)
+	case "wiki_action_btn":
 		handleWikiActionButton(s, i, customID, cfg, log, grpcClient)
-		return
-	}
-
-	// Handle wiki edit button: wiki_edit_btn:PageTitle
-	if len(customID) > 14 && customID[:14] == "wiki_edit_btn:" {
-		title := customID[14:]
-		handleWikiEditButton(s, i, title, cfg, log, grpcClient)
-		return
+	case "wiki_edit_btn":
+		handleWikiEditButton(s, i, remainder, cfg, log, grpcClient)
+	case "wiki_unified_select":
+		log.Info("routing to handleWikiUnifiedSelect", slog.String("messageID", remainder))
+		handleWikiUnifiedSelect(s, i, remainder, log, grpcClient)
+	default:
+		log.Warn("no handler found for custom_id", slog.String("custom_id", customID))
 	}
 }
 
@@ -90,7 +98,20 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 		slog.String("user_id", i.Member.User.ID),
 	)
 
-	switch customID {
+	// Split customID by colon to get the handler type
+	parts := strings.SplitN(customID, ":", 2)
+	if len(parts) < 1 {
+		log.Warn("invalid modal custom_id format", slog.String("custom_id", customID))
+		respondError(s, i, "Unknown modal", log)
+		return
+	}
+
+	handlerType := parts[0]
+
+	switch handlerType {
+	case "context_wiki_unified_modal":
+		log.Info("routing to handleContextWikiUnifiedModal", slog.String("custom_id", customID))
+		handleContextWikiUnifiedModal(s, i, log, grpcClient)
 	case "wiki_edit_modal":
 		handleWikiEditModal(s, i, log, grpcClient)
 	case "note_create_modal":
@@ -102,6 +123,7 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 	case "context_wiki_modal":
 		handleContextWikiModal(s, i, log, grpcClient)
 	default:
+		log.Warn("no handler found for modal", slog.String("custom_id", customID))
 		respondError(s, i, "Unknown modal", log)
 	}
 }

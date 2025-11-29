@@ -6,9 +6,11 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 // TemplateSet holds all parsed page templates
@@ -84,6 +86,30 @@ func LoadTemplates(path string) (*TemplateSet, error) {
 
 	funcMap := template.FuncMap{
 		"renderMarkdown": Markdown,
+		"formatDate": func(t interface{}) string {
+			// Handle protobuf Timestamp
+			if ts, ok := t.(interface{ AsTime() time.Time }); ok {
+				return ts.AsTime().Format("2006-01-02 15:04")
+			}
+			// Handle time.Time
+			if tt, ok := t.(time.Time); ok {
+				return tt.Format("2006-01-02 15:04")
+			}
+			// Fallback
+			return fmt.Sprintf("%v", t)
+		},
+		"formatRelative": func(t interface{}) string {
+			// Handle protobuf Timestamp
+			if ts, ok := t.(interface{ AsTime() time.Time }); ok {
+				return ts.AsTime().Format("2006-01-02 15:04")
+			}
+			// Handle time.Time
+			if tt, ok := t.(time.Time); ok {
+				return tt.Format("2006-01-02 15:04")
+			}
+			// Fallback
+			return fmt.Sprintf("%v", t)
+		},
 		"untilInt": func(n int) []int {
 			result := make([]int, n)
 			for i := 0; i < n; i++ {
@@ -172,24 +198,24 @@ func LoadTemplates(path string) (*TemplateSet, error) {
 			hash := md5.Sum([]byte(strings.ToLower(name)))
 			hashValue := int(hash[0])
 
-			// Curated color palette for avatars (gradient pairs)
+			// Curated color palette for avatars (brighter gradients for dark theme)
 			colors := []string{
-				"from-blue-400 to-blue-600",
-				"from-green-400 to-green-600",
-				"from-purple-400 to-purple-600",
-				"from-pink-400 to-pink-600",
-				"from-indigo-400 to-indigo-600",
-				"from-red-400 to-red-600",
-				"from-yellow-400 to-yellow-600",
-				"from-teal-400 to-teal-600",
-				"from-orange-400 to-orange-600",
-				"from-cyan-400 to-cyan-600",
-				"from-emerald-400 to-emerald-600",
-				"from-violet-400 to-violet-600",
-				"from-rose-400 to-rose-600",
-				"from-sky-400 to-sky-600",
-				"from-lime-400 to-lime-600",
-				"from-amber-400 to-amber-600",
+				"from-blue-400 to-blue-500",
+				"from-green-400 to-green-500",
+				"from-purple-400 to-purple-500",
+				"from-pink-400 to-pink-500",
+				"from-indigo-400 to-indigo-500",
+				"from-red-400 to-red-500",
+				"from-yellow-400 to-yellow-500",
+				"from-teal-400 to-teal-500",
+				"from-orange-400 to-orange-500",
+				"from-cyan-400 to-cyan-500",
+				"from-emerald-400 to-emerald-500",
+				"from-violet-400 to-violet-500",
+				"from-rose-400 to-rose-500",
+				"from-sky-400 to-sky-500",
+				"from-lime-400 to-lime-500",
+				"from-amber-400 to-amber-500",
 			}
 
 			// Select color deterministically based on hash
@@ -213,6 +239,58 @@ func LoadTemplates(path string) (*TemplateSet, error) {
 			}
 			// Simple title case: capitalize first letter and lowercase the rest
 			return strings.ToUpper(string(s[0])) + strings.ToLower(s[1:])
+		},
+		"isImageURL": func(urlStr string) bool {
+			// Parse URL to get clean path without query parameters
+			u, err := url.Parse(urlStr)
+			if err != nil {
+				return false
+			}
+			lower := strings.ToLower(u.Path)
+			return strings.HasSuffix(lower, ".jpg") ||
+				strings.HasSuffix(lower, ".jpeg") ||
+				strings.HasSuffix(lower, ".png") ||
+				strings.HasSuffix(lower, ".gif") ||
+				strings.HasSuffix(lower, ".webp") ||
+				strings.HasSuffix(lower, ".bmp")
+		},
+		"isVideoURL": func(urlStr string) bool {
+			// Parse URL to get clean path without query parameters
+			u, err := url.Parse(urlStr)
+			if err != nil {
+				return false
+			}
+			lower := strings.ToLower(u.Path)
+			return strings.HasSuffix(lower, ".mp4") ||
+				strings.HasSuffix(lower, ".webm") ||
+				strings.HasSuffix(lower, ".mov") ||
+				strings.HasSuffix(lower, ".avi") ||
+				strings.HasSuffix(lower, ".mkv")
+		},
+		"thumbnailURL": func(urlStr string) string {
+			// Discord CDN supports width/height parameters for resizing
+			if strings.Contains(urlStr, "cdn.discordapp.com") || strings.Contains(urlStr, "media.discordapp.net") {
+				sep := "?"
+				if strings.Contains(urlStr, "?") {
+					sep = "&"
+				}
+				return urlStr + sep + "width=128"
+			}
+			return urlStr
+		},
+		"fileExtension": func(urlStr string) string {
+			u, err := url.Parse(urlStr)
+			if err != nil {
+				return "FILE"
+			}
+			ext := filepath.Ext(u.Path)
+			if ext != "" {
+				return strings.ToUpper(strings.TrimPrefix(ext, "."))
+			}
+			return "FILE"
+		},
+		"hasPrefix": func(s, prefix string) bool {
+			return strings.HasPrefix(s, prefix)
 		},
 	}
 

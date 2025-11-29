@@ -133,6 +133,9 @@ func createRouter(h *handlers.Handler, authMw *middleware.AuthMiddleware) http.H
 	router.HandleFunc("/admin/login", h.AdminLogin).Methods("POST")
 	router.HandleFunc("/api/set-timezone", h.SetTimezone).Methods("POST")
 
+	// Wiki routes (auth required)
+	router.Handle("/wiki", authMw.RequireAuth(http.HandlerFunc(h.WikiPage))).Methods("GET")
+
 	// Wrap router with logging middleware
 	return middleware.LogRequest(router)
 }

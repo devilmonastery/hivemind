@@ -806,3 +806,109 @@ func splitCustomID(customID, prefix string) []string {
 	remainder := customID[len(prefix):]
 	return strings.Split(remainder, ":")
 }
+
+// handleWikiUnifiedSelect handles the unified wiki select menu (create new or select existing)
+func handleWikiUnifiedSelect(s *discordgo.Session, i *discordgo.InteractionCreate, messageID string, log *slog.Logger, grpcClient *client.Client) {
+	// Get selected value
+	selectedValues := i.MessageComponentData().Values
+	if len(selectedValues) == 0 {
+		respondError(s, i, "No selection made", log)
+		return
+	}
+	selectedValue := selectedValues[0]
+
+	log.Info("handleWikiUnifiedSelect called", "messageID", messageID, "selectedValue", selectedValue)
+
+	// Fetch the original message
+	message, err := s.ChannelMessage(i.ChannelID, messageID)
+	if err != nil {
+		log.Error("Failed to fetch message", "error", err, "messageID", messageID, "channelID", i.ChannelID)
+		respondError(s, i, fmt.Sprintf("Failed to fetch message: %v", err), log)
+		return
+	}
+
+	if selectedValue == "__create_new__" {
+		log.Info("Showing create new modal", "messageID", messageID, "messageContent", message.Content)
+		// User wants to create new page - show modal with message content
+		modalErr := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseModal,
+			Data: &discordgo.InteractionResponseData{
+				CustomID: fmt.Sprintf("context_wiki_unified_modal:%s:__create_new__", messageID),
+				Title:    "Create Wiki Page",
+				Components: []discordgo.MessageComponent{
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.TextInput{
+								CustomID:    "wiki_title",
+								Label:       "Wiki Page Title",
+								Style:       discordgo.TextInputShort,
+								Required:    true,
+								MaxLength:   200,
+								Placeholder: "Enter wiki page title",
+							},
+						},
+					},
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.TextInput{
+								CustomID:    "wiki_body",
+								Label:       "Wiki Content",
+								Style:       discordgo.TextInputParagraph,
+								Required:    true,
+								Value:       message.Content,
+								MaxLength:   4000,
+								Placeholder: "Edit content. Use #hashtags for tags",
+							},
+						},
+					},
+				},
+			},
+		})
+		if modalErr != nil {
+			log.Error("Failed to show wiki creation modal", "error", modalErr, "messageID", messageID)
+			// Can't call respondError here as we already tried to respond with modal
+		}
+		return
+	}
+
+	log.Info("Fetching existing wiki page", "pageID", selectedValue)
+	// User selected an existing page - fetch it to show in modal with checkbox
+	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
+	page, err := wikiClient.GetWikiPage(discordContextFor(i), &wikipb.GetWikiPageRequest{
+		Id: selectedValue,
+	})
+	if err != nil {
+		log.Error("Failed to fetch wiki page", "error", err, "pageID", selectedValue)
+		respondError(s, i, fmt.Sprintf("Failed to fetch wiki page: %v", err), log)
+		return
+	}
+
+	log.Info("Showing update modal for existing page", "pageID", page.Id, "pageTitle", page.Title)
+	// Show modal with existing page content and checkbox for optional editing
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseModal,
+		Data: &discordgo.InteractionResponseData{
+			CustomID: fmt.Sprintf("context_wiki_unified_modal:%s:%s", messageID, page.Id),
+			Title:    fmt.Sprintf("Add to: %s", truncateString(page.Title, 30)),
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.TextInput{
+							CustomID:    "wiki_update_content",
+							Label:       "Update page content? (leave empty to skip)",
+							Style:       discordgo.TextInputParagraph,
+							Required:    false,
+							Value:       page.Body,
+							MaxLength:   4000,
+							Placeholder: "Edit to update page, or leave as-is to only add reference",
+						},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		log.Error("Failed to show wiki update modal", "error", err, "pageID", page.Id)
+		// Can't call respondError here as we already tried to respond with modal
+	}
+}

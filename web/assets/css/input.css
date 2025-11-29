@@ -11,6 +11,13 @@
       -2px -2px 0px #ff00ff; /* Magenta offset to top left */
   }
 
+  /* Glitch effect for boxes/avatars - offset shadows like text */
+  .border-glitch {
+    box-shadow: 
+      2px 2px 0px 0px #00ffff,  /* Cyan offset to bottom right */
+      -2px -2px 0px 0px #ff00ff; /* Magenta offset to top left */
+  }
+
   /* A subtle pulse animation for alert lights or sparks */
   .animate-pulse-fast {
     animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;

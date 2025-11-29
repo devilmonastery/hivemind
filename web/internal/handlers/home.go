@@ -14,17 +14,18 @@ import (
 
 // ActivityItem represents a unified activity item for the home feed
 type ActivityItem struct {
-	Type        string // "note", "quote", "wiki"
-	ID          string
-	Title       string
-	Body        string
-	Preview     string // First 200 chars of body
-	GuildID     string
-	GuildName   string
-	ChannelName string
-	Timestamp   time.Time
-	Author      string
-	Tags        []string
+	Type           string // "note", "quote", "wiki"
+	ID             string
+	Title          string
+	Body           string
+	Preview        string // First 200 chars of body
+	GuildID        string
+	GuildName      string
+	ChannelName    string
+	Timestamp      time.Time
+	Author         string
+	Tags           []string
+	ReferenceCount int32 // Number of message references (for wiki pages)
 }
 
 // Home handles the home page
@@ -167,18 +168,28 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 	} else {
 		log.Printf("Fetched %d wiki pages from server", len(wikiResp.Pages))
 		for _, page := range wikiResp.Pages {
+			// Fetch reference count for this page
+			refCount := int32(0)
+			refsResp, refErr := wikiClient.ListWikiMessageReferences(ctx, &wikipb.ListWikiMessageReferencesRequest{
+				WikiPageId: page.Id,
+			})
+			if refErr == nil && refsResp != nil {
+				refCount = int32(len(refsResp.References))
+			}
+
 			activity = append(activity, ActivityItem{
-				Type:        "wiki",
-				ID:          page.Id,
-				Title:       page.Title,
-				Body:        page.Body,
-				Preview:     truncateText(page.Body, 200),
-				GuildID:     page.GuildId,
-				GuildName:   page.GuildName,
-				ChannelName: page.ChannelName,
-				Timestamp:   page.CreatedAt.AsTime(),
-				Author:      page.AuthorUsername,
-				Tags:        page.Tags,
+				Type:           "wiki",
+				ID:             page.Id,
+				Title:          page.Title,
+				Body:           page.Body,
+				Preview:        truncateText(page.Body, 200),
+				GuildID:        page.GuildId,
+				GuildName:      page.GuildName,
+				ChannelName:    page.ChannelName,
+				Timestamp:      page.CreatedAt.AsTime(),
+				Author:         page.AuthorUsername,
+				Tags:           page.Tags,
+				ReferenceCount: refCount,
 			})
 		}
 	}

@@ -260,6 +260,20 @@ func (s *AuthHandler) ExchangeAuthCode(
 	displayName := claims.Name
 	picture := claims.Picture
 
+	// For Discord users, use Discord username as display name
+	if req.Provider == "discord" && discordUser != nil {
+		// Prefer global name, fallback to username
+		if discordUser.DiscordGlobalName != nil && *discordUser.DiscordGlobalName != "" {
+			displayName = *discordUser.DiscordGlobalName
+		} else if discordUser.DiscordUsername != "" {
+			displayName = discordUser.DiscordUsername
+		}
+		// Use Discord avatar
+		if discordUser.AvatarURL != nil {
+			picture = *discordUser.AvatarURL
+		}
+	}
+
 	// Update user's avatar URL and timezone from this login
 	needsUpdate := false
 

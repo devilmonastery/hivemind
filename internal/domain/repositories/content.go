@@ -71,3 +71,21 @@ type QuoteRepository interface {
 	// GetRandom retrieves a random quote from a guild
 	GetRandom(ctx context.Context, guildID string, tags []string) (*entities.Quote, error)
 }
+
+// WikiMessageReferenceRepository defines operations for wiki message reference persistence
+type WikiMessageReferenceRepository interface {
+	// Create creates a new wiki message reference (no-op if already exists)
+	Create(ctx context.Context, ref *entities.WikiMessageReference) error
+
+	// GetByPageID retrieves all message references for a wiki page (ordered by added_at DESC)
+	GetByPageID(ctx context.Context, pageID string) ([]*entities.WikiMessageReference, error)
+
+	// GetByMessageID retrieves all wiki pages that reference a specific message
+	GetByMessageID(ctx context.Context, messageID string) ([]*entities.WikiMessageReference, error)
+
+	// Delete deletes a specific message reference by ID
+	Delete(ctx context.Context, id string) error
+
+	// DeleteByMessageID deletes all references to a specific message (cleanup if message deleted)
+	DeleteByMessageID(ctx context.Context, messageID string) error
+}
