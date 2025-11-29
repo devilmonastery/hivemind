@@ -689,6 +689,600 @@ func (x *SearchNotesResponse) GetTotal() int32 {
 	return 0
 }
 
+type AutocompleteNoteTitlesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`                    // Partial title to match
+	GuildId       string                 `protobuf:"bytes,2,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"` // Optional: filter by guild
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`                   // Default: 25 (Discord autocomplete limit)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AutocompleteNoteTitlesRequest) Reset() {
+	*x = AutocompleteNoteTitlesRequest{}
+	mi := &file_notes_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AutocompleteNoteTitlesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AutocompleteNoteTitlesRequest) ProtoMessage() {}
+
+func (x *AutocompleteNoteTitlesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_notes_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AutocompleteNoteTitlesRequest.ProtoReflect.Descriptor instead.
+func (*AutocompleteNoteTitlesRequest) Descriptor() ([]byte, []int) {
+	return file_notes_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AutocompleteNoteTitlesRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *AutocompleteNoteTitlesRequest) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *AutocompleteNoteTitlesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type AutocompleteNoteTitlesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Suggestions   []*NoteTitleSuggestion `protobuf:"bytes,1,rep,name=suggestions,proto3" json:"suggestions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AutocompleteNoteTitlesResponse) Reset() {
+	*x = AutocompleteNoteTitlesResponse{}
+	mi := &file_notes_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AutocompleteNoteTitlesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AutocompleteNoteTitlesResponse) ProtoMessage() {}
+
+func (x *AutocompleteNoteTitlesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_notes_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AutocompleteNoteTitlesResponse.ProtoReflect.Descriptor instead.
+func (*AutocompleteNoteTitlesResponse) Descriptor() ([]byte, []int) {
+	return file_notes_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AutocompleteNoteTitlesResponse) GetSuggestions() []*NoteTitleSuggestion {
+	if x != nil {
+		return x.Suggestions
+	}
+	return nil
+}
+
+type NoteTitleSuggestion struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NoteTitleSuggestion) Reset() {
+	*x = NoteTitleSuggestion{}
+	mi := &file_notes_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NoteTitleSuggestion) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NoteTitleSuggestion) ProtoMessage() {}
+
+func (x *NoteTitleSuggestion) ProtoReflect() protoreflect.Message {
+	mi := &file_notes_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NoteTitleSuggestion.ProtoReflect.Descriptor instead.
+func (*NoteTitleSuggestion) Descriptor() ([]byte, []int) {
+	return file_notes_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *NoteTitleSuggestion) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *NoteTitleSuggestion) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+// AttachmentMetadata stores Discord attachment information
+type AttachmentMetadata struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	ContentType   string                 `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"` // MIME type (e.g., "image/png", "video/mp4")
+	Filename      string                 `protobuf:"bytes,3,opt,name=filename,proto3" json:"filename,omitempty"`
+	Width         int32                  `protobuf:"varint,4,opt,name=width,proto3" json:"width,omitempty"`   // For images/videos
+	Height        int32                  `protobuf:"varint,5,opt,name=height,proto3" json:"height,omitempty"` // For images/videos
+	Size          int64                  `protobuf:"varint,6,opt,name=size,proto3" json:"size,omitempty"`     // File size in bytes
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AttachmentMetadata) Reset() {
+	*x = AttachmentMetadata{}
+	mi := &file_notes_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttachmentMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttachmentMetadata) ProtoMessage() {}
+
+func (x *AttachmentMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_notes_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttachmentMetadata.ProtoReflect.Descriptor instead.
+func (*AttachmentMetadata) Descriptor() ([]byte, []int) {
+	return file_notes_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AttachmentMetadata) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *AttachmentMetadata) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *AttachmentMetadata) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *AttachmentMetadata) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *AttachmentMetadata) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *AttachmentMetadata) GetSize() int64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+// NoteMessageReference represents a Discord message referenced in a note
+type NoteMessageReference struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	NoteId            string                 `protobuf:"bytes,2,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
+	MessageId         string                 `protobuf:"bytes,3,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	ChannelId         string                 `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	GuildId           string                 `protobuf:"bytes,5,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"` // Nullable for DM contexts
+	Content           string                 `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`
+	AuthorId          string                 `protobuf:"bytes,7,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	AuthorUsername    string                 `protobuf:"bytes,8,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
+	AuthorDisplayName string                 `protobuf:"bytes,9,opt,name=author_display_name,json=authorDisplayName,proto3" json:"author_display_name,omitempty"`
+	AuthorAvatarUrl   string                 `protobuf:"bytes,10,opt,name=author_avatar_url,json=authorAvatarUrl,proto3" json:"author_avatar_url,omitempty"`
+	MessageTimestamp  *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=message_timestamp,json=messageTimestamp,proto3" json:"message_timestamp,omitempty"`
+	Attachments       []*AttachmentMetadata  `protobuf:"bytes,12,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	AddedAt           *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	DiscordLink       string                 `protobuf:"bytes,14,opt,name=discord_link,json=discordLink,proto3" json:"discord_link,omitempty"` // Computed: Discord message URL
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *NoteMessageReference) Reset() {
+	*x = NoteMessageReference{}
+	mi := &file_notes_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NoteMessageReference) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NoteMessageReference) ProtoMessage() {}
+
+func (x *NoteMessageReference) ProtoReflect() protoreflect.Message {
+	mi := &file_notes_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NoteMessageReference.ProtoReflect.Descriptor instead.
+func (*NoteMessageReference) Descriptor() ([]byte, []int) {
+	return file_notes_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *NoteMessageReference) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetNoteId() string {
+	if x != nil {
+		return x.NoteId
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetAuthorId() string {
+	if x != nil {
+		return x.AuthorId
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetAuthorUsername() string {
+	if x != nil {
+		return x.AuthorUsername
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetAuthorDisplayName() string {
+	if x != nil {
+		return x.AuthorDisplayName
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetAuthorAvatarUrl() string {
+	if x != nil {
+		return x.AuthorAvatarUrl
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetMessageTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.MessageTimestamp
+	}
+	return nil
+}
+
+func (x *NoteMessageReference) GetAttachments() []*AttachmentMetadata {
+	if x != nil {
+		return x.Attachments
+	}
+	return nil
+}
+
+func (x *NoteMessageReference) GetAddedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AddedAt
+	}
+	return nil
+}
+
+func (x *NoteMessageReference) GetDiscordLink() string {
+	if x != nil {
+		return x.DiscordLink
+	}
+	return ""
+}
+
+type AddNoteMessageReferenceRequest struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	NoteId            string                 `protobuf:"bytes,1,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
+	MessageId         string                 `protobuf:"bytes,2,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	ChannelId         string                 `protobuf:"bytes,3,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	GuildId           string                 `protobuf:"bytes,4,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"` // Optional
+	Content           string                 `protobuf:"bytes,5,opt,name=content,proto3" json:"content,omitempty"`
+	AuthorId          string                 `protobuf:"bytes,6,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	AuthorUsername    string                 `protobuf:"bytes,7,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
+	AuthorDisplayName string                 `protobuf:"bytes,8,opt,name=author_display_name,json=authorDisplayName,proto3" json:"author_display_name,omitempty"`
+	MessageTimestamp  *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=message_timestamp,json=messageTimestamp,proto3" json:"message_timestamp,omitempty"`
+	Attachments       []*AttachmentMetadata  `protobuf:"bytes,10,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AddNoteMessageReferenceRequest) Reset() {
+	*x = AddNoteMessageReferenceRequest{}
+	mi := &file_notes_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddNoteMessageReferenceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddNoteMessageReferenceRequest) ProtoMessage() {}
+
+func (x *AddNoteMessageReferenceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_notes_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddNoteMessageReferenceRequest.ProtoReflect.Descriptor instead.
+func (*AddNoteMessageReferenceRequest) Descriptor() ([]byte, []int) {
+	return file_notes_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AddNoteMessageReferenceRequest) GetNoteId() string {
+	if x != nil {
+		return x.NoteId
+	}
+	return ""
+}
+
+func (x *AddNoteMessageReferenceRequest) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *AddNoteMessageReferenceRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *AddNoteMessageReferenceRequest) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *AddNoteMessageReferenceRequest) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *AddNoteMessageReferenceRequest) GetAuthorId() string {
+	if x != nil {
+		return x.AuthorId
+	}
+	return ""
+}
+
+func (x *AddNoteMessageReferenceRequest) GetAuthorUsername() string {
+	if x != nil {
+		return x.AuthorUsername
+	}
+	return ""
+}
+
+func (x *AddNoteMessageReferenceRequest) GetAuthorDisplayName() string {
+	if x != nil {
+		return x.AuthorDisplayName
+	}
+	return ""
+}
+
+func (x *AddNoteMessageReferenceRequest) GetMessageTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.MessageTimestamp
+	}
+	return nil
+}
+
+func (x *AddNoteMessageReferenceRequest) GetAttachments() []*AttachmentMetadata {
+	if x != nil {
+		return x.Attachments
+	}
+	return nil
+}
+
+type ListNoteMessageReferencesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NoteId        string                 `protobuf:"bytes,1,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListNoteMessageReferencesRequest) Reset() {
+	*x = ListNoteMessageReferencesRequest{}
+	mi := &file_notes_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListNoteMessageReferencesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListNoteMessageReferencesRequest) ProtoMessage() {}
+
+func (x *ListNoteMessageReferencesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_notes_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListNoteMessageReferencesRequest.ProtoReflect.Descriptor instead.
+func (*ListNoteMessageReferencesRequest) Descriptor() ([]byte, []int) {
+	return file_notes_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ListNoteMessageReferencesRequest) GetNoteId() string {
+	if x != nil {
+		return x.NoteId
+	}
+	return ""
+}
+
+type ListNoteMessageReferencesResponse struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	References    []*NoteMessageReference `protobuf:"bytes,1,rep,name=references,proto3" json:"references,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListNoteMessageReferencesResponse) Reset() {
+	*x = ListNoteMessageReferencesResponse{}
+	mi := &file_notes_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListNoteMessageReferencesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListNoteMessageReferencesResponse) ProtoMessage() {}
+
+func (x *ListNoteMessageReferencesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_notes_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListNoteMessageReferencesResponse.ProtoReflect.Descriptor instead.
+func (*ListNoteMessageReferencesResponse) Descriptor() ([]byte, []int) {
+	return file_notes_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ListNoteMessageReferencesResponse) GetReferences() []*NoteMessageReference {
+	if x != nil {
+		return x.References
+	}
+	return nil
+}
+
 var File_notes_proto protoreflect.FileDescriptor
 
 const file_notes_proto_rawDesc = "" +
@@ -750,7 +1344,61 @@ const file_notes_proto_rawDesc = "" +
 	"\x06offset\x18\x05 \x01(\x05R\x06offset\"W\n" +
 	"\x13SearchNotesResponse\x12*\n" +
 	"\x05notes\x18\x01 \x03(\v2\x14.hivemind.notes.NoteR\x05notes\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total2\xdc\x03\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"f\n" +
+	"\x1dAutocompleteNoteTitlesRequest\x12\x14\n" +
+	"\x05query\x18\x01 \x01(\tR\x05query\x12\x19\n" +
+	"\bguild_id\x18\x02 \x01(\tR\aguildId\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"g\n" +
+	"\x1eAutocompleteNoteTitlesResponse\x12E\n" +
+	"\vsuggestions\x18\x01 \x03(\v2#.hivemind.notes.NoteTitleSuggestionR\vsuggestions\";\n" +
+	"\x13NoteTitleSuggestion\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\"\xa7\x01\n" +
+	"\x12AttachmentMetadata\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12!\n" +
+	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\x12\x1a\n" +
+	"\bfilename\x18\x03 \x01(\tR\bfilename\x12\x14\n" +
+	"\x05width\x18\x04 \x01(\x05R\x05width\x12\x16\n" +
+	"\x06height\x18\x05 \x01(\x05R\x06height\x12\x12\n" +
+	"\x04size\x18\x06 \x01(\x03R\x04size\"\xbd\x04\n" +
+	"\x14NoteMessageReference\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\anote_id\x18\x02 \x01(\tR\x06noteId\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x03 \x01(\tR\tmessageId\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x04 \x01(\tR\tchannelId\x12\x19\n" +
+	"\bguild_id\x18\x05 \x01(\tR\aguildId\x12\x18\n" +
+	"\acontent\x18\x06 \x01(\tR\acontent\x12\x1b\n" +
+	"\tauthor_id\x18\a \x01(\tR\bauthorId\x12'\n" +
+	"\x0fauthor_username\x18\b \x01(\tR\x0eauthorUsername\x12.\n" +
+	"\x13author_display_name\x18\t \x01(\tR\x11authorDisplayName\x12*\n" +
+	"\x11author_avatar_url\x18\n" +
+	" \x01(\tR\x0fauthorAvatarUrl\x12G\n" +
+	"\x11message_timestamp\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x10messageTimestamp\x12D\n" +
+	"\vattachments\x18\f \x03(\v2\".hivemind.notes.AttachmentMetadataR\vattachments\x125\n" +
+	"\badded_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\x12!\n" +
+	"\fdiscord_link\x18\x0e \x01(\tR\vdiscordLink\"\xb1\x03\n" +
+	"\x1eAddNoteMessageReferenceRequest\x12\x17\n" +
+	"\anote_id\x18\x01 \x01(\tR\x06noteId\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x02 \x01(\tR\tmessageId\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x03 \x01(\tR\tchannelId\x12\x19\n" +
+	"\bguild_id\x18\x04 \x01(\tR\aguildId\x12\x18\n" +
+	"\acontent\x18\x05 \x01(\tR\acontent\x12\x1b\n" +
+	"\tauthor_id\x18\x06 \x01(\tR\bauthorId\x12'\n" +
+	"\x0fauthor_username\x18\a \x01(\tR\x0eauthorUsername\x12.\n" +
+	"\x13author_display_name\x18\b \x01(\tR\x11authorDisplayName\x12G\n" +
+	"\x11message_timestamp\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x10messageTimestamp\x12D\n" +
+	"\vattachments\x18\n" +
+	" \x03(\v2\".hivemind.notes.AttachmentMetadataR\vattachments\";\n" +
+	" ListNoteMessageReferencesRequest\x12\x17\n" +
+	"\anote_id\x18\x01 \x01(\tR\x06noteId\"i\n" +
+	"!ListNoteMessageReferencesResponse\x12D\n" +
+	"\n" +
+	"references\x18\x01 \x03(\v2$.hivemind.notes.NoteMessageReferenceR\n" +
+	"references2\xc9\x06\n" +
 	"\vNoteService\x12E\n" +
 	"\n" +
 	"CreateNote\x12!.hivemind.notes.CreateNoteRequest\x1a\x14.hivemind.notes.Note\x12?\n" +
@@ -760,7 +1408,10 @@ const file_notes_proto_rawDesc = "" +
 	"UpdateNote\x12!.hivemind.notes.UpdateNoteRequest\x1a\x14.hivemind.notes.Note\x12T\n" +
 	"\n" +
 	"DeleteNote\x12!.hivemind.notes.DeleteNoteRequest\x1a#.hivemind.common.v1.SuccessResponse\x12V\n" +
-	"\vSearchNotes\x12\".hivemind.notes.SearchNotesRequest\x1a#.hivemind.notes.SearchNotesResponseB=Z;github.com/devilmonastery/hivemind/api/generated/go/notespbb\x06proto3"
+	"\vSearchNotes\x12\".hivemind.notes.SearchNotesRequest\x1a#.hivemind.notes.SearchNotesResponse\x12w\n" +
+	"\x16AutocompleteNoteTitles\x12-.hivemind.notes.AutocompleteNoteTitlesRequest\x1a..hivemind.notes.AutocompleteNoteTitlesResponse\x12o\n" +
+	"\x17AddNoteMessageReference\x12..hivemind.notes.AddNoteMessageReferenceRequest\x1a$.hivemind.notes.NoteMessageReference\x12\x80\x01\n" +
+	"\x19ListNoteMessageReferences\x120.hivemind.notes.ListNoteMessageReferencesRequest\x1a1.hivemind.notes.ListNoteMessageReferencesResponseB=Z;github.com/devilmonastery/hivemind/api/generated/go/notespbb\x06proto3"
 
 var (
 	file_notes_proto_rawDescOnce sync.Once
@@ -774,42 +1425,63 @@ func file_notes_proto_rawDescGZIP() []byte {
 	return file_notes_proto_rawDescData
 }
 
-var file_notes_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_notes_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_notes_proto_goTypes = []any{
-	(*Note)(nil),                     // 0: hivemind.notes.Note
-	(*CreateNoteRequest)(nil),        // 1: hivemind.notes.CreateNoteRequest
-	(*GetNoteRequest)(nil),           // 2: hivemind.notes.GetNoteRequest
-	(*ListNotesRequest)(nil),         // 3: hivemind.notes.ListNotesRequest
-	(*ListNotesResponse)(nil),        // 4: hivemind.notes.ListNotesResponse
-	(*UpdateNoteRequest)(nil),        // 5: hivemind.notes.UpdateNoteRequest
-	(*DeleteNoteRequest)(nil),        // 6: hivemind.notes.DeleteNoteRequest
-	(*SearchNotesRequest)(nil),       // 7: hivemind.notes.SearchNotesRequest
-	(*SearchNotesResponse)(nil),      // 8: hivemind.notes.SearchNotesResponse
-	(*timestamppb.Timestamp)(nil),    // 9: google.protobuf.Timestamp
-	(*commonpb.SuccessResponse)(nil), // 10: hivemind.common.v1.SuccessResponse
+	(*Note)(nil),                              // 0: hivemind.notes.Note
+	(*CreateNoteRequest)(nil),                 // 1: hivemind.notes.CreateNoteRequest
+	(*GetNoteRequest)(nil),                    // 2: hivemind.notes.GetNoteRequest
+	(*ListNotesRequest)(nil),                  // 3: hivemind.notes.ListNotesRequest
+	(*ListNotesResponse)(nil),                 // 4: hivemind.notes.ListNotesResponse
+	(*UpdateNoteRequest)(nil),                 // 5: hivemind.notes.UpdateNoteRequest
+	(*DeleteNoteRequest)(nil),                 // 6: hivemind.notes.DeleteNoteRequest
+	(*SearchNotesRequest)(nil),                // 7: hivemind.notes.SearchNotesRequest
+	(*SearchNotesResponse)(nil),               // 8: hivemind.notes.SearchNotesResponse
+	(*AutocompleteNoteTitlesRequest)(nil),     // 9: hivemind.notes.AutocompleteNoteTitlesRequest
+	(*AutocompleteNoteTitlesResponse)(nil),    // 10: hivemind.notes.AutocompleteNoteTitlesResponse
+	(*NoteTitleSuggestion)(nil),               // 11: hivemind.notes.NoteTitleSuggestion
+	(*AttachmentMetadata)(nil),                // 12: hivemind.notes.AttachmentMetadata
+	(*NoteMessageReference)(nil),              // 13: hivemind.notes.NoteMessageReference
+	(*AddNoteMessageReferenceRequest)(nil),    // 14: hivemind.notes.AddNoteMessageReferenceRequest
+	(*ListNoteMessageReferencesRequest)(nil),  // 15: hivemind.notes.ListNoteMessageReferencesRequest
+	(*ListNoteMessageReferencesResponse)(nil), // 16: hivemind.notes.ListNoteMessageReferencesResponse
+	(*timestamppb.Timestamp)(nil),             // 17: google.protobuf.Timestamp
+	(*commonpb.SuccessResponse)(nil),          // 18: hivemind.common.v1.SuccessResponse
 }
 var file_notes_proto_depIdxs = []int32{
-	9,  // 0: hivemind.notes.Note.created_at:type_name -> google.protobuf.Timestamp
-	9,  // 1: hivemind.notes.Note.updated_at:type_name -> google.protobuf.Timestamp
+	17, // 0: hivemind.notes.Note.created_at:type_name -> google.protobuf.Timestamp
+	17, // 1: hivemind.notes.Note.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: hivemind.notes.ListNotesResponse.notes:type_name -> hivemind.notes.Note
 	0,  // 3: hivemind.notes.SearchNotesResponse.notes:type_name -> hivemind.notes.Note
-	1,  // 4: hivemind.notes.NoteService.CreateNote:input_type -> hivemind.notes.CreateNoteRequest
-	2,  // 5: hivemind.notes.NoteService.GetNote:input_type -> hivemind.notes.GetNoteRequest
-	3,  // 6: hivemind.notes.NoteService.ListNotes:input_type -> hivemind.notes.ListNotesRequest
-	5,  // 7: hivemind.notes.NoteService.UpdateNote:input_type -> hivemind.notes.UpdateNoteRequest
-	6,  // 8: hivemind.notes.NoteService.DeleteNote:input_type -> hivemind.notes.DeleteNoteRequest
-	7,  // 9: hivemind.notes.NoteService.SearchNotes:input_type -> hivemind.notes.SearchNotesRequest
-	0,  // 10: hivemind.notes.NoteService.CreateNote:output_type -> hivemind.notes.Note
-	0,  // 11: hivemind.notes.NoteService.GetNote:output_type -> hivemind.notes.Note
-	4,  // 12: hivemind.notes.NoteService.ListNotes:output_type -> hivemind.notes.ListNotesResponse
-	0,  // 13: hivemind.notes.NoteService.UpdateNote:output_type -> hivemind.notes.Note
-	10, // 14: hivemind.notes.NoteService.DeleteNote:output_type -> hivemind.common.v1.SuccessResponse
-	8,  // 15: hivemind.notes.NoteService.SearchNotes:output_type -> hivemind.notes.SearchNotesResponse
-	10, // [10:16] is the sub-list for method output_type
-	4,  // [4:10] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	11, // 4: hivemind.notes.AutocompleteNoteTitlesResponse.suggestions:type_name -> hivemind.notes.NoteTitleSuggestion
+	17, // 5: hivemind.notes.NoteMessageReference.message_timestamp:type_name -> google.protobuf.Timestamp
+	12, // 6: hivemind.notes.NoteMessageReference.attachments:type_name -> hivemind.notes.AttachmentMetadata
+	17, // 7: hivemind.notes.NoteMessageReference.added_at:type_name -> google.protobuf.Timestamp
+	17, // 8: hivemind.notes.AddNoteMessageReferenceRequest.message_timestamp:type_name -> google.protobuf.Timestamp
+	12, // 9: hivemind.notes.AddNoteMessageReferenceRequest.attachments:type_name -> hivemind.notes.AttachmentMetadata
+	13, // 10: hivemind.notes.ListNoteMessageReferencesResponse.references:type_name -> hivemind.notes.NoteMessageReference
+	1,  // 11: hivemind.notes.NoteService.CreateNote:input_type -> hivemind.notes.CreateNoteRequest
+	2,  // 12: hivemind.notes.NoteService.GetNote:input_type -> hivemind.notes.GetNoteRequest
+	3,  // 13: hivemind.notes.NoteService.ListNotes:input_type -> hivemind.notes.ListNotesRequest
+	5,  // 14: hivemind.notes.NoteService.UpdateNote:input_type -> hivemind.notes.UpdateNoteRequest
+	6,  // 15: hivemind.notes.NoteService.DeleteNote:input_type -> hivemind.notes.DeleteNoteRequest
+	7,  // 16: hivemind.notes.NoteService.SearchNotes:input_type -> hivemind.notes.SearchNotesRequest
+	9,  // 17: hivemind.notes.NoteService.AutocompleteNoteTitles:input_type -> hivemind.notes.AutocompleteNoteTitlesRequest
+	14, // 18: hivemind.notes.NoteService.AddNoteMessageReference:input_type -> hivemind.notes.AddNoteMessageReferenceRequest
+	15, // 19: hivemind.notes.NoteService.ListNoteMessageReferences:input_type -> hivemind.notes.ListNoteMessageReferencesRequest
+	0,  // 20: hivemind.notes.NoteService.CreateNote:output_type -> hivemind.notes.Note
+	0,  // 21: hivemind.notes.NoteService.GetNote:output_type -> hivemind.notes.Note
+	4,  // 22: hivemind.notes.NoteService.ListNotes:output_type -> hivemind.notes.ListNotesResponse
+	0,  // 23: hivemind.notes.NoteService.UpdateNote:output_type -> hivemind.notes.Note
+	18, // 24: hivemind.notes.NoteService.DeleteNote:output_type -> hivemind.common.v1.SuccessResponse
+	8,  // 25: hivemind.notes.NoteService.SearchNotes:output_type -> hivemind.notes.SearchNotesResponse
+	10, // 26: hivemind.notes.NoteService.AutocompleteNoteTitles:output_type -> hivemind.notes.AutocompleteNoteTitlesResponse
+	13, // 27: hivemind.notes.NoteService.AddNoteMessageReference:output_type -> hivemind.notes.NoteMessageReference
+	16, // 28: hivemind.notes.NoteService.ListNoteMessageReferences:output_type -> hivemind.notes.ListNoteMessageReferencesResponse
+	20, // [20:29] is the sub-list for method output_type
+	11, // [11:20] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_notes_proto_init() }
@@ -823,7 +1495,7 @@ func file_notes_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_notes_proto_rawDesc), len(file_notes_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

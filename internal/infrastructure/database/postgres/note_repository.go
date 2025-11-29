@@ -313,3 +313,57 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 
 	return notes, total, nil
 }
+
+// GetTitlesForUser retrieves only the ID and title of all notes for a user in a guild (lightweight for autocomplete)
+func (r *noteRepository) GetTitlesForUser(ctx context.Context, authorID, guildID string) ([]struct {
+	ID    string
+	Title string
+}, error,
+) {
+	conditions := []string{"author_id = $1", "deleted_at IS NULL"}
+	args := []interface{}{authorID}
+
+	if guildID != "" {
+		conditions = append(conditions, "guild_id = $2")
+		args = append(args, guildID)
+	}
+
+	whereClause := strings.Join(conditions, " AND ")
+
+	query := fmt.Sprintf(`
+		SELECT id, title
+		FROM notes
+		WHERE %s
+		ORDER BY updated_at DESC
+	`, whereClause)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []struct {
+		ID    string
+		Title string
+	}
+
+	for rows.Next() {
+		var id string
+		var title sql.NullString
+
+		if err := rows.Scan(&id, &title); err != nil {
+			return nil, err
+		}
+
+		results = append(results, struct {
+			ID    string
+			Title string
+		}{
+			ID:    id,
+			Title: title.String,
+		})
+	}
+
+	return results, rows.Err()
+}

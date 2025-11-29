@@ -1,0 +1,98 @@
+{{define "notes"}}
+{{template "base" .}}
+{{end}}
+
+{{define "title"}}My Notes - Hivemind{{end}}
+
+{{define "content"}}
+<div class="max-w-6xl mx-auto">
+  <!-- Header -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-cyan-400 mb-2">My Notes</h1>
+    <p class="text-gray-400">Private notes you can access from anywhere</p>
+  </div>
+
+  <!-- Filters -->
+  {{if or .GuildID .Tags}}
+  <div class="mb-4 flex flex-wrap items-center gap-2 text-sm">
+    <span class="text-gray-400">Filtering by:</span>
+    {{if .GuildID}}
+    <span class="px-2 py-1 bg-cyan-900/30 text-cyan-400 rounded">Guild: {{.GuildID}}</span>
+    {{end}}
+    {{if .Tags}}
+    {{range .Tags}}
+    <span class="px-2 py-1 bg-purple-900/30 text-purple-400 rounded">#{{.}}</span>
+    {{end}}
+    {{end}}
+    <a href="/notes" class="px-2 py-1 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded">Clear filters</a>
+  </div>
+  {{end}}
+
+  <!-- Notes List -->
+  {{if .Notes}}
+  <div class="space-y-4">
+    {{range .Notes}}
+    <div class="border-2 border-hive-metal rounded-lg p-4 bg-hive-surface hover:border-cyan-500 transition-colors">
+      <div class="flex justify-between items-start mb-2">
+        <div class="flex-1">
+          <h2 class="text-xl font-semibold text-cyan-400 mb-1">
+            {{if .Title}}
+            <a href="/note?id={{.Id}}" class="hover:underline">{{.Title}}</a>
+            {{else}}
+            <a href="/note?id={{.Id}}" class="hover:underline text-gray-500 italic">(untitled)</a>
+            {{end}}
+          </h2>
+          
+          <div class="flex items-center gap-3 text-sm text-gray-400 mb-2">
+            <span>{{formatDate .CreatedAt}}</span>
+            {{if ne .CreatedAt .UpdatedAt}}
+            <span>•</span>
+            <span>Updated {{formatDate .UpdatedAt}}</span>
+            {{end}}
+            {{if .GuildName}}
+            <span>•</span>
+            <span class="text-purple-400">{{.GuildName}}</span>
+            {{end}}
+          </div>
+
+          <!-- Body Preview -->
+          <div class="text-gray-300 text-sm mb-2">
+            {{if gt (len .Body) 200}}
+            {{slice .Body 0 200}}...
+            {{else}}
+            {{.Body}}
+            {{end}}
+          </div>
+
+          <!-- Tags -->
+          {{if .Tags}}
+          <div class="flex flex-wrap gap-2 mt-2">
+            {{range .Tags}}
+            <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded">#{{.}}</span>
+            {{end}}
+          </div>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+
+  <!-- Pagination Info -->
+  <div class="mt-6 text-center text-sm text-gray-400">
+    Showing {{len .Notes}} of {{.Total}} note(s)
+  </div>
+  {{else}}
+  <!-- Empty State -->
+  <div class="border-2 border-hive-metal border-dashed rounded-lg p-12 text-center bg-hive-surface">
+    <div class="text-gray-500 mb-4">
+      <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+      </svg>
+      <p class="text-lg">No notes found</p>
+      <p class="text-sm mt-2">Create your first note using the Discord bot</p>
+    </div>
+  </div>
+  {{end}}
+</div>
+{{end}}

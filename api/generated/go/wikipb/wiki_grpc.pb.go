@@ -23,6 +23,7 @@ const (
 	WikiService_CreateWikiPage_FullMethodName            = "/hivemind.wiki.WikiService/CreateWikiPage"
 	WikiService_GetWikiPage_FullMethodName               = "/hivemind.wiki.WikiService/GetWikiPage"
 	WikiService_SearchWikiPages_FullMethodName           = "/hivemind.wiki.WikiService/SearchWikiPages"
+	WikiService_AutocompleteWikiTitles_FullMethodName    = "/hivemind.wiki.WikiService/AutocompleteWikiTitles"
 	WikiService_UpdateWikiPage_FullMethodName            = "/hivemind.wiki.WikiService/UpdateWikiPage"
 	WikiService_UpsertWikiPage_FullMethodName            = "/hivemind.wiki.WikiService/UpsertWikiPage"
 	WikiService_DeleteWikiPage_FullMethodName            = "/hivemind.wiki.WikiService/DeleteWikiPage"
@@ -43,6 +44,8 @@ type WikiServiceClient interface {
 	GetWikiPage(ctx context.Context, in *GetWikiPageRequest, opts ...grpc.CallOption) (*WikiPage, error)
 	// SearchWikiPages searches for wiki pages in a guild
 	SearchWikiPages(ctx context.Context, in *SearchWikiPagesRequest, opts ...grpc.CallOption) (*SearchWikiPagesResponse, error)
+	// AutocompleteWikiTitles returns matching wiki page titles for autocomplete (lightweight)
+	AutocompleteWikiTitles(ctx context.Context, in *AutocompleteWikiTitlesRequest, opts ...grpc.CallOption) (*AutocompleteWikiTitlesResponse, error)
 	// UpdateWikiPage updates an existing wiki page
 	UpdateWikiPage(ctx context.Context, in *UpdateWikiPageRequest, opts ...grpc.CallOption) (*WikiPage, error)
 	// UpsertWikiPage creates or updates a wiki page by title
@@ -89,6 +92,16 @@ func (c *wikiServiceClient) SearchWikiPages(ctx context.Context, in *SearchWikiP
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SearchWikiPagesResponse)
 	err := c.cc.Invoke(ctx, WikiService_SearchWikiPages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wikiServiceClient) AutocompleteWikiTitles(ctx context.Context, in *AutocompleteWikiTitlesRequest, opts ...grpc.CallOption) (*AutocompleteWikiTitlesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AutocompleteWikiTitlesResponse)
+	err := c.cc.Invoke(ctx, WikiService_AutocompleteWikiTitles_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -167,6 +180,8 @@ type WikiServiceServer interface {
 	GetWikiPage(context.Context, *GetWikiPageRequest) (*WikiPage, error)
 	// SearchWikiPages searches for wiki pages in a guild
 	SearchWikiPages(context.Context, *SearchWikiPagesRequest) (*SearchWikiPagesResponse, error)
+	// AutocompleteWikiTitles returns matching wiki page titles for autocomplete (lightweight)
+	AutocompleteWikiTitles(context.Context, *AutocompleteWikiTitlesRequest) (*AutocompleteWikiTitlesResponse, error)
 	// UpdateWikiPage updates an existing wiki page
 	UpdateWikiPage(context.Context, *UpdateWikiPageRequest) (*WikiPage, error)
 	// UpsertWikiPage creates or updates a wiki page by title
@@ -196,6 +211,9 @@ func (UnimplementedWikiServiceServer) GetWikiPage(context.Context, *GetWikiPageR
 }
 func (UnimplementedWikiServiceServer) SearchWikiPages(context.Context, *SearchWikiPagesRequest) (*SearchWikiPagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchWikiPages not implemented")
+}
+func (UnimplementedWikiServiceServer) AutocompleteWikiTitles(context.Context, *AutocompleteWikiTitlesRequest) (*AutocompleteWikiTitlesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AutocompleteWikiTitles not implemented")
 }
 func (UnimplementedWikiServiceServer) UpdateWikiPage(context.Context, *UpdateWikiPageRequest) (*WikiPage, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateWikiPage not implemented")
@@ -285,6 +303,24 @@ func _WikiService_SearchWikiPages_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WikiServiceServer).SearchWikiPages(ctx, req.(*SearchWikiPagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WikiService_AutocompleteWikiTitles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AutocompleteWikiTitlesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WikiServiceServer).AutocompleteWikiTitles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WikiService_AutocompleteWikiTitles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WikiServiceServer).AutocompleteWikiTitles(ctx, req.(*AutocompleteWikiTitlesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -415,6 +451,10 @@ var WikiService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchWikiPages",
 			Handler:    _WikiService_SearchWikiPages_Handler,
+		},
+		{
+			MethodName: "AutocompleteWikiTitles",
+			Handler:    _WikiService_AutocompleteWikiTitles_Handler,
 		},
 		{
 			MethodName: "UpdateWikiPage",

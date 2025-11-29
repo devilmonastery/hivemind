@@ -32,10 +32,11 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 					Description: "View a wiki page",
 					Options: []*discordgo.ApplicationCommandOption{
 						{
-							Type:        discordgo.ApplicationCommandOptionString,
-							Name:        "title",
-							Description: "Wiki page title",
-							Required:    true,
+							Type:         discordgo.ApplicationCommandOptionString,
+							Name:         "title",
+							Description:  "Wiki page title",
+							Required:     true,
+							Autocomplete: true,
 						},
 					},
 				},
@@ -45,10 +46,11 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 					Description: "Create or edit a wiki page",
 					Options: []*discordgo.ApplicationCommandOption{
 						{
-							Type:        discordgo.ApplicationCommandOptionString,
-							Name:        "title",
-							Description: "Wiki page title (leave empty for new page)",
-							Required:    false,
+							Type:         discordgo.ApplicationCommandOptionString,
+							Name:         "title",
+							Description:  "Wiki page title (leave empty for new page)",
+							Required:     false,
+							Autocomplete: true,
 						},
 					},
 				},
@@ -94,10 +96,11 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 					Description: "View a specific note",
 					Options: []*discordgo.ApplicationCommandOption{
 						{
-							Type:        discordgo.ApplicationCommandOptionString,
-							Name:        "id",
-							Description: "Note ID",
-							Required:    true,
+							Type:         discordgo.ApplicationCommandOptionString,
+							Name:         "title",
+							Description:  "Note title (partial match supported)",
+							Required:     true,
+							Autocomplete: true,
 						},
 					},
 				},
@@ -222,6 +225,15 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 		{
 			Name: "Add to Wiki",
 			Type: discordgo.MessageApplicationCommand,
+		},
+		// User context menu commands (right-click on users)
+		{
+			Name: "Edit Note for User",
+			Type: discordgo.UserApplicationCommand,
+		},
+		{
+			Name: "View Note for User",
+			Type: discordgo.UserApplicationCommand,
 		},
 	}
 }

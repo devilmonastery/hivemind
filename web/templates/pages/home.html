@@ -54,15 +54,25 @@
                             <a href="/wiki?title={{.Title}}&guild_id={{.GuildID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
                                 {{.Title}}
                             </a>
-                            {{else}}
-                            <a href="/{{.Type}}s/{{.ID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
+                            {{else if eq .Type "note"}}
+                            <a href="/note?id={{.ID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
+                                {{.Title}}
+                            </a>
+                            {{else if eq .Type "quote"}}
+                            <a href="/quote?id={{.ID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
                                 {{.Title}}
                             </a>
                             {{end}}
                             {{else}}
-                            <a href="/{{.Type}}s/{{.ID}}" class="text-gray-400 italic hover:text-neon-cyan transition-colors">
+                            {{if eq .Type "note"}}
+                            <a href="/note?id={{.ID}}" class="text-gray-400 italic hover:text-neon-cyan transition-colors">
                                 (no title)
                             </a>
+                            {{else if eq .Type "quote"}}
+                            <a href="/quote?id={{.ID}}" class="text-gray-400 italic hover:text-neon-cyan transition-colors">
+                                (no title)
+                            </a>
+                            {{end}}
                             {{end}}
                         </td>
                         <td class="px-4 py-3 max-w-md">

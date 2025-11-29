@@ -39,7 +39,7 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *co
 	case "wiki":
 		handleWiki(s, i, cfg, log, grpcClient)
 	case "note":
-		handleNote(s, i, log, grpcClient)
+		handleNote(s, i, cfg, log, grpcClient)
 	case "quote":
 		handleQuote(s, i, log, grpcClient)
 	// Context menu commands
@@ -49,6 +49,11 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *co
 		handleContextMenuNote(s, i, log, grpcClient)
 	case "Add to Wiki":
 		handleContextMenuWiki(s, i, log, grpcClient)
+	// User context menu commands
+	case "Edit Note for User":
+		handleContextMenuAddNoteForUser(s, i, log, grpcClient)
+	case "View Note for User":
+		handleContextMenuViewNotesForUser(s, i, cfg, log, grpcClient)
 	default:
 		respondError(s, i, "Unknown command", log)
 	}
@@ -82,9 +87,23 @@ func handleComponent(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *
 		handleWikiActionButton(s, i, customID, cfg, log, grpcClient)
 	case "wiki_edit_btn":
 		handleWikiEditButton(s, i, remainder, cfg, log, grpcClient)
+	case "wiki_add_to_chat":
+		handleWikiAddToChat(s, i, remainder, cfg, log, grpcClient)
+	case "wiki_close":
+		handleWikiClose(s, i, log)
 	case "wiki_unified_select":
 		log.Info("routing to handleWikiUnifiedSelect", slog.String("messageID", remainder))
 		handleWikiUnifiedSelect(s, i, remainder, log, grpcClient)
+	case "note_edit_btn":
+		handleNoteEditButton(s, i, remainder, log, grpcClient)
+	case "note_delete_btn":
+		handleNoteDeleteButton(s, i, remainder, log, grpcClient)
+	case "note_delete_confirm":
+		handleNoteDeleteConfirm(s, i, remainder, log, grpcClient)
+	case "note_delete_cancel":
+		handleNoteDeleteCancel(s, i, log)
+	case "note_close_btn":
+		handleNoteCloseButton(s, i, log)
 	default:
 		log.Warn("no handler found for custom_id", slog.String("custom_id", customID))
 	}
@@ -122,6 +141,8 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 		handleContextNoteModal(s, i, log, grpcClient)
 	case "context_wiki_modal":
 		handleContextWikiModal(s, i, log, grpcClient)
+	case "user_note_modal":
+		handleUserNoteModal(s, i, log, grpcClient)
 	default:
 		log.Warn("no handler found for modal", slog.String("custom_id", customID))
 		respondError(s, i, "Unknown modal", log)
@@ -129,11 +150,21 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 }
 
 func handleAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
-	// TODO: Handle autocomplete requests
+	data := i.ApplicationCommandData()
+
 	log.Debug("autocomplete request received",
-		slog.String("command", i.ApplicationCommandData().Name),
+		slog.String("command", data.Name),
 		slog.String("user_id", i.Member.User.ID),
 	)
+
+	switch data.Name {
+	case "note":
+		handleNoteAutocomplete(s, i, log, grpcClient)
+	case "wiki":
+		handleWikiAutocomplete(s, i, log, grpcClient)
+	default:
+		log.Warn("no autocomplete handler for command", slog.String("command", data.Name))
+	}
 }
 
 // respondError sends an error message to the user

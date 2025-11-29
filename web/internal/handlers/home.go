@@ -36,17 +36,12 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get current user if logged in
-	user := h.getCurrentUser(r)
-
-	// Prepare template data
-	data := map[string]interface{}{
-		"User":        user,
-		"CurrentPage": "home",
-	}
+	// Prepare template data with standard fields
+	data := h.newTemplateData(r)
+	data["CurrentPage"] = "home"
 
 	// If not logged in, get available OAuth providers
-	if user == nil {
+	if data["User"] == nil {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 

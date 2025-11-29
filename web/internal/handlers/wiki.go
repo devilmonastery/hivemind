@@ -57,14 +57,10 @@ func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
 		// Continue without references rather than failing completely
 	}
 
-	// Get current user for nav/auth display
-	user := h.getCurrentUser(r)
-
-	data := map[string]interface{}{
-		"User":       user,
-		"Page":       page,
-		"References": refsResp.GetReferences(),
-	}
+	// Prepare template data with page-specific fields
+	data := h.newTemplateData(r)
+	data["Page"] = page
+	data["References"] = refsResp.GetReferences()
 
 	h.renderTemplate(w, "wiki_page.html", data)
 }

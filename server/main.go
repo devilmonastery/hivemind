@@ -208,6 +208,7 @@ func runServer(configPath string, forceVersion int) error {
 	discordGuildRepo := postgres.NewDiscordGuildRepository(pgConn.DB)
 	wikiPageRepo := postgres.NewWikiPageRepository(pgConn.DB.DB)
 	noteRepo := postgres.NewNoteRepository(pgConn.DB.DB)
+	noteMessageRefRepo := postgres.NewNoteMessageReferenceRepository(pgConn.DB.DB)
 	quoteRepo := postgres.NewQuoteRepository(pgConn.DB.DB)
 	wikiMessageRefRepo := postgres.NewWikiMessageReferenceRepository(pgConn.DB.DB)
 
@@ -227,7 +228,7 @@ func runServer(configPath string, forceVersion int) error {
 	tokenService := services.NewTokenService(tokenRepo, userRepo, auditRepo)
 	discordService := services.NewDiscordService(discordUserRepo, discordGuildRepo, userRepo, logger)
 	wikiService := services.NewWikiService(wikiPageRepo, wikiMessageRefRepo)
-	noteService := services.NewNoteService(noteRepo)
+	noteService := services.NewNoteService(noteRepo, noteMessageRefRepo)
 	quoteService := services.NewQuoteService(quoteRepo)
 	authHandler := handlers.NewAuthHandler(userRepo, tokenRepo, sessionRepo, discordUserRepo, jwtManager, cfg)
 

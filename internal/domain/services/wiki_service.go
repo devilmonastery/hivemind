@@ -3,22 +3,33 @@ package services
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 )
 
+// wikiTitlesCacheEntry holds cached wiki titles for a guild
+type wikiTitlesCacheEntry struct {
+	titles    []struct{ ID, Title string }
+	expiresAt time.Time
+}
+
 // WikiService handles business logic for wiki pages
 type WikiService struct {
-	wikiRepo    repositories.WikiPageRepository
-	wikiRefRepo repositories.WikiMessageReferenceRepository
+	wikiRepo       repositories.WikiPageRepository
+	wikiRefRepo    repositories.WikiMessageReferenceRepository
+	titlesCache    sync.Map // map[guildID]wikiTitlesCacheEntry
+	titlesCacheTTL time.Duration
 }
 
 // NewWikiService creates a new wiki service
 func NewWikiService(wikiRepo repositories.WikiPageRepository, wikiRefRepo repositories.WikiMessageReferenceRepository) *WikiService {
 	return &WikiService{
-		wikiRepo:    wikiRepo,
-		wikiRefRepo: wikiRefRepo,
+		wikiRepo:       wikiRepo,
+		wikiRefRepo:    wikiRefRepo,
+		titlesCacheTTL: 1 * time.Minute,
 	}
 }
 
@@ -38,6 +49,9 @@ func (s *WikiService) CreateWikiPage(ctx context.Context, page *entities.WikiPag
 		return nil, fmt.Errorf("failed to create wiki page: %w", err)
 	}
 
+	// Invalidate cache for this guild
+	s.titlesCache.Delete(page.GuildID)
+
 	return page, nil
 }
 
@@ -55,6 +69,9 @@ func (s *WikiService) UpdateWikiPage(ctx context.Context, page *entities.WikiPag
 	if err := s.wikiRepo.Update(ctx, page); err != nil {
 		return nil, fmt.Errorf("failed to update wiki page: %w", err)
 	}
+
+	// Invalidate cache for this guild
+	s.titlesCache.Delete(page.GuildID)
 
 	// Fetch updated page
 	return s.wikiRepo.GetByID(ctx, page.ID)
@@ -78,6 +95,9 @@ func (s *WikiService) UpsertWikiPage(ctx context.Context, page *entities.WikiPag
 			return nil, false, fmt.Errorf("failed to update wiki page: %w", err)
 		}
 
+		// Invalidate cache for this guild
+		s.titlesCache.Delete(page.GuildID)
+
 		// Fetch updated page
 		updated, err := s.wikiRepo.GetByID(ctx, page.ID)
 		if err != nil {
@@ -91,14 +111,27 @@ func (s *WikiService) UpsertWikiPage(ctx context.Context, page *entities.WikiPag
 		return nil, false, fmt.Errorf("failed to create wiki page: %w", err)
 	}
 
+	// Invalidate cache for this guild
+	s.titlesCache.Delete(page.GuildID)
+
 	return page, true, nil
 }
 
 // DeleteWikiPage soft-deletes a wiki page
 func (s *WikiService) DeleteWikiPage(ctx context.Context, id string) error {
+	// Fetch the page to get its guild ID
+	page, err := s.wikiRepo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to get wiki page: %w", err)
+	}
+
 	if err := s.wikiRepo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete wiki page: %w", err)
 	}
+
+	// Invalidate cache for this guild
+	s.titlesCache.Delete(page.GuildID)
+
 	return nil
 }
 
@@ -135,4 +168,57 @@ func (s *WikiService) ListWikiMessageReferences(ctx context.Context, pageID stri
 		return nil, fmt.Errorf("failed to list wiki message references: %w", err)
 	}
 	return refs, nil
+}
+
+// AutocompleteWikiTitles returns wiki page titles matching a query (lightweight for autocomplete)
+func (s *WikiService) AutocompleteWikiTitles(ctx context.Context, guildID, query string, limit int) ([]*entities.WikiPage, error) {
+	// Get all titles for the guild (with caching)
+	titles, err := s.getWikiTitlesForGuild(ctx, guildID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get wiki titles: %w", err)
+	}
+
+	// Convert to WikiPage entities with only ID and Title populated
+	var results []*entities.WikiPage
+	for _, t := range titles {
+		// Simple case-insensitive substring matching
+		if query == "" || contains(t.Title, query) {
+			results = append(results, &entities.WikiPage{
+				ID:    t.ID,
+				Title: t.Title,
+			})
+			if len(results) >= limit {
+				break
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// getWikiTitlesForGuild retrieves wiki titles with caching
+func (s *WikiService) getWikiTitlesForGuild(ctx context.Context, guildID string) ([]struct{ ID, Title string }, error) {
+	// Check cache
+	if entry, ok := s.titlesCache.Load(guildID); ok {
+		cached := entry.(wikiTitlesCacheEntry)
+		if time.Now().Before(cached.expiresAt) {
+			return cached.titles, nil
+		}
+		// Cache expired, remove it
+		s.titlesCache.Delete(guildID)
+	}
+
+	// Cache miss or expired, fetch from database
+	titles, err := s.wikiRepo.GetTitlesForGuild(ctx, guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache
+	s.titlesCache.Store(guildID, wikiTitlesCacheEntry{
+		titles:    titles,
+		expiresAt: time.Now().Add(s.titlesCacheTTL),
+	})
+
+	return titles, nil
 }

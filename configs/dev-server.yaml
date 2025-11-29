@@ -57,7 +57,7 @@ auth:
     - name: discord
       type: oidc
       issuer: "https://discord.com"
-      client_id: "${DISCORD_CLIENT_ID}"
+      client_id: "${DISCORD_APPLICATION_ID}"
       client_secret: "${DISCORD_CLIENT_SECRET}"
       scopes: ["openid", "identify", "email"]
       auto_provision: true

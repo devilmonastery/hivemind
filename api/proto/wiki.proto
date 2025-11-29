@@ -18,6 +18,9 @@ service WikiService {
   // SearchWikiPages searches for wiki pages in a guild
   rpc SearchWikiPages(SearchWikiPagesRequest) returns (SearchWikiPagesResponse);
 
+  // AutocompleteWikiTitles returns matching wiki page titles for autocomplete (lightweight)
+  rpc AutocompleteWikiTitles(AutocompleteWikiTitlesRequest) returns (AutocompleteWikiTitlesResponse);
+
   // UpdateWikiPage updates an existing wiki page
   rpc UpdateWikiPage(UpdateWikiPageRequest) returns (WikiPage);
 
@@ -120,6 +123,21 @@ message ListWikiPagesRequest {
 message ListWikiPagesResponse {
   repeated WikiPage pages = 1;
   int32 total = 2;
+}
+
+message AutocompleteWikiTitlesRequest {
+  string query = 1; // Partial title to match
+  string guild_id = 2; // Required: guild context
+  int32 limit = 3; // Default: 25 (Discord autocomplete limit)
+}
+
+message AutocompleteWikiTitlesResponse {
+  repeated WikiTitleSuggestion suggestions = 1;
+}
+
+message WikiTitleSuggestion {
+  string id = 1;
+  string title = 2;
 }
 
 // WikiMessageReference represents a Discord message tagged with a wiki page topic
