@@ -42,6 +42,11 @@ func newRunCommand() *cobra.Command {
 				return fmt.Errorf("failed to load config: %w", err)
 			}
 
+			// Validate required configuration
+			if cfg.Backend.ServiceToken == "" {
+				return fmt.Fatalf("backend.service_token is required - the bot cannot authenticate with the server without it. See example_bot.yaml for instructions on generating a service token")
+			}
+
 			log.Info("starting hivemind bot",
 				slog.String("version", "0.1.0"),
 				slog.String("config", configPath),
