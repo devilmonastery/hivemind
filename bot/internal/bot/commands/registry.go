@@ -67,31 +67,6 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 				},
 				{
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
-					Name:        "list",
-					Description: "List your notes",
-					Options: []*discordgo.ApplicationCommandOption{
-						{
-							Type:        discordgo.ApplicationCommandOptionBoolean,
-							Name:        "guild",
-							Description: "Only show notes from this guild",
-							Required:    false,
-						},
-						{
-							Type:        discordgo.ApplicationCommandOptionString,
-							Name:        "tags",
-							Description: "Filter by tags (comma-separated)",
-							Required:    false,
-						},
-						{
-							Type:        discordgo.ApplicationCommandOptionInteger,
-							Name:        "limit",
-							Description: "Maximum number of notes to return",
-							Required:    false,
-						},
-					},
-				},
-				{
-					Type:        discordgo.ApplicationCommandOptionSubCommand,
 					Name:        "view",
 					Description: "View a specific note",
 					Options: []*discordgo.ApplicationCommandOption{
