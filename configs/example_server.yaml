@@ -80,7 +80,7 @@ auth:
     - name: discord
       type: oidc
       issuer: "https://discord.com"
-      client_id: "your-discord-client-id"
+      client_id: "your-discord-application-id"  # Same as Discord Application ID
       client_secret: "your-discord-client-secret"
       auto_provision: true
       # Optional: restrict to specific users

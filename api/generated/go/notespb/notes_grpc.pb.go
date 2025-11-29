@@ -20,12 +20,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	NoteService_CreateNote_FullMethodName  = "/hivemind.notes.NoteService/CreateNote"
-	NoteService_GetNote_FullMethodName     = "/hivemind.notes.NoteService/GetNote"
-	NoteService_ListNotes_FullMethodName   = "/hivemind.notes.NoteService/ListNotes"
-	NoteService_UpdateNote_FullMethodName  = "/hivemind.notes.NoteService/UpdateNote"
-	NoteService_DeleteNote_FullMethodName  = "/hivemind.notes.NoteService/DeleteNote"
-	NoteService_SearchNotes_FullMethodName = "/hivemind.notes.NoteService/SearchNotes"
+	NoteService_CreateNote_FullMethodName                = "/hivemind.notes.NoteService/CreateNote"
+	NoteService_GetNote_FullMethodName                   = "/hivemind.notes.NoteService/GetNote"
+	NoteService_ListNotes_FullMethodName                 = "/hivemind.notes.NoteService/ListNotes"
+	NoteService_UpdateNote_FullMethodName                = "/hivemind.notes.NoteService/UpdateNote"
+	NoteService_DeleteNote_FullMethodName                = "/hivemind.notes.NoteService/DeleteNote"
+	NoteService_SearchNotes_FullMethodName               = "/hivemind.notes.NoteService/SearchNotes"
+	NoteService_AutocompleteNoteTitles_FullMethodName    = "/hivemind.notes.NoteService/AutocompleteNoteTitles"
+	NoteService_AddNoteMessageReference_FullMethodName   = "/hivemind.notes.NoteService/AddNoteMessageReference"
+	NoteService_ListNoteMessageReferences_FullMethodName = "/hivemind.notes.NoteService/ListNoteMessageReferences"
 )
 
 // NoteServiceClient is the client API for NoteService service.
@@ -46,6 +49,12 @@ type NoteServiceClient interface {
 	DeleteNote(ctx context.Context, in *DeleteNoteRequest, opts ...grpc.CallOption) (*commonpb.SuccessResponse, error)
 	// SearchNotes searches user's notes by full-text query
 	SearchNotes(ctx context.Context, in *SearchNotesRequest, opts ...grpc.CallOption) (*SearchNotesResponse, error)
+	// AutocompleteNoteTitles returns matching note titles for autocomplete (lightweight)
+	AutocompleteNoteTitles(ctx context.Context, in *AutocompleteNoteTitlesRequest, opts ...grpc.CallOption) (*AutocompleteNoteTitlesResponse, error)
+	// AddNoteMessageReference adds a Discord message reference to a note
+	AddNoteMessageReference(ctx context.Context, in *AddNoteMessageReferenceRequest, opts ...grpc.CallOption) (*NoteMessageReference, error)
+	// ListNoteMessageReferences lists all message references for a note
+	ListNoteMessageReferences(ctx context.Context, in *ListNoteMessageReferencesRequest, opts ...grpc.CallOption) (*ListNoteMessageReferencesResponse, error)
 }
 
 type noteServiceClient struct {
@@ -116,6 +125,36 @@ func (c *noteServiceClient) SearchNotes(ctx context.Context, in *SearchNotesRequ
 	return out, nil
 }
 
+func (c *noteServiceClient) AutocompleteNoteTitles(ctx context.Context, in *AutocompleteNoteTitlesRequest, opts ...grpc.CallOption) (*AutocompleteNoteTitlesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AutocompleteNoteTitlesResponse)
+	err := c.cc.Invoke(ctx, NoteService_AutocompleteNoteTitles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *noteServiceClient) AddNoteMessageReference(ctx context.Context, in *AddNoteMessageReferenceRequest, opts ...grpc.CallOption) (*NoteMessageReference, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(NoteMessageReference)
+	err := c.cc.Invoke(ctx, NoteService_AddNoteMessageReference_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *noteServiceClient) ListNoteMessageReferences(ctx context.Context, in *ListNoteMessageReferencesRequest, opts ...grpc.CallOption) (*ListNoteMessageReferencesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListNoteMessageReferencesResponse)
+	err := c.cc.Invoke(ctx, NoteService_ListNoteMessageReferences_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NoteServiceServer is the server API for NoteService service.
 // All implementations should embed UnimplementedNoteServiceServer
 // for forward compatibility.
@@ -134,6 +173,12 @@ type NoteServiceServer interface {
 	DeleteNote(context.Context, *DeleteNoteRequest) (*commonpb.SuccessResponse, error)
 	// SearchNotes searches user's notes by full-text query
 	SearchNotes(context.Context, *SearchNotesRequest) (*SearchNotesResponse, error)
+	// AutocompleteNoteTitles returns matching note titles for autocomplete (lightweight)
+	AutocompleteNoteTitles(context.Context, *AutocompleteNoteTitlesRequest) (*AutocompleteNoteTitlesResponse, error)
+	// AddNoteMessageReference adds a Discord message reference to a note
+	AddNoteMessageReference(context.Context, *AddNoteMessageReferenceRequest) (*NoteMessageReference, error)
+	// ListNoteMessageReferences lists all message references for a note
+	ListNoteMessageReferences(context.Context, *ListNoteMessageReferencesRequest) (*ListNoteMessageReferencesResponse, error)
 }
 
 // UnimplementedNoteServiceServer should be embedded to have
@@ -160,6 +205,15 @@ func (UnimplementedNoteServiceServer) DeleteNote(context.Context, *DeleteNoteReq
 }
 func (UnimplementedNoteServiceServer) SearchNotes(context.Context, *SearchNotesRequest) (*SearchNotesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchNotes not implemented")
+}
+func (UnimplementedNoteServiceServer) AutocompleteNoteTitles(context.Context, *AutocompleteNoteTitlesRequest) (*AutocompleteNoteTitlesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AutocompleteNoteTitles not implemented")
+}
+func (UnimplementedNoteServiceServer) AddNoteMessageReference(context.Context, *AddNoteMessageReferenceRequest) (*NoteMessageReference, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddNoteMessageReference not implemented")
+}
+func (UnimplementedNoteServiceServer) ListNoteMessageReferences(context.Context, *ListNoteMessageReferencesRequest) (*ListNoteMessageReferencesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListNoteMessageReferences not implemented")
 }
 func (UnimplementedNoteServiceServer) testEmbeddedByValue() {}
 
@@ -289,6 +343,60 @@ func _NoteService_SearchNotes_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NoteService_AutocompleteNoteTitles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AutocompleteNoteTitlesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NoteServiceServer).AutocompleteNoteTitles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NoteService_AutocompleteNoteTitles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NoteServiceServer).AutocompleteNoteTitles(ctx, req.(*AutocompleteNoteTitlesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NoteService_AddNoteMessageReference_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddNoteMessageReferenceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NoteServiceServer).AddNoteMessageReference(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NoteService_AddNoteMessageReference_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NoteServiceServer).AddNoteMessageReference(ctx, req.(*AddNoteMessageReferenceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NoteService_ListNoteMessageReferences_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListNoteMessageReferencesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NoteServiceServer).ListNoteMessageReferences(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NoteService_ListNoteMessageReferences_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NoteServiceServer).ListNoteMessageReferences(ctx, req.(*ListNoteMessageReferencesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NoteService_ServiceDesc is the grpc.ServiceDesc for NoteService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -319,6 +427,18 @@ var NoteService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchNotes",
 			Handler:    _NoteService_SearchNotes_Handler,
+		},
+		{
+			MethodName: "AutocompleteNoteTitles",
+			Handler:    _NoteService_AutocompleteNoteTitles_Handler,
+		},
+		{
+			MethodName: "AddNoteMessageReference",
+			Handler:    _NoteService_AddNoteMessageReference_Handler,
+		},
+		{
+			MethodName: "ListNoteMessageReferences",
+			Handler:    _NoteService_ListNoteMessageReferences_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

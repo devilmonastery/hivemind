@@ -136,6 +136,10 @@ func createRouter(h *handlers.Handler, authMw *middleware.AuthMiddleware) http.H
 	// Wiki routes (auth required)
 	router.Handle("/wiki", authMw.RequireAuth(http.HandlerFunc(h.WikiPage))).Methods("GET")
 
+	// Notes routes (auth required)
+	router.Handle("/notes", authMw.RequireAuth(http.HandlerFunc(h.NotesListPage))).Methods("GET")
+	router.Handle("/note", authMw.RequireAuth(http.HandlerFunc(h.NotePage))).Methods("GET")
+
 	// Wrap router with logging middleware
 	return middleware.LogRequest(router)
 }

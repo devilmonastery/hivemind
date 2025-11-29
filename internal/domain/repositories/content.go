@@ -28,6 +28,12 @@ type WikiPageRepository interface {
 
 	// Search performs full-text search on wiki pages
 	Search(ctx context.Context, guildID, query string, tags []string, limit, offset int) ([]*entities.WikiPage, int, error)
+
+	// GetTitlesForGuild retrieves only the ID and title of all wiki pages in a guild
+	GetTitlesForGuild(ctx context.Context, guildID string) ([]struct {
+		ID    string
+		Title string
+	}, error)
 }
 
 // NoteRepository defines operations for note persistence
@@ -49,6 +55,12 @@ type NoteRepository interface {
 
 	// Search performs full-text search on notes
 	Search(ctx context.Context, authorID string, query, guildID string, tags []string, limit, offset int) ([]*entities.Note, int, error)
+
+	// GetTitlesForUser retrieves only the ID and title of all notes for a user in a guild
+	GetTitlesForUser(ctx context.Context, authorID, guildID string) ([]struct {
+		ID    string
+		Title string
+	}, error)
 }
 
 // QuoteRepository defines operations for quote persistence
@@ -82,6 +94,24 @@ type WikiMessageReferenceRepository interface {
 
 	// GetByMessageID retrieves all wiki pages that reference a specific message
 	GetByMessageID(ctx context.Context, messageID string) ([]*entities.WikiMessageReference, error)
+
+	// Delete deletes a specific message reference by ID
+	Delete(ctx context.Context, id string) error
+
+	// DeleteByMessageID deletes all references to a specific message (cleanup if message deleted)
+	DeleteByMessageID(ctx context.Context, messageID string) error
+}
+
+// NoteMessageReferenceRepository defines operations for note message reference persistence
+type NoteMessageReferenceRepository interface {
+	// Create creates a new note message reference (no-op if already exists)
+	Create(ctx context.Context, ref *entities.NoteMessageReference) error
+
+	// GetByNoteID retrieves all message references for a note (ordered by added_at DESC)
+	GetByNoteID(ctx context.Context, noteID string) ([]*entities.NoteMessageReference, error)
+
+	// GetByMessageID retrieves all notes that reference a specific message
+	GetByMessageID(ctx context.Context, messageID string) ([]*entities.NoteMessageReference, error)
 
 	// Delete deletes a specific message reference by ID
 	Delete(ctx context.Context, id string) error

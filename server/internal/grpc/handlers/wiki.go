@@ -3,7 +3,10 @@ package handlers
 import (
 	"context"
 	"log"
+	"strings"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commonpb "github.com/devilmonastery/hivemind/api/generated/go/commonpb"
@@ -115,6 +118,16 @@ func (h *wikiHandler) UpsertWikiPage(ctx context.Context, req *wikipb.UpsertWiki
 	userCtx, err := interceptors.GetUserFromContext(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	// Validate title is not empty
+	if strings.TrimSpace(req.Title) == "" {
+		return nil, status.Error(codes.InvalidArgument, "wiki page title cannot be empty")
+	}
+
+	// Validate body is not empty
+	if strings.TrimSpace(req.Body) == "" {
+		return nil, status.Error(codes.InvalidArgument, "wiki page body cannot be empty")
 	}
 
 	page := &entities.WikiPage{
@@ -273,6 +286,30 @@ func (h *wikiHandler) ListWikiMessageReferences(ctx context.Context, req *wikipb
 
 	return &wikipb.ListWikiMessageReferencesResponse{
 		References: protoRefs,
+	}, nil
+}
+
+func (h *wikiHandler) AutocompleteWikiTitles(ctx context.Context, req *wikipb.AutocompleteWikiTitlesRequest) (*wikipb.AutocompleteWikiTitlesResponse, error) {
+	limit := int(req.Limit)
+	if limit <= 0 || limit > 25 {
+		limit = 25
+	}
+
+	pages, err := h.wikiService.AutocompleteWikiTitles(ctx, req.GuildId, req.Query, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	suggestions := make([]*wikipb.WikiTitleSuggestion, len(pages))
+	for i, page := range pages {
+		suggestions[i] = &wikipb.WikiTitleSuggestion{
+			Id:    page.ID,
+			Title: page.Title,
+		}
+	}
+
+	return &wikipb.AutocompleteWikiTitlesResponse{
+		Suggestions: suggestions,
 	}, nil
 }
 

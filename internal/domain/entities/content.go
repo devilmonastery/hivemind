@@ -68,6 +68,23 @@ type WikiMessageReference struct {
 	AddedByUserID     string               `json:"added_by_user_id,omitempty"`
 }
 
+// NoteMessageReference represents a Discord message referenced in a private note
+type NoteMessageReference struct {
+	ID                string               `json:"id"`
+	NoteID            string               `json:"note_id"`
+	MessageID         string               `json:"message_id"`
+	ChannelID         string               `json:"channel_id"`
+	GuildID           string               `json:"guild_id,omitempty"` // Nullable for DM contexts
+	Content           string               `json:"content"`
+	AuthorID          string               `json:"author_id"`
+	AuthorUsername    string               `json:"author_username"`
+	AuthorDisplayName string               `json:"author_display_name,omitempty"`
+	AuthorAvatarURL   string               `json:"author_avatar_url,omitempty"`
+	MessageTimestamp  time.Time            `json:"message_timestamp"`
+	Attachments       []AttachmentMetadata `json:"attachments,omitempty"` // Attachment metadata with content types
+	AddedAt           time.Time            `json:"added_at"`
+}
+
 // AttachmentMetadata stores Discord attachment information
 type AttachmentMetadata struct {
 	URL         string `json:"url"`

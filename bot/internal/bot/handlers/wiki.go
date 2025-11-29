@@ -105,7 +105,7 @@ func showWikiDetailEmbed(s *discordgo.Session, page *wikipb.WikiPage, cfg *confi
 			discordgo.Button{
 				Label: "🌐 View on Web",
 				Style: discordgo.LinkButton,
-				URL:   fmt.Sprintf("%s/wiki?guild=%s&title=%s", getWebBaseURL(cfg), page.GuildId, page.Title),
+				URL:   fmt.Sprintf("%s/wiki?guild_id=%s&title=%s", getWebBaseURL(cfg), page.GuildId, page.Title),
 			},
 		},
 	})
@@ -356,9 +356,19 @@ func handleWikiGet(s *discordgo.Session, i *discordgo.InteractionCreate, subcomm
 					CustomID: fmt.Sprintf("wiki_edit_btn:%s", page.Title),
 				},
 				discordgo.Button{
+					Label:    "Add to Chat",
+					Style:    discordgo.SuccessButton,
+					CustomID: fmt.Sprintf("wiki_add_to_chat:%s", page.Title),
+				},
+				discordgo.Button{
 					Label: "View on Web",
 					Style: discordgo.LinkButton,
-					URL:   fmt.Sprintf("%s/wiki?guild=%s&title=%s", getWebBaseURL(cfg), page.GuildId, page.Title),
+					URL:   fmt.Sprintf("%s/wiki?guild_id=%s&title=%s", getWebBaseURL(cfg), page.GuildId, page.Title),
+				},
+				discordgo.Button{
+					Label:    "Close",
+					Style:    discordgo.SecondaryButton,
+					CustomID: "wiki_close",
 				},
 			},
 		},
@@ -369,6 +379,7 @@ func handleWikiGet(s *discordgo.Session, i *discordgo.InteractionCreate, subcomm
 		Data: &discordgo.InteractionResponseData{
 			Embeds:     []*discordgo.MessageEmbed{embed},
 			Components: components,
+			Flags:      discordgo.MessageFlagsEphemeral,
 		},
 	})
 	if err != nil {
@@ -400,17 +411,31 @@ func handleWikiEdit(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 		}
 	}
 
-	// Create modal with optional pre-filled title and body
-	titleInput := discordgo.TextInput{
-		CustomID:    "wiki_title",
-		Label:       "Title",
-		Style:       discordgo.TextInputShort,
-		Placeholder: "Enter wiki page title",
-		Required:    true,
-		MaxLength:   200,
-	}
+	// Create modal with optional pre-filled content
+	var modalCustomID string
+	var modalTitle string
+	var components []discordgo.MessageComponent
+
 	if title != "" {
-		titleInput.Value = title
+		// Editing existing page - no title field, just content
+		modalCustomID = fmt.Sprintf("wiki_edit_modal:%s", title)
+		modalTitle = fmt.Sprintf("Edit: %s", title)
+	} else {
+		// Creating new page - include title field
+		modalCustomID = "wiki_edit_modal"
+		modalTitle = "Create Wiki Page"
+		components = append(components, discordgo.ActionsRow{
+			Components: []discordgo.MessageComponent{
+				discordgo.TextInput{
+					CustomID:    "wiki_title",
+					Label:       "Title",
+					Style:       discordgo.TextInputShort,
+					Placeholder: "Enter wiki page title",
+					Required:    true,
+					MaxLength:   200,
+				},
+			},
+		})
 	}
 
 	bodyInput := discordgo.TextInput{
@@ -425,23 +450,19 @@ func handleWikiEdit(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 		bodyInput.Value = existingBody
 	}
 
+	// Add body input to components
+	components = append(components, discordgo.ActionsRow{
+		Components: []discordgo.MessageComponent{
+			bodyInput,
+		},
+	})
+
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
-			CustomID: "wiki_edit_modal",
-			Title:    "Edit Wiki Page",
-			Components: []discordgo.MessageComponent{
-				discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						titleInput,
-					},
-				},
-				discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						bodyInput,
-					},
-				},
-			},
+			CustomID:   modalCustomID,
+			Title:      modalTitle,
+			Components: components,
 		},
 	})
 	if err != nil {
@@ -453,6 +474,14 @@ func handleWikiEdit(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 func handleWikiEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
 	data := i.ModalSubmitData()
 
+	// Check if this is an edit (custom ID format: wiki_edit_modal:OriginalTitle)
+	var originalTitle string
+	parts := strings.SplitN(data.CustomID, ":", 2)
+	if len(parts) == 2 {
+		// Editing existing page - use original title
+		originalTitle = parts[1]
+	}
+
 	var title, body string
 	for _, comp := range data.Components {
 		if actionRow, ok := comp.(*discordgo.ActionsRow); ok {
@@ -460,13 +489,35 @@ func handleWikiEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, l
 				if textInput, ok := innerComp.(*discordgo.TextInput); ok {
 					switch textInput.CustomID {
 					case "wiki_title":
-						title = textInput.Value
+						// Only use submitted title if creating (no originalTitle)
+						if originalTitle == "" {
+							title = textInput.Value
+						}
 					case "wiki_body":
 						body = textInput.Value
 					}
 				}
 			}
 		}
+	}
+
+	// Use original title if editing
+	if originalTitle != "" {
+		title = originalTitle
+	}
+
+	// Validate title is not empty
+	title = strings.TrimSpace(title)
+	if title == "" {
+		respondError(s, i, "Wiki page title cannot be empty", log)
+		return
+	}
+
+	// Validate body is not empty
+	body = strings.TrimSpace(body)
+	if body == "" {
+		respondError(s, i, "Wiki page body cannot be empty", log)
+		return
 	}
 
 	// Extract hashtags from body
@@ -502,6 +553,7 @@ func handleWikiEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, l
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: content,
+			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
 	if err != nil {
@@ -525,16 +577,7 @@ func handleWikiEditButton(s *discordgo.Session, i *discordgo.InteractionCreate, 
 		existingBody = resp.Pages[0].Body
 	}
 
-	// Show modal with pre-filled content
-	titleInput := discordgo.TextInput{
-		CustomID:  "wiki_title",
-		Label:     "Title",
-		Style:     discordgo.TextInputShort,
-		Value:     title,
-		Required:  true,
-		MaxLength: 200,
-	}
-
+	// Show modal with only content field - title is fixed
 	bodyInput := discordgo.TextInput{
 		CustomID:    "wiki_body",
 		Label:       "Content",
@@ -550,14 +593,9 @@ func handleWikiEditButton(s *discordgo.Session, i *discordgo.InteractionCreate, 
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
-			CustomID: "wiki_edit_modal",
-			Title:    "Edit Wiki Page",
+			CustomID: fmt.Sprintf("wiki_edit_modal:%s", title),
+			Title:    fmt.Sprintf("Edit: %s", title),
 			Components: []discordgo.MessageComponent{
-				discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						titleInput,
-					},
-				},
 				discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
 						bodyInput,
@@ -568,6 +606,78 @@ func handleWikiEditButton(s *discordgo.Session, i *discordgo.InteractionCreate, 
 	})
 	if err != nil {
 		log.Error("failed to show wiki edit modal from button", slog.String("error", err.Error()))
+	}
+}
+
+// handleWikiAddToChat posts the wiki page content to the current channel
+func handleWikiAddToChat(s *discordgo.Session, i *discordgo.InteractionCreate, title string, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
+	// Fetch the wiki page
+	ctx := discordContextFor(i)
+	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
+	resp, err := wikiClient.SearchWikiPages(ctx, &wikipb.SearchWikiPagesRequest{
+		GuildId: i.GuildID,
+		Query:   title,
+		Limit:   1,
+	})
+	if err != nil || len(resp.Pages) == 0 {
+		respondError(s, i, "Failed to find wiki page", log)
+		return
+	}
+
+	page := resp.Pages[0]
+
+	// Format as embed
+	embed := &discordgo.MessageEmbed{
+		Title:       page.Title,
+		Description: page.Body,
+		Color:       0x5865F2, // Discord blurple
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: fmt.Sprintf("Created by %s", page.AuthorUsername),
+		},
+		Timestamp: page.CreatedAt.AsTime().Format("2006-01-02T15:04:05Z"),
+	}
+
+	if len(page.Tags) > 0 {
+		tagsText := ""
+		for idx, tag := range page.Tags {
+			if idx > 0 {
+				tagsText += ", "
+			}
+			tagsText += "#" + tag
+		}
+		embed.Fields = []*discordgo.MessageEmbedField{
+			{
+				Name:   "Tags",
+				Value:  tagsText,
+				Inline: false,
+			},
+		}
+	}
+
+	// Post to channel (non-ephemeral)
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{embed},
+		},
+	})
+	if err != nil {
+		log.Error("failed to post wiki to chat", slog.String("error", err.Error()))
+	}
+}
+
+// handleWikiClose closes/dismisses the ephemeral wiki view message
+func handleWikiClose(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger) {
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseUpdateMessage,
+		Data: &discordgo.InteractionResponseData{
+			Content:    "✖️ Closed",
+			Embeds:     []*discordgo.MessageEmbed{},
+			Components: []discordgo.MessageComponent{},
+		},
+	})
+	if err != nil {
+		log.Error("failed to close wiki view", slog.String("error", err.Error()))
 	}
 }
 
@@ -910,5 +1020,71 @@ func handleWikiUnifiedSelect(s *discordgo.Session, i *discordgo.InteractionCreat
 	if err != nil {
 		log.Error("Failed to show wiki update modal", "error", err, "pageID", page.Id)
 		// Can't call respondError here as we already tried to respond with modal
+	}
+}
+
+// handleWikiAutocomplete handles autocomplete for wiki commands
+func handleWikiAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+	data := i.ApplicationCommandData()
+
+	// Get the focused option
+	var focusedOption *discordgo.ApplicationCommandInteractionDataOption
+	if len(data.Options) > 0 && len(data.Options[0].Options) > 0 {
+		for _, opt := range data.Options[0].Options {
+			if opt.Focused {
+				focusedOption = opt
+				break
+			}
+		}
+	}
+
+	if focusedOption == nil {
+		return
+	}
+
+	// Only handle title autocomplete
+	if focusedOption.Name != "title" {
+		return
+	}
+
+	query := focusedOption.StringValue()
+
+	// Use lightweight autocomplete RPC
+	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
+	ctx := discordContextFor(i)
+
+	autocompleteResp, err := wikiClient.AutocompleteWikiTitles(ctx, &wikipb.AutocompleteWikiTitlesRequest{
+		Query:   query,
+		GuildId: i.GuildID,
+		Limit:   25, // Discord allows up to 25 autocomplete choices
+	})
+	if err != nil {
+		log.Error("Failed to autocomplete wiki titles", "error", err)
+		return
+	}
+
+	// Build autocomplete choices
+	choices := make([]*discordgo.ApplicationCommandOptionChoice, 0, len(autocompleteResp.Suggestions))
+	for _, suggestion := range autocompleteResp.Suggestions {
+		// Limit title length for display
+		displayTitle := suggestion.Title
+		if len(displayTitle) > 100 {
+			displayTitle = displayTitle[:97] + "..."
+		}
+
+		choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
+			Name:  displayTitle,
+			Value: suggestion.Title, // Return the full title
+		})
+	}
+
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionApplicationCommandAutocompleteResult,
+		Data: &discordgo.InteractionResponseData{
+			Choices: choices,
+		},
+	})
+	if err != nil {
+		log.Error("Failed to send autocomplete response", "error", err)
 	}
 }

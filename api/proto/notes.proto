@@ -26,6 +26,15 @@ service NoteService {
 
   // SearchNotes searches user's notes by full-text query
   rpc SearchNotes(SearchNotesRequest) returns (SearchNotesResponse);
+
+  // AutocompleteNoteTitles returns matching note titles for autocomplete (lightweight)
+  rpc AutocompleteNoteTitles(AutocompleteNoteTitlesRequest) returns (AutocompleteNoteTitlesResponse);
+
+  // AddNoteMessageReference adds a Discord message reference to a note
+  rpc AddNoteMessageReference(AddNoteMessageReferenceRequest) returns (NoteMessageReference);
+
+  // ListNoteMessageReferences lists all message references for a note
+  rpc ListNoteMessageReferences(ListNoteMessageReferencesRequest) returns (ListNoteMessageReferencesResponse);
 }
 
 // Note represents a private user note with optional context
@@ -106,4 +115,68 @@ message SearchNotesRequest {
 message SearchNotesResponse {
   repeated Note notes = 1;
   int32 total = 2;
+}
+
+message AutocompleteNoteTitlesRequest {
+  string query = 1; // Partial title to match
+  string guild_id = 2; // Optional: filter by guild
+  int32 limit = 3; // Default: 25 (Discord autocomplete limit)
+}
+
+message AutocompleteNoteTitlesResponse {
+  repeated NoteTitleSuggestion suggestions = 1;
+}
+
+message NoteTitleSuggestion {
+  string id = 1;
+  string title = 2;
+}
+
+// AttachmentMetadata stores Discord attachment information
+message AttachmentMetadata {
+  string url = 1;
+  string content_type = 2; // MIME type (e.g., "image/png", "video/mp4")
+  string filename = 3;
+  int32 width = 4; // For images/videos
+  int32 height = 5; // For images/videos
+  int64 size = 6; // File size in bytes
+}
+
+// NoteMessageReference represents a Discord message referenced in a note
+message NoteMessageReference {
+  string id = 1;
+  string note_id = 2;
+  string message_id = 3;
+  string channel_id = 4;
+  string guild_id = 5; // Nullable for DM contexts
+  string content = 6;
+  string author_id = 7;
+  string author_username = 8;
+  string author_display_name = 9;
+  string author_avatar_url = 10;
+  google.protobuf.Timestamp message_timestamp = 11;
+  repeated AttachmentMetadata attachments = 12;
+  google.protobuf.Timestamp added_at = 13;
+  string discord_link = 14; // Computed: Discord message URL
+}
+
+message AddNoteMessageReferenceRequest {
+  string note_id = 1;
+  string message_id = 2;
+  string channel_id = 3;
+  string guild_id = 4; // Optional
+  string content = 5;
+  string author_id = 6;
+  string author_username = 7;
+  string author_display_name = 8;
+  google.protobuf.Timestamp message_timestamp = 9;
+  repeated AttachmentMetadata attachments = 10;
+}
+
+message ListNoteMessageReferencesRequest {
+  string note_id = 1;
+}
+
+message ListNoteMessageReferencesResponse {
+  repeated NoteMessageReference references = 1;
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 
 	"github.com/devilmonastery/hivemind/api/generated/go/commonpb"
 	"github.com/devilmonastery/hivemind/api/generated/go/notespb"
@@ -33,6 +34,16 @@ func (h *NoteHandler) CreateNote(ctx context.Context, req *notespb.CreateNoteReq
 	user, err := interceptors.GetUserFromContext(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
+	}
+
+	// Validate title is not empty
+	if strings.TrimSpace(req.Title) == "" {
+		return nil, status.Error(codes.InvalidArgument, "note title cannot be empty")
+	}
+
+	// Validate body is not empty
+	if strings.TrimSpace(req.Body) == "" {
+		return nil, status.Error(codes.InvalidArgument, "note body cannot be empty")
 	}
 
 	note := &entities.Note{
@@ -89,6 +100,16 @@ func (h *NoteHandler) UpdateNote(ctx context.Context, req *notespb.UpdateNoteReq
 
 	if existing.AuthorID != user.UserID {
 		return nil, status.Error(codes.PermissionDenied, "you can only update your own notes")
+	}
+
+	// Validate title is not empty
+	if strings.TrimSpace(req.Title) == "" {
+		return nil, status.Error(codes.InvalidArgument, "note title cannot be empty")
+	}
+
+	// Validate body is not empty
+	if strings.TrimSpace(req.Body) == "" {
+		return nil, status.Error(codes.InvalidArgument, "note body cannot be empty")
 	}
 
 	note := &entities.Note{
@@ -210,5 +231,161 @@ func noteToProto(note *entities.Note) *notespb.Note {
 		SourceChannelId: note.SourceChannelID,
 		CreatedAt:       timestamppb.New(note.CreatedAt),
 		UpdatedAt:       timestamppb.New(note.UpdatedAt),
+	}
+}
+
+// AddNoteMessageReference adds a Discord message reference to a note
+func (h *NoteHandler) AddNoteMessageReference(ctx context.Context, req *notespb.AddNoteMessageReferenceRequest) (*notespb.NoteMessageReference, error) {
+	user, err := interceptors.GetUserFromContext(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "user context not found")
+	}
+
+	// Verify note ownership
+	note, err := h.noteService.GetNote(ctx, req.NoteId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "note not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get note: %v", err)
+	}
+
+	if note.AuthorID != user.UserID {
+		return nil, status.Error(codes.PermissionDenied, "you can only add references to your own notes")
+	}
+
+	// Convert proto attachments to entity attachments
+	attachments := make([]entities.AttachmentMetadata, len(req.Attachments))
+	for i, att := range req.Attachments {
+		attachments[i] = entities.AttachmentMetadata{
+			URL:         att.Url,
+			ContentType: att.ContentType,
+			Filename:    att.Filename,
+			Width:       int(att.Width),
+			Height:      int(att.Height),
+			Size:        att.Size,
+		}
+	}
+
+	ref := &entities.NoteMessageReference{
+		NoteID:            req.NoteId,
+		MessageID:         req.MessageId,
+		ChannelID:         req.ChannelId,
+		GuildID:           req.GuildId,
+		Content:           req.Content,
+		AuthorID:          req.AuthorId,
+		AuthorUsername:    req.AuthorUsername,
+		AuthorDisplayName: req.AuthorDisplayName,
+		MessageTimestamp:  req.MessageTimestamp.AsTime(),
+		Attachments:       attachments,
+	}
+
+	created, err := h.noteService.AddMessageReference(ctx, ref)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to add message reference: %v", err)
+	}
+
+	return noteMessageReferenceToProto(created), nil
+}
+
+// ListNoteMessageReferences lists all message references for a note
+func (h *NoteHandler) ListNoteMessageReferences(ctx context.Context, req *notespb.ListNoteMessageReferencesRequest) (*notespb.ListNoteMessageReferencesResponse, error) {
+	user, err := interceptors.GetUserFromContext(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "user context not found")
+	}
+
+	// Verify note ownership
+	note, err := h.noteService.GetNote(ctx, req.NoteId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "note not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get note: %v", err)
+	}
+
+	if note.AuthorID != user.UserID {
+		return nil, status.Error(codes.PermissionDenied, "you can only view references for your own notes")
+	}
+
+	refs, err := h.noteService.ListMessageReferences(ctx, req.NoteId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list message references: %v", err)
+	}
+
+	protoRefs := make([]*notespb.NoteMessageReference, len(refs))
+	for i, ref := range refs {
+		protoRefs[i] = noteMessageReferenceToProto(ref)
+	}
+
+	return &notespb.ListNoteMessageReferencesResponse{
+		References: protoRefs,
+	}, nil
+}
+
+func (h *NoteHandler) AutocompleteNoteTitles(ctx context.Context, req *notespb.AutocompleteNoteTitlesRequest) (*notespb.AutocompleteNoteTitlesResponse, error) {
+	user, err := interceptors.GetUserFromContext(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "user context not found")
+	}
+
+	limit := int(req.Limit)
+	if limit <= 0 || limit > 25 {
+		limit = 25
+	}
+
+	notes, err := h.noteService.AutocompleteNoteTitles(ctx, user.UserID, req.GuildId, req.Query, limit)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to autocomplete note titles: %v", err)
+	}
+
+	suggestions := make([]*notespb.NoteTitleSuggestion, len(notes))
+	for i, note := range notes {
+		suggestions[i] = &notespb.NoteTitleSuggestion{
+			Id:    note.ID,
+			Title: note.Title,
+		}
+	}
+
+	return &notespb.AutocompleteNoteTitlesResponse{
+		Suggestions: suggestions,
+	}, nil
+}
+
+// noteMessageReferenceToProto converts a domain note message reference to protobuf
+func noteMessageReferenceToProto(ref *entities.NoteMessageReference) *notespb.NoteMessageReference {
+	attachments := make([]*notespb.AttachmentMetadata, len(ref.Attachments))
+	for i, att := range ref.Attachments {
+		attachments[i] = &notespb.AttachmentMetadata{
+			Url:         att.URL,
+			ContentType: att.ContentType,
+			Filename:    att.Filename,
+			Width:       int32(att.Width),
+			Height:      int32(att.Height),
+			Size:        att.Size,
+		}
+	}
+
+	// Compute Discord link if we have the required IDs
+	discordLink := ""
+	if ref.GuildID != "" && ref.ChannelID != "" && ref.MessageID != "" {
+		discordLink = "https://discord.com/channels/" + ref.GuildID + "/" + ref.ChannelID + "/" + ref.MessageID
+	}
+
+	return &notespb.NoteMessageReference{
+		Id:                ref.ID,
+		NoteId:            ref.NoteID,
+		MessageId:         ref.MessageID,
+		ChannelId:         ref.ChannelID,
+		GuildId:           ref.GuildID,
+		Content:           ref.Content,
+		AuthorId:          ref.AuthorID,
+		AuthorUsername:    ref.AuthorUsername,
+		AuthorDisplayName: ref.AuthorDisplayName,
+		AuthorAvatarUrl:   ref.AuthorAvatarURL,
+		MessageTimestamp:  timestamppb.New(ref.MessageTimestamp),
+		Attachments:       attachments,
+		AddedAt:           timestamppb.New(ref.AddedAt),
+		DiscordLink:       discordLink,
 	}
 }

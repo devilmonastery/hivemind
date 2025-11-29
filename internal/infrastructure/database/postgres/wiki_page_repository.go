@@ -309,6 +309,33 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 	return pages, total, nil
 }
 
+// GetTitlesForGuild returns only ID and Title for all pages in a guild (lightweight for autocomplete)
+func (r *wikiPageRepository) GetTitlesForGuild(ctx context.Context, guildID string) ([]struct{ ID, Title string }, error) {
+	query := `
+		SELECT id, title
+		FROM wiki_pages
+		WHERE guild_id = $1 AND deleted_at IS NULL
+		ORDER BY updated_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var titles []struct{ ID, Title string }
+	for rows.Next() {
+		var t struct{ ID, Title string }
+		if err := rows.Scan(&t.ID, &t.Title); err != nil {
+			return nil, err
+		}
+		titles = append(titles, t)
+	}
+
+	return titles, rows.Err()
+}
+
 func nullString(s string) sql.NullString {
 	if s == "" {
 		return sql.NullString{Valid: false}

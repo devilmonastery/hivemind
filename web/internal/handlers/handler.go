@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/grpc/codes"
@@ -16,20 +19,29 @@ import (
 
 // Handler holds dependencies for all web handlers
 type Handler struct {
-	serverAddress  string
-	sessionManager *session.Manager
-	templates      *render.TemplateSet
-	redirectURI    string
+	serverAddress   string
+	sessionManager  *session.Manager
+	templates       *render.TemplateSet
+	redirectURI     string
+	discordGuildURL string // Cached Discord guild install URL
+	discordUserURL  string // Cached Discord user install URL
 }
 
 // New creates a new handler with dependencies
 func New(serverAddress string, sessionManager *session.Manager, templates *render.TemplateSet, redirectURI string) *Handler {
-	return &Handler{
+	h := &Handler{
 		serverAddress:  serverAddress,
 		sessionManager: sessionManager,
 		templates:      templates,
 		redirectURI:    redirectURI,
 	}
+
+	// Fetch Discord install URLs at startup (cached for lifetime of handler)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	h.discordGuildURL, h.discordUserURL = h.getDiscordInstallURLs(ctx)
+
+	return h
 }
 
 // getClient creates a per-request gRPC client with automatic token refresh
@@ -43,6 +55,16 @@ func (h *Handler) getClient(r *http.Request, w http.ResponseWriter) (*client.Cli
 // Used for public endpoints like GetOAuthConfig
 func (h *Handler) getUnauthenticatedClient() (*client.Client, error) {
 	return client.NewClient(h.serverAddress, "", nil)
+}
+
+// newTemplateData creates a new template data map with standard fields populated
+// Callers can add page-specific fields to the returned map
+func (h *Handler) newTemplateData(r *http.Request) map[string]interface{} {
+	return map[string]interface{}{
+		"User":            h.getCurrentUser(r),
+		"DiscordGuildURL": h.discordGuildURL,
+		"DiscordUserURL":  h.discordUserURL,
+	}
 }
 
 // renderTemplate renders a template with data
@@ -137,6 +159,35 @@ func (h *Handler) getCurrentUser(r *http.Request) map[string]interface{} {
 	}
 
 	return user
+}
+
+// getDiscordInstallURLs fetches Discord client ID from OAuth providers and generates install URLs
+func (h *Handler) getDiscordInstallURLs(ctx context.Context) (guildURL, userURL string) {
+	providers, err := h.getAvailableProviders(ctx)
+	if err != nil {
+		return "", ""
+	}
+
+	// Find Discord provider
+	var discordClientID string
+	for _, p := range providers {
+		if p.Name == "discord" {
+			discordClientID = p.ClientId
+			break
+		}
+	}
+
+	if discordClientID == "" {
+		return "", ""
+	}
+
+	// Discord OAuth permissions: 277025507392
+	// This includes: Send Messages, Embed Links, Read Message History, etc.
+	// TODO: move to config
+	permissions := "277025507392"
+	guildURL = fmt.Sprintf("https://discord.com/oauth2/authorize?client_id=%s&permissions=%s&integration_type=0&scope=bot+applications.commands", discordClientID, permissions)
+	userURL = fmt.Sprintf("https://discord.com/oauth2/authorize?client_id=%s&permissions=%s&integration_type=1&scope=bot+applications.commands", discordClientID, permissions)
+	return guildURL, userURL
 }
 
 // isAuthError checks if an error is an authentication error
