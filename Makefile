@@ -1,4 +1,4 @@
-.PHONY: all build clean server cli web bot test lint proto assets build-css watch-css tidy run-server run-web run-bot db-shell help
+.PHONY: all build clean server cli web bot test lint proto assets build-css watch-css tidy run-server run-web run-bot db-shell docker-server docker-web docker-bot docker-all docker-publish-server docker-publish-web docker-publish-bot docker-publish-all help
 
 # Load .env file if it exists
 -include .env
@@ -9,6 +9,10 @@ SERVER_BIN := bin/hivemind-server
 CLI_BIN := bin/hivemind
 WEB_BIN := bin/hivemind-web
 BOT_BIN := bin/hivemind-bot
+
+# Docker configuration
+DOCKER_REGISTRY := devilmonastery
+DOCKER_VERSION ?= $(shell date +%Y.%m.%d.%H.%M)
 
 # Version information
 VERSION ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
@@ -128,6 +132,57 @@ endif
 ## db-shell: Open PostgreSQL shell
 db-shell:
 	@psql postgresql://postgres:postgres@hivemind_devcontainer-postgres-1:5432/hivemind
+
+## docker-server: Build Docker image for server
+docker-server:
+	@echo "Building Docker image for server: $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
+	@docker build -f Dockerfile.server -t $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) .
+	@docker tag $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-server:latest
+	@echo "Built $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
+
+## docker-web: Build Docker image for web
+docker-web:
+	@echo "Building Docker image for web: $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
+	@docker build -f Dockerfile.web --build-arg VERSION=$(DOCKER_VERSION) -t $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) .
+	@docker tag $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-web:latest
+	@echo "Built $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
+
+## docker-bot: Build Docker image for bot
+docker-bot:
+	@echo "Building Docker image for bot: $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
+	@docker build -f Dockerfile.bot -t $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) .
+	@docker tag $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-bot:latest
+	@echo "Built $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
+
+## docker-all: Build all Docker images
+docker-all: docker-server docker-web docker-bot
+
+## docker-publish-server: Build and push server Docker image
+docker-publish-server: docker-server
+	@echo "Pushing Docker image: $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
+	@docker push $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)
+	@docker push $(DOCKER_REGISTRY)/hivemind-server:latest
+	@echo "Pushed $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
+
+## docker-publish-web: Build and push web Docker image
+docker-publish-web: docker-web
+	@echo "Pushing Docker image: $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
+	@docker push $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)
+	@docker push $(DOCKER_REGISTRY)/hivemind-web:latest
+	@echo "Pushed $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
+
+## docker-publish-bot: Build and push bot Docker image
+docker-publish-bot: docker-bot
+	@echo "Pushing Docker image: $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
+	@docker push $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)
+	@docker push $(DOCKER_REGISTRY)/hivemind-bot:latest
+	@echo "Pushed $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
+
+## docker-publish-all: Build and push all Docker images
+docker-publish-all: docker-all
+	@$(MAKE) docker-publish-server DOCKER_VERSION=$(DOCKER_VERSION)
+	@$(MAKE) docker-publish-web DOCKER_VERSION=$(DOCKER_VERSION)
+	@$(MAKE) docker-publish-bot DOCKER_VERSION=$(DOCKER_VERSION)
 
 ## help: Show this help message
 help:
