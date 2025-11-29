@@ -11,6 +11,9 @@ backend:
   grpc_host: "localhost"
   grpc_port: 9091
   tls_enabled: false
+  # Service account token for bot authentication (optional)
+  # If not set, bot will make unauthenticated requests
+  service_token: ""
 
 logging:
   level: "info"      # debug, info, warn, error

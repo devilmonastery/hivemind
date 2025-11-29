@@ -31,30 +31,30 @@ var (
 // AuthHandler handles authentication operations
 type AuthHandler struct {
 	authpb.UnimplementedAuthServiceServer
-	userRepo     repositories.UserRepository
-	identityRepo repositories.IdentityRepository
-	tokenRepo    repositories.TokenRepository
-	sessionRepo  repositories.SessionRepository
-	jwtManager   *auth.JWTManager
-	config       *config.Config
+	userRepo        repositories.UserRepository
+	tokenRepo       repositories.TokenRepository
+	sessionRepo     repositories.SessionRepository
+	discordUserRepo repositories.DiscordUserRepository
+	jwtManager      *auth.JWTManager
+	config          *config.Config
 }
 
 // NewAuthHandler creates a new authentication handler
 func NewAuthHandler(
 	userRepo repositories.UserRepository,
-	identityRepo repositories.IdentityRepository,
 	tokenRepo repositories.TokenRepository,
 	sessionRepo repositories.SessionRepository,
+	discordUserRepo repositories.DiscordUserRepository,
 	jwtManager *auth.JWTManager,
 	cfg *config.Config,
 ) *AuthHandler {
 	return &AuthHandler{
-		userRepo:     userRepo,
-		identityRepo: identityRepo,
-		tokenRepo:    tokenRepo,
-		sessionRepo:  sessionRepo,
-		jwtManager:   jwtManager,
-		config:       cfg,
+		userRepo:        userRepo,
+		tokenRepo:       tokenRepo,
+		sessionRepo:     sessionRepo,
+		discordUserRepo: discordUserRepo,
+		jwtManager:      jwtManager,
+		config:          cfg,
 	}
 }
 
@@ -170,93 +170,70 @@ func (s *AuthHandler) ExchangeAuthCode(
 		return nil, status.Error(codes.PermissionDenied, "email verification required for domain restrictions")
 	}
 
-	// Try to find existing identity
-	log.Printf("[OAuth] Looking up identity: provider=%s, external_id=%s", req.Provider, claims.Subject)
-	identity, err := s.identityRepo.GetByProviderAndExternalID(ctx, req.Provider, claims.Subject)
-
+	// Discord-only user provisioning flow
+	// Check if Discord user already exists (bot-first or previous OAuth)
 	var user *entities.User
 	var isNewUser bool
 
-	if err != nil || identity == nil {
-		log.Printf("[OAuth] Identity not found, will create new user/identity for email=%s", claims.Email)
-		// Identity doesn't exist - check if we should auto-link by email
-		if claims.EmailVerified {
-			log.Printf("[OAuth] Checking for existing user with email=%s", claims.Email)
-			existingUser, err := s.userRepo.GetByEmail(ctx, claims.Email)
-			if err == nil && existingUser != nil {
-				log.Printf("[OAuth] Found existing user, linking identity: user_id=%s", existingUser.ID)
-				// Found existing user with same email - link identity
-				user = existingUser
-				identity = &entities.Identity{
-					UserID:            user.ID,
-					Provider:          req.Provider,
-					ExternalID:        claims.Subject,
-					Email:             claims.Email,
-					EmailVerified:     claims.EmailVerified,
-					DisplayName:       claims.Name,
-					ProfilePictureURL: claims.Picture,
-				}
-				if err := s.identityRepo.Create(ctx, identity); err != nil {
-					return nil, status.Errorf(codes.Internal, "failed to create identity: %v", err)
-				}
-				log.Printf("[OAuth] Identity linked successfully")
-			} else {
-				log.Printf("[OAuth] No existing user found with email=%s (err=%v, user_nil=%v)", claims.Email, err, existingUser == nil)
-			}
-		}
+	log.Printf("[OAuth] Discord OAuth: checking if discord_users record exists for discord_id=%s", claims.Subject)
+	discordUser, err := s.discordUserRepo.GetByDiscordID(ctx, claims.Subject)
 
-		// No existing user - create new if auto-provision enabled
-		if user == nil {
-			log.Printf("[OAuth] No user exists, checking auto-provision for provider=%s", req.Provider)
-			if !providerConfig.AutoProvision {
-				return nil, status.Error(codes.PermissionDenied, "auto-provisioning not enabled")
-			}
-
-			log.Printf("[OAuth] Creating new user: email=%s, name=%s", claims.Email, claims.Name)
-			// Create new user
-			user = &entities.User{
-				Email:       claims.Email,
-				DisplayName: claims.Name,
-				Role:        entities.RoleUser,
-				IsActive:    true,
-			}
-
-			if err := s.userRepo.Create(ctx, user); err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
-			}
-			log.Printf("[OAuth] User created successfully: user_id=%s", user.ID)
-
-			// Create identity
-			identity = &entities.Identity{
-				UserID:            user.ID,
-				Provider:          req.Provider,
-				ExternalID:        claims.Subject,
-				Email:             claims.Email,
-				EmailVerified:     claims.EmailVerified,
-				DisplayName:       claims.Name,
-				ProfilePictureURL: claims.Picture,
-			}
-
-			if err := s.identityRepo.Create(ctx, identity); err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to create identity: %v", err)
-			}
-			log.Printf("[OAuth] Identity created successfully: identity_id=%s, user_id=%s", identity.IdentityID, identity.UserID)
-
-			isNewUser = true
-		}
-	} else {
-		log.Printf("[OAuth] Identity found: identity_id=%s, user_id=%s", identity.IdentityID, identity.UserID)
-		// Identity exists - get user
-		user, err = s.userRepo.GetByID(ctx, identity.UserID)
+	if err == nil && discordUser != nil {
+		// User exists - get and potentially update email
+		log.Printf("[OAuth] Found existing discord_users record, reusing user_id=%s", discordUser.UserID)
+		user, err = s.userRepo.GetByID(ctx, discordUser.UserID)
 		if err != nil {
-			log.Printf("[OAuth] ERROR: Failed to get user by ID: user_id=%s, error=%v", identity.UserID, err)
 			return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 		}
-		if user == nil {
-			log.Printf("[OAuth] ERROR: User is nil after GetByID: user_id=%s (orphaned identity?)", identity.UserID)
-			return nil, status.Error(codes.Internal, "user not found for identity")
+
+		// Update user's email if it's currently empty and we have a verified email
+		if user.Email == "" && claims.EmailVerified && claims.Email != "" {
+			log.Printf("[OAuth] Updating user email from NULL to %s", claims.Email)
+			user.Email = claims.Email
+			if err := s.userRepo.Update(ctx, user); err != nil {
+				log.Printf("[OAuth] Warning: Failed to update user email: %v", err)
+			}
 		}
-		log.Printf("[OAuth] User found: user_id=%s, email=%s, active=%v", user.ID, user.Email, user.IsActive)
+
+		// Update last seen
+		_ = s.discordUserRepo.UpdateLastSeen(ctx, claims.Subject)
+	} else {
+		// New user - create user and discord_users record
+		log.Printf("[OAuth] No existing Discord user, checking auto-provision")
+		if !providerConfig.AutoProvision {
+			return nil, status.Error(codes.PermissionDenied, "auto-provisioning not enabled")
+		}
+
+		log.Printf("[OAuth] Creating new user: email=%s, name=%s", claims.Email, claims.Name)
+		user = &entities.User{
+			Email:       claims.Email,
+			DisplayName: claims.Name,
+			Role:        entities.RoleUser,
+			IsActive:    true,
+		}
+
+		if err := s.userRepo.Create(ctx, user); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
+		}
+		log.Printf("[OAuth] User created successfully: user_id=%s", user.ID)
+
+		// Create discord_users record
+		newDiscordUser := &entities.DiscordUser{
+			DiscordID:       claims.Subject,
+			UserID:          user.ID,
+			DiscordUsername: claims.Name,
+			AvatarURL:       &claims.Picture,
+			LinkedAt:        time.Now(),
+			LastSeen:        nil,
+		}
+
+		if err := s.discordUserRepo.Upsert(ctx, newDiscordUser); err != nil {
+			log.Printf("[OAuth] Warning: Failed to upsert discord_users record: %v", err)
+		} else {
+			log.Printf("[OAuth] discord_users record created successfully")
+		}
+
+		isNewUser = true
 	}
 
 	// Check if user is active
@@ -279,20 +256,9 @@ func (s *AuthHandler) ExchangeAuthCode(
 		return nil, status.Errorf(codes.Internal, "failed to generate token ID: %v", err)
 	}
 
-	// Get display name and picture from identity or claims
-	displayName := ""
-	picture := ""
-	if identity != nil {
-		displayName = identity.DisplayName
-		picture = identity.ProfilePictureURL
-	}
-	// If identity doesn't have them, try claims
-	if displayName == "" && claims != nil {
-		displayName = claims.Name
-	}
-	if picture == "" && claims != nil {
-		picture = claims.Picture
-	}
+	// Get display name and picture from claims
+	displayName := claims.Name
+	picture := claims.Picture
 
 	// Update user's avatar URL and timezone from this login
 	needsUpdate := false
@@ -442,31 +408,26 @@ func (s *AuthHandler) RefreshOAuthToken(
 		return nil, status.Error(codes.Unauthenticated, "invalid ID token")
 	}
 
-	// Get user by external ID
-	identity, err := s.identityRepo.GetByProviderAndExternalID(ctx, req.Provider, claims.Subject)
+	// Get user by Discord ID (Discord-only app)
+	discordUser, err := s.discordUserRepo.GetByDiscordID(ctx, claims.Subject)
 	if err != nil {
-		log.Printf("Identity not found for %s/%s: %v", req.Provider, claims.Subject, err)
+		log.Printf("Discord user not found for %s: %v", claims.Subject, err)
 		return nil, status.Error(codes.Unauthenticated, "user not found")
 	}
 
 	// Get user
-	user, err := s.userRepo.GetByID(ctx, identity.UserID)
+	user, err := s.userRepo.GetByID(ctx, discordUser.UserID)
 	if err != nil {
-		log.Printf("User not found for identity %s: %v", identity.UserID, err)
+		log.Printf("User not found for discord user %s: %v", discordUser.UserID, err)
 		return nil, status.Error(codes.Unauthenticated, "user not found")
 	}
 	if user == nil {
-		log.Printf("User is nil for identity %s (orphaned identity)", identity.UserID)
+		log.Printf("User is nil for discord user %s", discordUser.UserID)
 		return nil, status.Error(codes.Unauthenticated, "user not found")
 	}
 
-	// Update identity last login
-	now := time.Now()
-	identity.LastLoginAt = &now
-	if err := s.identityRepo.Update(ctx, identity); err != nil {
-		log.Printf("Failed to update identity last login: %v", err)
-		// Non-fatal, continue
-	}
+	// Update last seen
+	_ = s.discordUserRepo.UpdateLastSeen(ctx, claims.Subject)
 
 	// Generate new JWT token with user profile information
 	tokenID, err := auth.GenerateTokenID()
@@ -669,14 +630,8 @@ func (s *AuthHandler) RefreshToken(
 
 	// If token is expired and user is OIDC type, try to refresh via OAuth
 	if time.Now().After(existingToken.ExpiresAt) && user.UserType == entities.UserTypeOIDC {
-		// Get the user's identity to find the provider
-		identities, err := s.identityRepo.ListByUserID(ctx, user.ID)
-		if err != nil || len(identities) == 0 {
-			return nil, status.Error(codes.Internal, "failed to get user identities")
-		}
-
-		// Use the first (most recent) identity's provider
-		provider := identities[0].Provider
+		// For Discord-only app, provider is always "discord"
+		provider := "discord"
 
 		// Get OIDC session with refresh token
 		oidcSession, err := s.sessionRepo.GetOIDCSessionByUserAndProvider(ctx, user.ID, provider)
@@ -845,100 +800,67 @@ func (s *AuthHandler) LoginWithOIDC(
 		return nil, status.Error(codes.PermissionDenied, "auto-provisioning is disabled for this provider")
 	}
 
-	// Try to get existing identity
-	existingIdentity, err := s.identityRepo.GetByProviderAndExternalID(ctx, req.Provider, claims.Subject)
+	// Try to get existing Discord user (Discord-only app)
+	discordUser, err := s.discordUserRepo.GetByDiscordID(ctx, claims.Subject)
 
 	var user *entities.User
 	var isNewUser bool
 
-	if err == nil && existingIdentity != nil {
-		// Identity exists, get the associated user
-		user, err = s.userRepo.GetByID(ctx, existingIdentity.UserID)
+	if err == nil && discordUser != nil {
+		// Discord user exists, get the associated user
+		user, err = s.userRepo.GetByID(ctx, discordUser.UserID)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 		}
 		if user == nil {
 			return nil, status.Error(codes.NotFound, "user not found")
 		}
-	} else {
-		// Identity doesn't exist, check if we should link to existing user by email
-		existingUser, err := s.userRepo.GetByEmail(ctx, claims.Email)
 
-		if err == nil && existingUser != nil {
-			// User with this email exists - link the new identity
-			user = existingUser
-
-			// Create new identity for this provider
-			now := time.Now()
-			identity := &entities.Identity{
-				IdentityID:        idgen.GenerateID(),
-				UserID:            user.ID,
-				Provider:          req.Provider,
-				ExternalID:        claims.Subject,
-				Email:             claims.Email,
-				EmailVerified:     claims.EmailVerified,
-				DisplayName:       claims.Name,
-				ProfilePictureURL: claims.Picture,
-				CreatedAt:         time.Now(),
-				LastLoginAt:       &now,
-			}
-
-			if err := s.identityRepo.Create(ctx, identity); err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to create identity: %v", err)
-			}
-		} else {
-			// No user exists - create new user and identity (auto-provisioning)
-			user = &entities.User{
-				ID:          idgen.GenerateID(),
-				Email:       claims.Email,
-				DisplayName: claims.Name,
-				Role:        entities.RoleUser,
-				UserType:    entities.UserTypeOIDC,
-				IsActive:    true,
-				CreatedAt:   time.Now(),
-				UpdatedAt:   time.Now(),
-			}
-
-			if err := s.userRepo.Create(ctx, user); err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
-			}
-
-			// Create identity
-			now := time.Now()
-			identity := &entities.Identity{
-				IdentityID:        idgen.GenerateID(),
-				UserID:            user.ID,
-				Provider:          req.Provider,
-				ExternalID:        claims.Subject,
-				Email:             claims.Email,
-				EmailVerified:     claims.EmailVerified,
-				DisplayName:       claims.Name,
-				ProfilePictureURL: claims.Picture,
-				CreatedAt:         time.Now(),
-				LastLoginAt:       &now,
-			}
-
-			if err := s.identityRepo.Create(ctx, identity); err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to create identity: %v", err)
-			}
-
-			isNewUser = true
+		// Update email if needed
+		if user.Email == "" && claims.EmailVerified && claims.Email != "" {
+			user.Email = claims.Email
+			_ = s.userRepo.Update(ctx, user)
 		}
+
+		// Update last seen
+		_ = s.discordUserRepo.UpdateLastSeen(ctx, claims.Subject)
+	} else {
+		// Discord user doesn't exist - create new user and discord_users record
+		user = &entities.User{
+			ID:          idgen.GenerateID(),
+			Email:       claims.Email,
+			DisplayName: claims.Name,
+			Role:        entities.RoleUser,
+			UserType:    entities.UserTypeOIDC,
+			IsActive:    true,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}
+
+		if err := s.userRepo.Create(ctx, user); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
+		}
+
+		// Create discord_users record
+		newDiscordUser := &entities.DiscordUser{
+			DiscordID:       claims.Subject,
+			UserID:          user.ID,
+			DiscordUsername: claims.Name,
+			AvatarURL:       &claims.Picture,
+			LinkedAt:        time.Now(),
+			LastSeen:        nil,
+		}
+
+		if err := s.discordUserRepo.Upsert(ctx, newDiscordUser); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to create discord user: %v", err)
+		}
+
+		isNewUser = true
 	}
 
 	// Check if user is active
 	if !user.IsActive {
 		return nil, status.Error(codes.PermissionDenied, "user account is not active")
-	}
-
-	// Update last login time for the identity
-	if existingIdentity != nil {
-		now := time.Now()
-		existingIdentity.LastLoginAt = &now
-		if err := s.identityRepo.Update(ctx, existingIdentity); err != nil {
-			// Log error but don't fail the login
-			fmt.Printf("warning: failed to update identity last login: %v\n", err)
-		}
 	}
 
 	// Generate token ID
@@ -947,16 +869,9 @@ func (s *AuthHandler) LoginWithOIDC(
 		return nil, status.Errorf(codes.Internal, "failed to generate token ID: %v", err)
 	}
 
-	// Get display name and picture from identity or claims
-	displayName := ""
-	picture := ""
-	if existingIdentity != nil {
-		displayName = existingIdentity.DisplayName
-		picture = existingIdentity.ProfilePictureURL
-	} else if claims != nil {
-		displayName = claims.Name
-		picture = claims.Picture
-	}
+	// Get display name and picture from claims
+	displayName := claims.Name
+	picture := claims.Picture
 
 	// Update user's avatar URL with the picture from this login
 	if picture != "" && (user.AvatarURL == nil || (user.AvatarURL != nil && *user.AvatarURL != picture)) {

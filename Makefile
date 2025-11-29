@@ -1,4 +1,4 @@
-.PHONY: all build clean server cli web test lint proto help
+.PHONY: all build clean server cli web bot test lint proto assets build-css watch-css tidy run-server run-web run-bot db-shell help
 
 # Load .env file if it exists
 -include .env
@@ -111,6 +111,10 @@ run-web: web
 run-bot: bot
 	@echo "Starting hivemind bot..."
 	@$(BOT_BIN) run --config configs/dev-bot.yaml
+
+## db-shell: Open PostgreSQL shell
+db-shell:
+	@psql postgresql://postgres:postgres@hivemind_devcontainer-postgres-1:5432/hivemind
 
 ## help: Show this help message
 help:

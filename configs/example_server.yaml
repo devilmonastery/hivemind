@@ -53,6 +53,13 @@ auth:
   # Use different keys for dev/staging/prod environments.
   encryption_key: "your-encryption-key-here-change-me"
   
+  # Development bot token (DEVELOPMENT ONLY)
+  # ⚠️  WARNING: DO NOT USE IN PRODUCTION! ⚠️
+  # This is for local development only. For production, use:
+  #   hivemind admin create-service-token <bot-name> --expires 90d
+  # Comment out or remove this line for production deployments
+  # dev_bot_token: "dev-only-token-change-me"
+  
   # OAuth/OIDC provider configuration
   providers:
     # Google OAuth

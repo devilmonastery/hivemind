@@ -47,6 +47,7 @@ type GRPCConfig struct {
 type AuthConfig struct {
 	JWT           JWTConfig        `yaml:"jwt"`
 	EncryptionKey string           `yaml:"encryption_key"` // AES-256 key for encrypting refresh tokens (32 bytes base64)
+	DevBotToken   string           `yaml:"dev_bot_token"`  // Optional: Static bot token for development only (DO NOT USE IN PRODUCTION)
 	Providers     []ProviderConfig `yaml:"providers"`
 }
 

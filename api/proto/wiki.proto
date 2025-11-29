@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package hivemind.wiki;
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/devilmonastery/hivemind/api/generated/go/wikipb";
+
+// WikiService manages guild knowledge base articles
+service WikiService {
+  // CreateWikiPage creates a new wiki page in a guild
+  rpc CreateWikiPage(CreateWikiPageRequest) returns (WikiPage);
+
+  // GetWikiPage retrieves a wiki page by ID
+  rpc GetWikiPage(GetWikiPageRequest) returns (WikiPage);
+
+  // SearchWikiPages searches for wiki pages in a guild
+  rpc SearchWikiPages(SearchWikiPagesRequest) returns (SearchWikiPagesResponse);
+
+  // UpdateWikiPage updates an existing wiki page
+  rpc UpdateWikiPage(UpdateWikiPageRequest) returns (WikiPage);
+
+  // DeleteWikiPage soft-deletes a wiki page
+  rpc DeleteWikiPage(DeleteWikiPageRequest) returns (hivemind.common.v1.SuccessResponse);
+
+  // ListWikiPages lists all wiki pages in a guild with pagination
+  rpc ListWikiPages(ListWikiPagesRequest) returns (ListWikiPagesResponse);
+}
+
+// WikiPage represents a guild knowledge base article
+message WikiPage {
+  string id = 1;
+  string title = 2;
+  string body = 3;
+
+  // Ownership
+  string author_id = 4;
+  string author_username = 5;
+  string guild_id = 6;
+  string channel_id = 7;
+  string channel_name = 8;
+
+  // Metadata
+  repeated string tags = 9;
+  repeated string linked_page_ids = 10;
+
+  // Timestamps
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message CreateWikiPageRequest {
+  string title = 1;
+  string body = 2;
+  string guild_id = 3;
+  string channel_id = 4; // Optional: channel where created
+  repeated string tags = 5;
+}
+
+message GetWikiPageRequest {
+  string id = 1;
+}
+
+message SearchWikiPagesRequest {
+  string guild_id = 1;
+  string query = 2; // Full-text search query
+  repeated string tags = 3; // Filter by tags
+  int32 limit = 4; // Default: 10
+  int32 offset = 5;
+}
+
+message SearchWikiPagesResponse {
+  repeated WikiPage pages = 1;
+  int32 total = 2;
+}
+
+message UpdateWikiPageRequest {
+  string id = 1;
+  string title = 2;
+  string body = 3;
+  repeated string tags = 4;
+}
+
+message DeleteWikiPageRequest {
+  string id = 1;
+}
+
+message ListWikiPagesRequest {
+  string guild_id = 1;
+  int32 limit = 2; // Default: 50
+  int32 offset = 3;
+  string order_by = 4; // "created_at", "updated_at", "title"
+  bool ascending = 5;
+}
+
+message ListWikiPagesResponse {
+  repeated WikiPage pages = 1;
+  int32 total = 2;
+}

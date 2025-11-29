@@ -17,7 +17,10 @@ import (
 
 	adminpb "github.com/devilmonastery/hivemind/api/generated/go/adminpb"
 	authpb "github.com/devilmonastery/hivemind/api/generated/go/authpb"
+	notespb "github.com/devilmonastery/hivemind/api/generated/go/notespb"
+	quotespb "github.com/devilmonastery/hivemind/api/generated/go/quotespb"
 	"github.com/devilmonastery/hivemind/api/generated/go/tokenspb"
+	wikipb "github.com/devilmonastery/hivemind/api/generated/go/wikipb"
 	"github.com/devilmonastery/hivemind/internal/auth"
 	"github.com/devilmonastery/hivemind/internal/auth/oidc"
 	"github.com/devilmonastery/hivemind/internal/config"
@@ -74,6 +77,7 @@ func newRootCommand() *cobra.Command {
 
 	// Add subcommands
 	cmd.AddCommand(newUserCommand())
+	cmd.AddCommand(newTokenCommand())
 
 	return cmd
 }
@@ -136,7 +140,6 @@ func runServer(configPath string, forceVersion int) error {
 
 	// Initialize database based on type
 	var userRepo repositories.UserRepository
-	var identityRepo repositories.IdentityRepository
 	var tokenRepo repositories.TokenRepository
 	var sessionRepo repositories.SessionRepository
 	var auditRepo repositories.AuditRepository
@@ -197,10 +200,13 @@ func runServer(configPath string, forceVersion int) error {
 
 	// Initialize PostgreSQL repositories
 	userRepo = postgres.NewUserRepository(pgConn.DB)
-	identityRepo = postgres.NewIdentityRepository(pgConn.DB)
 	tokenRepo = postgres.NewTokenRepository(pgConn.DB)
 	sessionRepo = postgres.NewSessionRepository(pgConn.DB)
 	auditRepo = postgres.NewAuditRepository(pgConn.DB)
+	discordUserRepo := postgres.NewDiscordUserRepository(pgConn.DB)
+	wikiPageRepo := postgres.NewWikiPageRepository(pgConn.DB.DB)
+	noteRepo := postgres.NewNoteRepository(pgConn.DB.DB)
+	quoteRepo := postgres.NewQuoteRepository(pgConn.DB.DB)
 
 	// Initialize JWT manager from config
 	if cfg.Auth.JWT.SigningKey == "" {
@@ -216,14 +222,21 @@ func runServer(configPath string, forceVersion int) error {
 	// Initialize services
 	userService := services.NewUserService(userRepo, auditRepo)
 	tokenService := services.NewTokenService(tokenRepo, userRepo, auditRepo)
-	authHandler := handlers.NewAuthHandler(userRepo, identityRepo, tokenRepo, sessionRepo, jwtManager, cfg)
+	discordService := services.NewDiscordService(discordUserRepo, userRepo, logger)
+	wikiService := services.NewWikiService(wikiPageRepo)
+	noteService := services.NewNoteService(noteRepo)
+	quoteService := services.NewQuoteService(quoteRepo)
+	authHandler := handlers.NewAuthHandler(userRepo, tokenRepo, sessionRepo, discordUserRepo, jwtManager, cfg)
 
 	// Initialize auth interceptor
-	authInterceptor := interceptors.NewAuthInterceptor(jwtManager, tokenRepo)
+	authInterceptor := interceptors.NewAuthInterceptor(jwtManager, tokenRepo, discordService, cfg.Auth.DevBotToken)
 
 	// Initialize gRPC handlers
 	adminHandler := handlers.NewAdminHandler(userService)
 	tokenHandler := handlers.NewTokenHandler(tokenService)
+	wikiHandler := handlers.NewWikiHandler(wikiService)
+	noteHandler := handlers.NewNoteHandler(noteService)
+	quoteHandler := handlers.NewQuoteHandler(quoteService)
 
 	// Create gRPC server with interceptors and keepalive
 	grpcServer := grpc.NewServer(
@@ -247,6 +260,9 @@ func runServer(configPath string, forceVersion int) error {
 	adminpb.RegisterAdminServiceServer(grpcServer, adminHandler)
 	tokenspb.RegisterTokenServiceServer(grpcServer, tokenHandler)
 	authpb.RegisterAuthServiceServer(grpcServer, authHandler)
+	wikipb.RegisterWikiServiceServer(grpcServer, wikiHandler)
+	notespb.RegisterNoteServiceServer(grpcServer, noteHandler)
+	quotespb.RegisterQuoteServiceServer(grpcServer, quoteHandler)
 
 	// Register health check service
 	healthServer := health.NewServer()

@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package hivemind.quotes;
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/devilmonastery/hivemind/api/generated/go/quotespb";
+
+// QuoteService manages memorable guild quotes
+service QuoteService {
+  // CreateQuote saves a message as a quote
+  rpc CreateQuote(CreateQuoteRequest) returns (Quote);
+
+  // GetQuote retrieves a quote by ID
+  rpc GetQuote(GetQuoteRequest) returns (Quote);
+
+  // ListQuotes lists quotes in a guild with pagination
+  rpc ListQuotes(ListQuotesRequest) returns (ListQuotesResponse);
+
+  // DeleteQuote soft-deletes a quote (must be owned by caller or guild admin)
+  rpc DeleteQuote(DeleteQuoteRequest) returns (hivemind.common.v1.SuccessResponse);
+
+  // SearchQuotes searches quotes by full-text query
+  rpc SearchQuotes(SearchQuotesRequest) returns (SearchQuotesResponse);
+
+  // GetRandomQuote retrieves a random quote from a guild
+  rpc GetRandomQuote(GetRandomQuoteRequest) returns (Quote);
+}
+
+// Quote represents a saved memorable message from Discord
+message Quote {
+  string id = 1;
+  string body = 2;
+
+  // Ownership
+  string author_id = 3; // Who saved the quote
+  string author_username = 4;
+  string guild_id = 5;
+
+  // Source message information
+  string source_msg_id = 6; // Original Discord message ID
+  string source_channel_id = 7;
+  string source_channel_name = 8;
+  string source_msg_author_discord_id = 9; // Who said it
+  string source_msg_author_username = 10; // Username at time of quote
+  repeated string mentioned_user_ids = 11; // Discord user IDs mentioned
+
+  // Metadata
+  repeated string tags = 12;
+
+  // Timestamps
+  google.protobuf.Timestamp created_at = 13;
+}
+
+message CreateQuoteRequest {
+  string body = 1;
+  string guild_id = 2;
+
+  // Source message information (from Discord context)
+  string source_msg_id = 3;
+  string source_channel_id = 4;
+  string source_msg_author_discord_id = 5;
+  string source_msg_author_username = 6;
+
+  repeated string tags = 7;
+}
+
+message GetQuoteRequest {
+  string id = 1;
+}
+
+message ListQuotesRequest {
+  string guild_id = 1;
+  string source_msg_author_discord_id = 2; // Optional: filter by who said it
+  repeated string tags = 3; // Optional: filter by tags
+  int32 limit = 4; // Default: 50
+  int32 offset = 5;
+  string order_by = 6; // "created_at", "random"
+  bool ascending = 7;
+}
+
+message ListQuotesResponse {
+  repeated Quote quotes = 1;
+  int32 total = 2;
+}
+
+message DeleteQuoteRequest {
+  string id = 1;
+}
+
+message SearchQuotesRequest {
+  string guild_id = 1;
+  string query = 2; // Full-text search query
+  repeated string tags = 3; // Optional: filter by tags
+  int32 limit = 4; // Default: 10
+  int32 offset = 5;
+}
+
+message SearchQuotesResponse {
+  repeated Quote quotes = 1;
+  int32 total = 2;
+}
+
+message GetRandomQuoteRequest {
+  string guild_id = 1;
+  repeated string tags = 2; // Optional: filter by tags
+}
