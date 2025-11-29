@@ -14,16 +14,17 @@ import (
 
 // ActivityItem represents a unified activity item for the home feed
 type ActivityItem struct {
-	Type      string // "note", "quote", "wiki"
-	ID        string
-	Title     string
-	Body      string
-	Preview   string // First 200 chars of body
-	GuildID   string
-	GuildName string
-	Timestamp time.Time
-	Author    string
-	Tags      []string
+	Type        string // "note", "quote", "wiki"
+	ID          string
+	Title       string
+	Body        string
+	Preview     string // First 200 chars of body
+	GuildID     string
+	GuildName   string
+	ChannelName string
+	Timestamp   time.Time
+	Author      string
+	Tags        []string
 }
 
 // Home handles the home page
@@ -102,15 +103,17 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		log.Printf("Fetched %d notes from server", len(notesResp.Notes))
 		for _, note := range notesResp.Notes {
 			activity = append(activity, ActivityItem{
-				Type:      "note",
-				ID:        note.Id,
-				Title:     note.Title,
-				Body:      note.Body,
-				Preview:   truncateText(note.Body, 200),
-				GuildID:   note.GuildId,
-				Timestamp: note.CreatedAt.AsTime(),
-				Author:    note.AuthorUsername,
-				Tags:      note.Tags,
+				Type:        "note",
+				ID:          note.Id,
+				Title:       note.Title,
+				Body:        note.Body,
+				Preview:     truncateText(note.Body, 200),
+				GuildID:     note.GuildId,
+				GuildName:   note.GuildName,
+				ChannelName: note.ChannelName,
+				Timestamp:   note.CreatedAt.AsTime(),
+				Author:      note.AuthorUsername,
+				Tags:        note.Tags,
 			})
 		}
 	}
@@ -133,14 +136,16 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		log.Printf("Fetched %d quotes from server", len(quotesResp.Quotes))
 		for _, quote := range quotesResp.Quotes {
 			activity = append(activity, ActivityItem{
-				Type:      "quote",
-				ID:        quote.Id,
-				Body:      quote.Body,
-				Preview:   truncateText(quote.Body, 200),
-				GuildID:   quote.GuildId,
-				Timestamp: quote.CreatedAt.AsTime(),
-				Author:    quote.SourceMsgAuthorUsername,
-				Tags:      quote.Tags,
+				Type:        "quote",
+				ID:          quote.Id,
+				Body:        quote.Body,
+				Preview:     truncateText(quote.Body, 200),
+				GuildID:     quote.GuildId,
+				GuildName:   quote.GuildName,
+				ChannelName: quote.SourceChannelName,
+				Timestamp:   quote.CreatedAt.AsTime(),
+				Author:      quote.SourceMsgAuthorUsername,
+				Tags:        quote.Tags,
 			})
 		}
 	}
@@ -163,15 +168,17 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		log.Printf("Fetched %d wiki pages from server", len(wikiResp.Pages))
 		for _, page := range wikiResp.Pages {
 			activity = append(activity, ActivityItem{
-				Type:      "wiki",
-				ID:        page.Id,
-				Title:     page.Title,
-				Body:      page.Body,
-				Preview:   truncateText(page.Body, 200),
-				GuildID:   page.GuildId,
-				Timestamp: page.CreatedAt.AsTime(),
-				Author:    page.AuthorUsername,
-				Tags:      page.Tags,
+				Type:        "wiki",
+				ID:          page.Id,
+				Title:       page.Title,
+				Body:        page.Body,
+				Preview:     truncateText(page.Body, 200),
+				GuildID:     page.GuildId,
+				GuildName:   page.GuildName,
+				ChannelName: page.ChannelName,
+				Timestamp:   page.CreatedAt.AsTime(),
+				Author:      page.AuthorUsername,
+				Tags:        page.Tags,
 			})
 		}
 	}

@@ -33,18 +33,19 @@ type Note struct {
 	AuthorId       string `protobuf:"bytes,4,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
 	AuthorUsername string `protobuf:"bytes,5,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
 	// Context (optional)
-	GuildId     string `protobuf:"bytes,6,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"` // NULL for personal notes
-	ChannelId   string `protobuf:"bytes,7,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
-	ChannelName string `protobuf:"bytes,8,opt,name=channel_name,json=channelName,proto3" json:"channel_name,omitempty"`
+	GuildId     string `protobuf:"bytes,6,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`       // NULL for personal notes
+	GuildName   string `protobuf:"bytes,7,opt,name=guild_name,json=guildName,proto3" json:"guild_name,omitempty"` // Guild display name
+	ChannelId   string `protobuf:"bytes,8,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	ChannelName string `protobuf:"bytes,9,opt,name=channel_name,json=channelName,proto3" json:"channel_name,omitempty"`
 	// Reference (optional)
-	SourceMsgId      string   `protobuf:"bytes,9,opt,name=source_msg_id,json=sourceMsgId,proto3" json:"source_msg_id,omitempty"` // Message that inspired this note
-	SourceChannelId  string   `protobuf:"bytes,10,opt,name=source_channel_id,json=sourceChannelId,proto3" json:"source_channel_id,omitempty"`
-	MentionedUserIds []string `protobuf:"bytes,11,rep,name=mentioned_user_ids,json=mentionedUserIds,proto3" json:"mentioned_user_ids,omitempty"` // Discord user IDs mentioned
+	SourceMsgId      string   `protobuf:"bytes,10,opt,name=source_msg_id,json=sourceMsgId,proto3" json:"source_msg_id,omitempty"` // Message that inspired this note
+	SourceChannelId  string   `protobuf:"bytes,11,opt,name=source_channel_id,json=sourceChannelId,proto3" json:"source_channel_id,omitempty"`
+	MentionedUserIds []string `protobuf:"bytes,12,rep,name=mentioned_user_ids,json=mentionedUserIds,proto3" json:"mentioned_user_ids,omitempty"` // Discord user IDs mentioned
 	// Metadata
-	Tags []string `protobuf:"bytes,12,rep,name=tags,proto3" json:"tags,omitempty"`
+	Tags []string `protobuf:"bytes,13,rep,name=tags,proto3" json:"tags,omitempty"`
 	// Timestamps
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -117,6 +118,13 @@ func (x *Note) GetAuthorUsername() string {
 func (x *Note) GetGuildId() string {
 	if x != nil {
 		return x.GuildId
+	}
+	return ""
+}
+
+func (x *Note) GetGuildName() string {
+	if x != nil {
+		return x.GuildName
 	}
 	return ""
 }
@@ -685,7 +693,7 @@ var File_notes_proto protoreflect.FileDescriptor
 
 const file_notes_proto_rawDesc = "" +
 	"\n" +
-	"\vnotes.proto\x12\x0ehivemind.notes\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xeb\x03\n" +
+	"\vnotes.proto\x12\x0ehivemind.notes\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8a\x04\n" +
 	"\x04Note\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
@@ -694,17 +702,19 @@ const file_notes_proto_rawDesc = "" +
 	"\x0fauthor_username\x18\x05 \x01(\tR\x0eauthorUsername\x12\x19\n" +
 	"\bguild_id\x18\x06 \x01(\tR\aguildId\x12\x1d\n" +
 	"\n" +
-	"channel_id\x18\a \x01(\tR\tchannelId\x12!\n" +
-	"\fchannel_name\x18\b \x01(\tR\vchannelName\x12\"\n" +
-	"\rsource_msg_id\x18\t \x01(\tR\vsourceMsgId\x12*\n" +
-	"\x11source_channel_id\x18\n" +
-	" \x01(\tR\x0fsourceChannelId\x12,\n" +
-	"\x12mentioned_user_ids\x18\v \x03(\tR\x10mentionedUserIds\x12\x12\n" +
-	"\x04tags\x18\f \x03(\tR\x04tags\x129\n" +
+	"guild_name\x18\a \x01(\tR\tguildName\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"channel_id\x18\b \x01(\tR\tchannelId\x12!\n" +
+	"\fchannel_name\x18\t \x01(\tR\vchannelName\x12\"\n" +
+	"\rsource_msg_id\x18\n" +
+	" \x01(\tR\vsourceMsgId\x12*\n" +
+	"\x11source_channel_id\x18\v \x01(\tR\x0fsourceChannelId\x12,\n" +
+	"\x12mentioned_user_ids\x18\f \x03(\tR\x10mentionedUserIds\x12\x12\n" +
+	"\x04tags\x18\r \x03(\tR\x04tags\x129\n" +
 	"\n" +
-	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xaf\x01\n" +
+	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xaf\x01\n" +
 	"\x11CreateNoteRequest\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x19\n" +

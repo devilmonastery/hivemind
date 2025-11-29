@@ -204,6 +204,7 @@ func noteToProto(note *entities.Note) *notespb.Note {
 		Tags:            note.Tags,
 		AuthorId:        note.AuthorID,
 		GuildId:         note.GuildID,
+		GuildName:       note.GuildName,
 		ChannelId:       note.ChannelID,
 		SourceMsgId:     note.SourceMsgID,
 		SourceChannelId: note.SourceChannelID,

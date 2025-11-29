@@ -185,6 +185,7 @@ func quoteToProto(quote *entities.Quote) *quotespb.Quote {
 		Tags:                     quote.Tags,
 		AuthorId:                 quote.AuthorID,
 		GuildId:                  quote.GuildID,
+		GuildName:                quote.GuildName,
 		SourceMsgId:              quote.SourceMsgID,
 		SourceChannelId:          quote.SourceChannelID,
 		SourceMsgAuthorDiscordId: quote.SourceMsgAuthorDiscordID,

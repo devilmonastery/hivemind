@@ -62,19 +62,7 @@ func handleNoteCreate(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 							Style:       discordgo.TextInputParagraph,
 							Required:    true,
 							MaxLength:   4000,
-							Placeholder: "Note content...",
-						},
-					},
-				},
-				discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						discordgo.TextInput{
-							CustomID:    "note_tags",
-							Label:       "Tags (comma-separated, optional)",
-							Style:       discordgo.TextInputShort,
-							Required:    false,
-							MaxLength:   200,
-							Placeholder: "tag1, tag2, tag3",
+							Placeholder: "Note content... Use #hashtags to add tags",
 						},
 					},
 				},
@@ -90,7 +78,7 @@ func handleNoteCreate(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 func handleNoteCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
 	data := i.ModalSubmitData()
 
-	var title, body, tagsStr string
+	var title, body string
 	for _, comp := range data.Components {
 		if actionRow, ok := comp.(*discordgo.ActionsRow); ok {
 			for _, innerComp := range actionRow.Components {
@@ -100,24 +88,14 @@ func handleNoteCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate,
 						title = textInput.Value
 					case "note_body":
 						body = textInput.Value
-					case "note_tags":
-						tagsStr = textInput.Value
 					}
 				}
 			}
 		}
 	}
 
-	var tags []string
-	if tagsStr != "" {
-		parts := strings.Split(tagsStr, ",")
-		for _, tag := range parts {
-			tag = strings.TrimSpace(tag)
-			if tag != "" {
-				tags = append(tags, tag)
-			}
-		}
-	}
+	// Extract hashtags from body
+	tags := extractHashtags(body)
 
 	// Defer response to avoid timeout
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

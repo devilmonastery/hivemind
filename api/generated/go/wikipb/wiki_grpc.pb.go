@@ -24,6 +24,7 @@ const (
 	WikiService_GetWikiPage_FullMethodName     = "/hivemind.wiki.WikiService/GetWikiPage"
 	WikiService_SearchWikiPages_FullMethodName = "/hivemind.wiki.WikiService/SearchWikiPages"
 	WikiService_UpdateWikiPage_FullMethodName  = "/hivemind.wiki.WikiService/UpdateWikiPage"
+	WikiService_UpsertWikiPage_FullMethodName  = "/hivemind.wiki.WikiService/UpsertWikiPage"
 	WikiService_DeleteWikiPage_FullMethodName  = "/hivemind.wiki.WikiService/DeleteWikiPage"
 	WikiService_ListWikiPages_FullMethodName   = "/hivemind.wiki.WikiService/ListWikiPages"
 )
@@ -42,6 +43,8 @@ type WikiServiceClient interface {
 	SearchWikiPages(ctx context.Context, in *SearchWikiPagesRequest, opts ...grpc.CallOption) (*SearchWikiPagesResponse, error)
 	// UpdateWikiPage updates an existing wiki page
 	UpdateWikiPage(ctx context.Context, in *UpdateWikiPageRequest, opts ...grpc.CallOption) (*WikiPage, error)
+	// UpsertWikiPage creates or updates a wiki page by title
+	UpsertWikiPage(ctx context.Context, in *UpsertWikiPageRequest, opts ...grpc.CallOption) (*UpsertWikiPageResponse, error)
 	// DeleteWikiPage soft-deletes a wiki page
 	DeleteWikiPage(ctx context.Context, in *DeleteWikiPageRequest, opts ...grpc.CallOption) (*commonpb.SuccessResponse, error)
 	// ListWikiPages lists all wiki pages in a guild with pagination
@@ -96,6 +99,16 @@ func (c *wikiServiceClient) UpdateWikiPage(ctx context.Context, in *UpdateWikiPa
 	return out, nil
 }
 
+func (c *wikiServiceClient) UpsertWikiPage(ctx context.Context, in *UpsertWikiPageRequest, opts ...grpc.CallOption) (*UpsertWikiPageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpsertWikiPageResponse)
+	err := c.cc.Invoke(ctx, WikiService_UpsertWikiPage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *wikiServiceClient) DeleteWikiPage(ctx context.Context, in *DeleteWikiPageRequest, opts ...grpc.CallOption) (*commonpb.SuccessResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(commonpb.SuccessResponse)
@@ -130,6 +143,8 @@ type WikiServiceServer interface {
 	SearchWikiPages(context.Context, *SearchWikiPagesRequest) (*SearchWikiPagesResponse, error)
 	// UpdateWikiPage updates an existing wiki page
 	UpdateWikiPage(context.Context, *UpdateWikiPageRequest) (*WikiPage, error)
+	// UpsertWikiPage creates or updates a wiki page by title
+	UpsertWikiPage(context.Context, *UpsertWikiPageRequest) (*UpsertWikiPageResponse, error)
 	// DeleteWikiPage soft-deletes a wiki page
 	DeleteWikiPage(context.Context, *DeleteWikiPageRequest) (*commonpb.SuccessResponse, error)
 	// ListWikiPages lists all wiki pages in a guild with pagination
@@ -154,6 +169,9 @@ func (UnimplementedWikiServiceServer) SearchWikiPages(context.Context, *SearchWi
 }
 func (UnimplementedWikiServiceServer) UpdateWikiPage(context.Context, *UpdateWikiPageRequest) (*WikiPage, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateWikiPage not implemented")
+}
+func (UnimplementedWikiServiceServer) UpsertWikiPage(context.Context, *UpsertWikiPageRequest) (*UpsertWikiPageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpsertWikiPage not implemented")
 }
 func (UnimplementedWikiServiceServer) DeleteWikiPage(context.Context, *DeleteWikiPageRequest) (*commonpb.SuccessResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteWikiPage not implemented")
@@ -253,6 +271,24 @@ func _WikiService_UpdateWikiPage_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WikiService_UpsertWikiPage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertWikiPageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WikiServiceServer).UpsertWikiPage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WikiService_UpsertWikiPage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WikiServiceServer).UpsertWikiPage(ctx, req.(*UpsertWikiPageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WikiService_DeleteWikiPage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteWikiPageRequest)
 	if err := dec(in); err != nil {
@@ -311,6 +347,10 @@ var WikiService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateWikiPage",
 			Handler:    _WikiService_UpdateWikiPage_Handler,
+		},
+		{
+			MethodName: "UpsertWikiPage",
+			Handler:    _WikiService_UpsertWikiPage_Handler,
 		},
 		{
 			MethodName: "DeleteWikiPage",

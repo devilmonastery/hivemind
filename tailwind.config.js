@@ -42,7 +42,65 @@ module.exports = {
         'neon-cyan': '0 0 10px rgba(0, 255, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.3)',
         'neon-magenta': '0 0 10px rgba(255, 0, 255, 0.5), 0 0 20px rgba(255, 0, 255, 0.3)',
       },
+      // Custom typography for markdown rendering
+      typography: ({ theme }) => ({
+        invert: {
+          css: {
+            '--tw-prose-body': theme('colors.gray[300]'),
+            '--tw-prose-headings': theme('colors.neon.cyan'),
+            '--tw-prose-links': theme('colors.neon.cyan'),
+            '--tw-prose-bold': theme('colors.gray[100]'),
+            '--tw-prose-counters': theme('colors.gray[400]'),
+            '--tw-prose-bullets': theme('colors.neon.magenta'),
+            '--tw-prose-hr': theme('colors.hive.metal'),
+            '--tw-prose-quotes': theme('colors.gray[400]'),
+            '--tw-prose-quote-borders': theme('colors.neon.magenta'),
+            '--tw-prose-captions': theme('colors.gray[400]'),
+            '--tw-prose-code': theme('colors.neon.yellow'),
+            '--tw-prose-pre-code': theme('colors.gray[300]'),
+            '--tw-prose-pre-bg': theme('colors.hive.surface'),
+            '--tw-prose-th-borders': theme('colors.hive.metal'),
+            '--tw-prose-td-borders': theme('colors.hive.metal'),
+            // Make headings smaller and less prominent
+            'h1': {
+              fontSize: '1.25rem',
+              fontWeight: '600',
+            },
+            'h2': {
+              fontSize: '1.125rem',
+              fontWeight: '600',
+            },
+            'h3': {
+              fontSize: '1rem',
+              fontWeight: '600',
+            },
+            'h4': {
+              fontSize: '0.95rem',
+              fontWeight: '600',
+            },
+            'h5': {
+              fontSize: '0.9rem',
+              fontWeight: '600',
+            },
+            'h6': {
+              fontSize: '0.85rem',
+              fontWeight: '600',
+            },
+            // Reduce spacing between list items
+            'ul > li': {
+              marginTop: '0.25rem',
+              marginBottom: '0.25rem',
+            },
+            'ol > li': {
+              marginTop: '0.25rem',
+              marginBottom: '0.25rem',
+            },
+          },
+        },
+      }),
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 }

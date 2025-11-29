@@ -112,6 +112,15 @@ run-bot: bot
 	@echo "Starting hivemind bot..."
 	@$(BOT_BIN) run --config configs/dev-bot.yaml
 
+## bot-register: Register bot commands (use GUILD=id for guild-specific, omit for global)
+bot-register: bot
+	@echo "Registering bot commands..."
+ifdef GUILD
+	@$(BOT_BIN) register --guild $(GUILD) --config configs/dev-bot.yaml
+else
+	@$(BOT_BIN) register --config configs/dev-bot.yaml
+endif
+
 ## db-shell: Open PostgreSQL shell
 db-shell:
 	@psql postgresql://postgres:postgres@hivemind_devcontainer-postgres-1:5432/hivemind

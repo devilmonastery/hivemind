@@ -41,8 +41,16 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 				},
 				{
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
-					Name:        "create",
-					Description: "Create a new wiki page",
+					Name:        "edit",
+					Description: "Create or edit a wiki page",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "title",
+							Description: "Wiki page title (leave empty for new page)",
+							Required:    false,
+						},
+					},
 				},
 			},
 		},
@@ -138,14 +146,8 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 						{
 							Type:        discordgo.ApplicationCommandOptionString,
 							Name:        "text",
-							Description: "The quote text",
+							Description: "The quote text. Use #hashtags to add tags",
 							Required:    true,
-						},
-						{
-							Type:        discordgo.ApplicationCommandOptionString,
-							Name:        "tags",
-							Description: "Tags (comma-separated, optional)",
-							Required:    false,
 						},
 					},
 				},
@@ -207,6 +209,19 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 					},
 				},
 			},
+		},
+		// Message context menu commands (right-click on messages)
+		{
+			Name: "Save as Quote",
+			Type: discordgo.MessageApplicationCommand,
+		},
+		{
+			Name: "Create Note",
+			Type: discordgo.MessageApplicationCommand,
+		},
+		{
+			Name: "Add to Wiki",
+			Type: discordgo.MessageApplicationCommand,
 		},
 	}
 }

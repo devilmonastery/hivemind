@@ -37,20 +37,21 @@ message Quote {
   string author_id = 3; // Who saved the quote
   string author_username = 4;
   string guild_id = 5;
+  string guild_name = 6; // Guild display name
 
   // Source message information
-  string source_msg_id = 6; // Original Discord message ID
-  string source_channel_id = 7;
-  string source_channel_name = 8;
-  string source_msg_author_discord_id = 9; // Who said it
-  string source_msg_author_username = 10; // Username at time of quote
-  repeated string mentioned_user_ids = 11; // Discord user IDs mentioned
+  string source_msg_id = 7; // Original Discord message ID
+  string source_channel_id = 8;
+  string source_channel_name = 9;
+  string source_msg_author_discord_id = 10; // Who said it
+  string source_msg_author_username = 11; // Username at time of quote
+  repeated string mentioned_user_ids = 12; // Discord user IDs mentioned
 
   // Metadata
-  repeated string tags = 12;
+  repeated string tags = 13;
 
   // Timestamps
-  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp created_at = 14;
 }
 
 message CreateQuoteRequest {
