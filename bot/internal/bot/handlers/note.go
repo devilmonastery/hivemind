@@ -24,8 +24,6 @@ func handleNote(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *confi
 	switch subcommand.Name {
 	case "create":
 		handleNoteCreate(s, i, subcommand, log, grpcClient)
-	case "list":
-		handleNoteList(s, i, subcommand, log, grpcClient)
 	case "view":
 		handleNoteView(s, i, subcommand, cfg, log, grpcClient)
 	case "search":
@@ -164,91 +162,6 @@ func handleNoteCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate,
 }
 
 // handleNoteList lists user's notes
-func handleNoteList(s *discordgo.Session, i *discordgo.InteractionCreate, subcommand *discordgo.ApplicationCommandInteractionDataOption, log *slog.Logger, grpcClient *client.Client) {
-	var guildID string
-	var tags []string
-	limit := int32(10)
-
-	for _, opt := range subcommand.Options {
-		switch opt.Name {
-		case "guild":
-			if opt.BoolValue() {
-				guildID = i.GuildID
-			}
-		case "tags":
-			tagStr := opt.StringValue()
-			parts := strings.Split(tagStr, ",")
-			for _, tag := range parts {
-				tag = strings.TrimSpace(tag)
-				if tag != "" {
-					tags = append(tags, tag)
-				}
-			}
-		case "limit":
-			limit = int32(opt.IntValue())
-		}
-	}
-
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Flags: discordgo.MessageFlagsEphemeral,
-		},
-	})
-	if err != nil {
-		log.Error("Failed to defer response", "error", err)
-		return
-	}
-
-	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
-	ctx := discordContextFor(i)
-
-	req := &notespb.ListNotesRequest{
-		GuildId: guildID,
-		Tags:    tags,
-		Limit:   limit,
-	}
-
-	resp, err := noteClient.ListNotes(ctx, req)
-	if err != nil {
-		log.Error("Failed to list notes", "error", err)
-		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: fmt.Sprintf("❌ Failed to list notes: %v", err),
-			Flags:   discordgo.MessageFlagsEphemeral,
-		})
-		return
-	}
-
-	if len(resp.Notes) == 0 {
-		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: "No notes found",
-			Flags:   discordgo.MessageFlagsEphemeral,
-		})
-		return
-	}
-
-	var content strings.Builder
-	content.WriteString(fmt.Sprintf("📝 Found %d note(s):\n\n", resp.Total))
-	for idx, note := range resp.Notes {
-		title := note.Title
-		if title == "" {
-			title = "(untitled)"
-		}
-		content.WriteString(fmt.Sprintf("%d. **%s** (ID: %s)\n", idx+1, title, note.Id))
-		if len(note.Tags) > 0 {
-			content.WriteString(fmt.Sprintf("   Tags: %s\n", strings.Join(note.Tags, ", ")))
-		}
-	}
-
-	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: content.String(),
-		Flags:   discordgo.MessageFlagsEphemeral,
-	})
-	if err != nil {
-		log.Error("Failed to send followup", "error", err)
-	}
-}
-
 // createNoteEmbed creates an embed for displaying a note with action buttons
 func createNoteEmbed(note *notespb.Note, cfg *config.Config) (*discordgo.MessageEmbed, []discordgo.MessageComponent) {
 	title := note.Title

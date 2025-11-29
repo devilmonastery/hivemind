@@ -626,9 +626,11 @@ func handleWikiAddToChat(s *discordgo.Session, i *discordgo.InteractionCreate, t
 
 	page := resp.Pages[0]
 
-	// Format as embed
+	// Format as embed with web link
+	webURL := fmt.Sprintf("%s/wiki?guild_id=%s&title=%s", getWebBaseURL(cfg), page.GuildId, page.Title)
 	embed := &discordgo.MessageEmbed{
 		Title:       page.Title,
+		URL:         webURL,
 		Description: page.Body,
 		Color:       0x5865F2, // Discord blurple
 		Footer: &discordgo.MessageEmbedFooter{

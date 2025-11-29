@@ -23,7 +23,8 @@ func newRegisterCommand() *cobra.Command {
 		Use:   "register",
 		Short: "Register slash commands with Discord",
 		Long: `Register all slash commands with Discord API. 
-Use --guild for testing (instant), or --global for production (takes up to 1 hour to propagate).`,
+Use --guild for testing (instant), or --global for production (takes up to 1 hour to propagate).
+Automatically removes commands that are no longer in the registry.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
@@ -41,6 +42,48 @@ Use --guild for testing (instant), or --global for production (takes up to 1 hou
 
 			// Get command definitions
 			commandDefs := commands.GetDefinitions()
+
+			// Create a map of desired command names for quick lookup
+			desiredCommands := make(map[string]bool)
+			for _, cmd := range commandDefs {
+				desiredCommands[cmd.Name] = true
+			}
+
+			// Fetch existing commands and delete ones not in registry
+			if global {
+				log.Info("fetching existing global commands")
+				existingCmds, err := session.ApplicationCommands(cfg.Bot.ApplicationID, "")
+				if err != nil {
+					return fmt.Errorf("failed to fetch existing commands: %w", err)
+				}
+				for _, existingCmd := range existingCmds {
+					if !desiredCommands[existingCmd.Name] {
+						log.Info("deleting obsolete command", slog.String("name", existingCmd.Name))
+						err := session.ApplicationCommandDelete(cfg.Bot.ApplicationID, "", existingCmd.ID)
+						if err != nil {
+							log.Error("failed to delete command", slog.String("name", existingCmd.Name), slog.String("error", err.Error()))
+						}
+					}
+				}
+			} else {
+				if guildID == "" {
+					return fmt.Errorf("--guild is required when not using --global")
+				}
+				log.Info("fetching existing guild commands", slog.String("guild_id", guildID))
+				existingCmds, err := session.ApplicationCommands(cfg.Bot.ApplicationID, guildID)
+				if err != nil {
+					return fmt.Errorf("failed to fetch existing commands: %w", err)
+				}
+				for _, existingCmd := range existingCmds {
+					if !desiredCommands[existingCmd.Name] {
+						log.Info("deleting obsolete command", slog.String("name", existingCmd.Name))
+						err := session.ApplicationCommandDelete(cfg.Bot.ApplicationID, guildID, existingCmd.ID)
+						if err != nil {
+							log.Error("failed to delete command", slog.String("name", existingCmd.Name), slog.String("error", err.Error()))
+						}
+					}
+				}
+			}
 
 			if global {
 				log.Info("registering commands globally (may take up to 1 hour)")
