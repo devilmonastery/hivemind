@@ -69,6 +69,13 @@ auth:
   # - Remove or comment out this dev_bot_token line
   # - Generate a proper service token using:
   #     ./bin/hivemind-server token create-service --name "discord-bot" --role bot --config configs/prod-server.yaml
+  #   
+  #   In Docker (config mounted at /config/server.yaml):
+  #     docker exec -it <container-name> ./hivemind-server token create-service --name "discord-bot" --role bot --config /config/server.yaml
+  #   
+  #   In Kubernetes (config from ConfigMap/Secret):
+  #     kubectl exec -it deployment/hivemind-server -- ./hivemind-server token create-service --name "discord-bot" --role bot --config /config/server.yaml
+  #   
   # - Store the generated JWT token in your bot's config (service_token field)
   # - Service tokens are stored in the database and can be revoked if compromised
   # 
