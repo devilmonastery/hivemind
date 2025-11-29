@@ -4,10 +4,133 @@
 
 {{define "content"}}
 {{if .User}}
-    {{/* Logged in view: Unified Today interface */}}
+    {{/* Logged in view: Recent Activity Feed */}}
     <div class="space-y-6">
-        {{template "home-today-header" .}}
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold font-heading text-neon-cyan mb-2">
+                [ RECENT ACTIVITY ]
+            </h1>
+            <p class="text-gray-400">
+                Your latest notes, quotes, and wiki pages
+            </p>
+        </div>
 
+        {{if .RecentActivity}}
+        <div class="space-y-4">
+            {{range .RecentActivity}}
+            <div class="bg-hive-surface border border-hive-metal rounded-lg p-4 hover:border-neon-cyan transition-colors">
+                <!-- Header with type badge and timestamp -->
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        {{if eq .Type "note"}}
+                        <span class="px-2 py-1 bg-neon-cyan bg-opacity-20 text-neon-cyan text-xs font-mono rounded border border-neon-cyan">
+                            NOTE
+                        </span>
+                        {{else if eq .Type "quote"}}
+                        <span class="px-2 py-1 bg-neon-magenta bg-opacity-20 text-neon-magenta text-xs font-mono rounded border border-neon-magenta">
+                            QUOTE
+                        </span>
+                        {{else if eq .Type "wiki"}}
+                        <span class="px-2 py-1 bg-neon-green bg-opacity-20 text-neon-green text-xs font-mono rounded border border-neon-green">
+                            WIKI
+                        </span>
+                        {{end}}
+                        
+                        {{if .Author}}
+                        <span class="text-sm text-gray-400">by {{.Author}}</span>
+                        {{end}}
+                    </div>
+                    <time class="text-sm text-gray-500" datetime="{{.Timestamp.Format "2006-01-02T15:04:05Z07:00"}}">
+                        {{.Timestamp.Format "Jan 2, 2006"}}
+                    </time>
+                </div>
+
+                <!-- Title (for notes and wiki) -->
+                {{if .Title}}
+                <h3 class="text-lg font-semibold text-gray-100 mb-2">
+                    {{.Title}}
+                </h3>
+                {{end}}
+
+                <!-- Preview text -->
+                <div class="text-gray-300 line-clamp-3 mb-3">
+                    {{.Preview}}
+                </div>
+
+                <!-- Tags -->
+                {{if .Tags}}
+                <div class="flex flex-wrap gap-2 mb-3">
+                    {{range .Tags}}
+                    <span class="px-2 py-0.5 bg-hive-bg text-gray-400 text-xs rounded border border-hive-metal">
+                        #{{.}}
+                    </span>
+                    {{end}}
+                </div>
+                {{end}}
+
+                <!-- View link -->
+                <div class="flex justify-end">
+                    {{if eq .Type "note"}}
+                    <a href="/notes/{{.ID}}" class="text-sm text-neon-cyan hover:text-neon-cyan hover:underline font-mono">
+                        [ VIEW NOTE → ]
+                    </a>
+                    {{else if eq .Type "quote"}}
+                    <a href="/quotes/{{.ID}}" class="text-sm text-neon-magenta hover:text-neon-magenta hover:underline font-mono">
+                        [ VIEW QUOTE → ]
+                    </a>
+                    {{else if eq .Type "wiki"}}
+                    <a href="/wiki/{{.ID}}" class="text-sm text-neon-green hover:text-neon-green hover:underline font-mono">
+                        [ VIEW WIKI → ]
+                    </a>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Navigation to full views -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-8 border-t border-hive-metal">
+            <a href="/notes" class="block p-6 bg-hive-surface border-2 border-neon-cyan hover:bg-neon-cyan hover:bg-opacity-10 rounded-lg transition-all">
+                <h3 class="text-xl font-bold font-mono text-neon-cyan mb-2">
+                    [ NOTES ]
+                </h3>
+                <p class="text-gray-400 text-sm">
+                    Browse all your personal notes
+                </p>
+            </a>
+            <a href="/quotes" class="block p-6 bg-hive-surface border-2 border-neon-magenta hover:bg-neon-magenta hover:bg-opacity-10 rounded-lg transition-all">
+                <h3 class="text-xl font-bold font-mono text-neon-magenta mb-2">
+                    [ QUOTES ]
+                </h3>
+                <p class="text-gray-400 text-sm">
+                    Explore memorable guild quotes
+                </p>
+            </a>
+            <a href="/wiki" class="block p-6 bg-hive-surface border-2 border-neon-green hover:bg-neon-green hover:bg-opacity-10 rounded-lg transition-all">
+                <h3 class="text-xl font-bold font-mono text-neon-green mb-2">
+                    [ WIKI ]
+                </h3>
+                <p class="text-gray-400 text-sm">
+                    Access guild knowledge base
+                </p>
+            </a>
+        </div>
+
+        {{else}}
+        <!-- Empty state -->
+        <div class="text-center py-12">
+            <div class="text-6xl mb-4">📭</div>
+            <h2 class="text-2xl font-bold text-gray-300 mb-2">No Activity Yet</h2>
+            <p class="text-gray-400 mb-6">
+                Start creating notes, saving quotes, or contributing to wiki pages!
+            </p>
+            <div class="flex justify-center gap-4">
+                <a href="/notes" class="px-4 py-2 bg-neon-cyan text-hive-bg font-mono rounded hover:bg-opacity-90 transition-colors">
+                    [ CREATE NOTE ]
+                </a>
+            </div>
+        </div>
+        {{end}}
     </div>
 
 {{else}}
@@ -45,16 +168,4 @@
     </div>
 
 {{end}}
-{{end}}
-
-{{/* Section templates for logged-in view */}}
-{{define "home-today-header"}}
-<div class="mb-4">
-    <h2 class="text-3xl font-bold text-gray-900">Today</h2>
-    <p class="text-gray-600" {{if .User.Timezone}}title="{{.User.Timezone}}"{{end}}>{{.Today}}</p>
-</div>
-{{end}}
-
-{{define "home-scripts"}}
-{{/* No additional scripts needed for home page */}}
 {{end}}
