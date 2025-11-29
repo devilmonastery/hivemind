@@ -144,25 +144,6 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 				},
 				{
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
-					Name:        "list",
-					Description: "List quotes from this guild",
-					Options: []*discordgo.ApplicationCommandOption{
-						{
-							Type:        discordgo.ApplicationCommandOptionString,
-							Name:        "tags",
-							Description: "Filter by tags (comma-separated, optional)",
-							Required:    false,
-						},
-						{
-							Type:        discordgo.ApplicationCommandOptionInteger,
-							Name:        "limit",
-							Description: "Maximum number of quotes to return",
-							Required:    false,
-						},
-					},
-				},
-				{
-					Type:        discordgo.ApplicationCommandOptionSubCommand,
 					Name:        "search",
 					Description: "Search quotes in this guild",
 					Options: []*discordgo.ApplicationCommandOption{

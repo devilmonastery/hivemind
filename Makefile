@@ -10,6 +10,10 @@ CLI_BIN := bin/hivemind
 WEB_BIN := bin/hivemind-web
 BOT_BIN := bin/hivemind-bot
 
+# Version information
+VERSION ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
+LDFLAGS := -X github.com/devilmonastery/hivemind/web/internal/render.Version=$(VERSION)
+
 # Go parameters
 GOCMD := go
 GOBUILD := $(GOCMD) build
@@ -36,7 +40,7 @@ cli:
 ## web: Build the web server
 web:
 	@echo "Building hivemind web..."
-	@$(GOBUILD) -o $(WEB_BIN) ./web
+	@$(GOBUILD) -ldflags "$(LDFLAGS)" -o $(WEB_BIN) ./web
 
 ## bot: Build the Discord bot
 bot:

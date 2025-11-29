@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"time"
+	"strings"
 
 	"github.com/gorilla/mux"
 
@@ -19,16 +19,6 @@ import (
 	"github.com/devilmonastery/hivemind/web/internal/render"
 	"github.com/devilmonastery/hivemind/web/internal/session"
 )
-
-// staticCacheHeaders adds cache headers for static assets (versioned filenames)
-func staticCacheHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Since filenames include versions, cache aggressively
-		w.Header().Set("Cache-Control", "public, max-age=31536000") // 1 year
-		w.Header().Set("Expires", time.Now().AddDate(1, 0, 0).Format(http.TimeFormat))
-		next.ServeHTTP(w, r)
-	})
-}
 
 func main() {
 	// Parse command line flags
@@ -113,16 +103,34 @@ func main() {
 func createRouter(h *handlers.Handler, authMw *middleware.AuthMiddleware) http.Handler {
 	router := mux.NewRouter()
 
-	// Static files with cache headers
+	// Static files with version path: /static/{version}/...
+	// Strip /static/{version}/ prefix and serve from web/static/
 	staticDir := http.Dir("web/static")
-	staticHandler := http.StripPrefix("/static/", http.FileServer(staticDir))
-	router.PathPrefix("/static/").Handler(staticCacheHeaders(staticHandler))
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Remove version from path (format: {version}/file.ext)
+		// Split path and skip the first segment (version)
+		parts := strings.SplitN(r.URL.Path, "/", 2)
+		if len(parts) == 2 {
+			// Rewrite path without version
+			r.URL.Path = "/" + parts[1]
+		}
+		// Set aggressive cache headers for versioned assets
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		http.FileServer(staticDir).ServeHTTP(w, r)
+	})))
 
 	// Health check endpoint (no auth required)
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
+	}).Methods("GET")
+
+	// Version info endpoint
+	router.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"version":"%s"}`, render.Version)
 	}).Methods("GET")
 
 	// Public routes (no auth required)
