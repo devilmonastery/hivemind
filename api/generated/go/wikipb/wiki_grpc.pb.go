@@ -20,13 +20,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WikiService_CreateWikiPage_FullMethodName  = "/hivemind.wiki.WikiService/CreateWikiPage"
-	WikiService_GetWikiPage_FullMethodName     = "/hivemind.wiki.WikiService/GetWikiPage"
-	WikiService_SearchWikiPages_FullMethodName = "/hivemind.wiki.WikiService/SearchWikiPages"
-	WikiService_UpdateWikiPage_FullMethodName  = "/hivemind.wiki.WikiService/UpdateWikiPage"
-	WikiService_UpsertWikiPage_FullMethodName  = "/hivemind.wiki.WikiService/UpsertWikiPage"
-	WikiService_DeleteWikiPage_FullMethodName  = "/hivemind.wiki.WikiService/DeleteWikiPage"
-	WikiService_ListWikiPages_FullMethodName   = "/hivemind.wiki.WikiService/ListWikiPages"
+	WikiService_CreateWikiPage_FullMethodName            = "/hivemind.wiki.WikiService/CreateWikiPage"
+	WikiService_GetWikiPage_FullMethodName               = "/hivemind.wiki.WikiService/GetWikiPage"
+	WikiService_SearchWikiPages_FullMethodName           = "/hivemind.wiki.WikiService/SearchWikiPages"
+	WikiService_UpdateWikiPage_FullMethodName            = "/hivemind.wiki.WikiService/UpdateWikiPage"
+	WikiService_UpsertWikiPage_FullMethodName            = "/hivemind.wiki.WikiService/UpsertWikiPage"
+	WikiService_DeleteWikiPage_FullMethodName            = "/hivemind.wiki.WikiService/DeleteWikiPage"
+	WikiService_ListWikiPages_FullMethodName             = "/hivemind.wiki.WikiService/ListWikiPages"
+	WikiService_AddWikiMessageReference_FullMethodName   = "/hivemind.wiki.WikiService/AddWikiMessageReference"
+	WikiService_ListWikiMessageReferences_FullMethodName = "/hivemind.wiki.WikiService/ListWikiMessageReferences"
 )
 
 // WikiServiceClient is the client API for WikiService service.
@@ -49,6 +51,10 @@ type WikiServiceClient interface {
 	DeleteWikiPage(ctx context.Context, in *DeleteWikiPageRequest, opts ...grpc.CallOption) (*commonpb.SuccessResponse, error)
 	// ListWikiPages lists all wiki pages in a guild with pagination
 	ListWikiPages(ctx context.Context, in *ListWikiPagesRequest, opts ...grpc.CallOption) (*ListWikiPagesResponse, error)
+	// AddWikiMessageReference tags a Discord message with a wiki page topic
+	AddWikiMessageReference(ctx context.Context, in *AddWikiMessageReferenceRequest, opts ...grpc.CallOption) (*WikiMessageReference, error)
+	// ListWikiMessageReferences retrieves all message references for a wiki page
+	ListWikiMessageReferences(ctx context.Context, in *ListWikiMessageReferencesRequest, opts ...grpc.CallOption) (*ListWikiMessageReferencesResponse, error)
 }
 
 type wikiServiceClient struct {
@@ -129,6 +135,26 @@ func (c *wikiServiceClient) ListWikiPages(ctx context.Context, in *ListWikiPages
 	return out, nil
 }
 
+func (c *wikiServiceClient) AddWikiMessageReference(ctx context.Context, in *AddWikiMessageReferenceRequest, opts ...grpc.CallOption) (*WikiMessageReference, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WikiMessageReference)
+	err := c.cc.Invoke(ctx, WikiService_AddWikiMessageReference_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wikiServiceClient) ListWikiMessageReferences(ctx context.Context, in *ListWikiMessageReferencesRequest, opts ...grpc.CallOption) (*ListWikiMessageReferencesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWikiMessageReferencesResponse)
+	err := c.cc.Invoke(ctx, WikiService_ListWikiMessageReferences_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WikiServiceServer is the server API for WikiService service.
 // All implementations should embed UnimplementedWikiServiceServer
 // for forward compatibility.
@@ -149,6 +175,10 @@ type WikiServiceServer interface {
 	DeleteWikiPage(context.Context, *DeleteWikiPageRequest) (*commonpb.SuccessResponse, error)
 	// ListWikiPages lists all wiki pages in a guild with pagination
 	ListWikiPages(context.Context, *ListWikiPagesRequest) (*ListWikiPagesResponse, error)
+	// AddWikiMessageReference tags a Discord message with a wiki page topic
+	AddWikiMessageReference(context.Context, *AddWikiMessageReferenceRequest) (*WikiMessageReference, error)
+	// ListWikiMessageReferences retrieves all message references for a wiki page
+	ListWikiMessageReferences(context.Context, *ListWikiMessageReferencesRequest) (*ListWikiMessageReferencesResponse, error)
 }
 
 // UnimplementedWikiServiceServer should be embedded to have
@@ -178,6 +208,12 @@ func (UnimplementedWikiServiceServer) DeleteWikiPage(context.Context, *DeleteWik
 }
 func (UnimplementedWikiServiceServer) ListWikiPages(context.Context, *ListWikiPagesRequest) (*ListWikiPagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListWikiPages not implemented")
+}
+func (UnimplementedWikiServiceServer) AddWikiMessageReference(context.Context, *AddWikiMessageReferenceRequest) (*WikiMessageReference, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddWikiMessageReference not implemented")
+}
+func (UnimplementedWikiServiceServer) ListWikiMessageReferences(context.Context, *ListWikiMessageReferencesRequest) (*ListWikiMessageReferencesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListWikiMessageReferences not implemented")
 }
 func (UnimplementedWikiServiceServer) testEmbeddedByValue() {}
 
@@ -325,6 +361,42 @@ func _WikiService_ListWikiPages_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WikiService_AddWikiMessageReference_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddWikiMessageReferenceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WikiServiceServer).AddWikiMessageReference(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WikiService_AddWikiMessageReference_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WikiServiceServer).AddWikiMessageReference(ctx, req.(*AddWikiMessageReferenceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WikiService_ListWikiMessageReferences_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWikiMessageReferencesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WikiServiceServer).ListWikiMessageReferences(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WikiService_ListWikiMessageReferences_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WikiServiceServer).ListWikiMessageReferences(ctx, req.(*ListWikiMessageReferencesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WikiService_ServiceDesc is the grpc.ServiceDesc for WikiService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -359,6 +431,14 @@ var WikiService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListWikiPages",
 			Handler:    _WikiService_ListWikiPages_Handler,
+		},
+		{
+			MethodName: "AddWikiMessageReference",
+			Handler:    _WikiService_AddWikiMessageReference_Handler,
+		},
+		{
+			MethodName: "ListWikiMessageReferences",
+			Handler:    _WikiService_ListWikiMessageReferences_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

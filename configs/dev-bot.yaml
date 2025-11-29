@@ -7,6 +7,7 @@ backend:
   grpc_port: 4153
   tls_enabled: false
   service_token: "${DEV_BOT_TOKEN}"  # Dev bot uses shared secret from .env
+  web_base_url: "http://localhost:8080"  # Web interface URL for links
 
 logging:
   level: "info"

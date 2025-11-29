@@ -31,7 +31,7 @@ func NewUserRepository(db *sqlx.DB) repositories.UserRepository {
 // userRow represents a user as stored in the database
 type userRow struct {
 	ID           string         `db:"id"`
-	Email        string         `db:"email"`
+	Email        sql.NullString `db:"email"`
 	DisplayName  string         `db:"name"` // database column is 'name'
 	AvatarURL    sql.NullString `db:"avatar_url"`
 	Timezone     sql.NullString `db:"timezone"`
@@ -50,7 +50,7 @@ type userRow struct {
 func (r *userRow) toEntity() *entities.User {
 	user := &entities.User{
 		ID:          r.ID,
-		Email:       r.Email,
+		Email:       r.Email.String, // Empty string if NULL
 		DisplayName: r.DisplayName,
 		Role:        entities.Role(r.Role),
 		UserType:    entities.UserType(r.UserType),
@@ -90,7 +90,7 @@ func (r *userRow) toEntity() *entities.User {
 func userRowFromEntity(user *entities.User) *userRow {
 	row := &userRow{
 		ID:          user.ID,
-		Email:       user.Email,
+		Email:       sql.NullString{String: user.Email, Valid: user.Email != ""},
 		DisplayName: user.DisplayName,
 		Role:        string(user.Role),
 		UserType:    string(user.UserType),

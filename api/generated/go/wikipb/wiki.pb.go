@@ -783,6 +783,478 @@ func (x *ListWikiPagesResponse) GetTotal() int32 {
 	return 0
 }
 
+// WikiMessageReference represents a Discord message tagged with a wiki page topic
+type WikiMessageReference struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	WikiPageId string                 `protobuf:"bytes,2,opt,name=wiki_page_id,json=wikiPageId,proto3" json:"wiki_page_id,omitempty"`
+	// Discord identifiers
+	MessageId string `protobuf:"bytes,3,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	ChannelId string `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	GuildId   string `protobuf:"bytes,5,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	// Captured message content (snapshot at time of reference)
+	Content           string                 `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`
+	AuthorId          string                 `protobuf:"bytes,7,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	AuthorUsername    string                 `protobuf:"bytes,8,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
+	AuthorDisplayName string                 `protobuf:"bytes,9,opt,name=author_display_name,json=authorDisplayName,proto3" json:"author_display_name,omitempty"`
+	AuthorAvatarUrl   string                 `protobuf:"bytes,16,opt,name=author_avatar_url,json=authorAvatarUrl,proto3" json:"author_avatar_url,omitempty"` // Discord avatar URL (joined from discord_users)
+	MessageTimestamp  *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=message_timestamp,json=messageTimestamp,proto3" json:"message_timestamp,omitempty"`
+	// Attachment URLs (images, files, etc)
+	AttachmentUrls []string `protobuf:"bytes,11,rep,name=attachment_urls,json=attachmentUrls,proto3" json:"attachment_urls,omitempty"`
+	// Attachment metadata (content type, filename, size)
+	Attachments []*AttachmentMetadata `protobuf:"bytes,15,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	// Metadata
+	AddedAt       *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	AddedByUserId string                 `protobuf:"bytes,13,opt,name=added_by_user_id,json=addedByUserId,proto3" json:"added_by_user_id,omitempty"`
+	// Computed Discord link
+	DiscordLink   string `protobuf:"bytes,14,opt,name=discord_link,json=discordLink,proto3" json:"discord_link,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WikiMessageReference) Reset() {
+	*x = WikiMessageReference{}
+	mi := &file_wiki_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WikiMessageReference) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WikiMessageReference) ProtoMessage() {}
+
+func (x *WikiMessageReference) ProtoReflect() protoreflect.Message {
+	mi := &file_wiki_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WikiMessageReference.ProtoReflect.Descriptor instead.
+func (*WikiMessageReference) Descriptor() ([]byte, []int) {
+	return file_wiki_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *WikiMessageReference) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetWikiPageId() string {
+	if x != nil {
+		return x.WikiPageId
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetAuthorId() string {
+	if x != nil {
+		return x.AuthorId
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetAuthorUsername() string {
+	if x != nil {
+		return x.AuthorUsername
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetAuthorDisplayName() string {
+	if x != nil {
+		return x.AuthorDisplayName
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetAuthorAvatarUrl() string {
+	if x != nil {
+		return x.AuthorAvatarUrl
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetMessageTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.MessageTimestamp
+	}
+	return nil
+}
+
+func (x *WikiMessageReference) GetAttachmentUrls() []string {
+	if x != nil {
+		return x.AttachmentUrls
+	}
+	return nil
+}
+
+func (x *WikiMessageReference) GetAttachments() []*AttachmentMetadata {
+	if x != nil {
+		return x.Attachments
+	}
+	return nil
+}
+
+func (x *WikiMessageReference) GetAddedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AddedAt
+	}
+	return nil
+}
+
+func (x *WikiMessageReference) GetAddedByUserId() string {
+	if x != nil {
+		return x.AddedByUserId
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetDiscordLink() string {
+	if x != nil {
+		return x.DiscordLink
+	}
+	return ""
+}
+
+// AttachmentMetadata stores Discord attachment information
+type AttachmentMetadata struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	ContentType   string                 `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"` // MIME type (e.g., "image/png", "video/mp4")
+	Filename      string                 `protobuf:"bytes,3,opt,name=filename,proto3" json:"filename,omitempty"`
+	Width         int32                  `protobuf:"varint,4,opt,name=width,proto3" json:"width,omitempty"`   // For images/videos
+	Height        int32                  `protobuf:"varint,5,opt,name=height,proto3" json:"height,omitempty"` // For images/videos
+	Size          int64                  `protobuf:"varint,6,opt,name=size,proto3" json:"size,omitempty"`     // File size in bytes
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AttachmentMetadata) Reset() {
+	*x = AttachmentMetadata{}
+	mi := &file_wiki_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttachmentMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttachmentMetadata) ProtoMessage() {}
+
+func (x *AttachmentMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_wiki_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttachmentMetadata.ProtoReflect.Descriptor instead.
+func (*AttachmentMetadata) Descriptor() ([]byte, []int) {
+	return file_wiki_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AttachmentMetadata) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *AttachmentMetadata) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *AttachmentMetadata) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *AttachmentMetadata) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *AttachmentMetadata) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *AttachmentMetadata) GetSize() int64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+type AddWikiMessageReferenceRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	WikiPageId string                 `protobuf:"bytes,1,opt,name=wiki_page_id,json=wikiPageId,proto3" json:"wiki_page_id,omitempty"`
+	// Discord identifiers
+	MessageId string `protobuf:"bytes,2,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	ChannelId string `protobuf:"bytes,3,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	GuildId   string `protobuf:"bytes,4,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	// Message content
+	Content           string                 `protobuf:"bytes,5,opt,name=content,proto3" json:"content,omitempty"`
+	AuthorId          string                 `protobuf:"bytes,6,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	AuthorUsername    string                 `protobuf:"bytes,7,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
+	AuthorDisplayName string                 `protobuf:"bytes,8,opt,name=author_display_name,json=authorDisplayName,proto3" json:"author_display_name,omitempty"`
+	MessageTimestamp  *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=message_timestamp,json=messageTimestamp,proto3" json:"message_timestamp,omitempty"`
+	// Attachment URLs (deprecated, use attachments instead)
+	AttachmentUrls []string `protobuf:"bytes,10,rep,name=attachment_urls,json=attachmentUrls,proto3" json:"attachment_urls,omitempty"`
+	// Attachment metadata
+	Attachments   []*AttachmentMetadata `protobuf:"bytes,11,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddWikiMessageReferenceRequest) Reset() {
+	*x = AddWikiMessageReferenceRequest{}
+	mi := &file_wiki_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddWikiMessageReferenceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddWikiMessageReferenceRequest) ProtoMessage() {}
+
+func (x *AddWikiMessageReferenceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wiki_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddWikiMessageReferenceRequest.ProtoReflect.Descriptor instead.
+func (*AddWikiMessageReferenceRequest) Descriptor() ([]byte, []int) {
+	return file_wiki_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AddWikiMessageReferenceRequest) GetWikiPageId() string {
+	if x != nil {
+		return x.WikiPageId
+	}
+	return ""
+}
+
+func (x *AddWikiMessageReferenceRequest) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *AddWikiMessageReferenceRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *AddWikiMessageReferenceRequest) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *AddWikiMessageReferenceRequest) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *AddWikiMessageReferenceRequest) GetAuthorId() string {
+	if x != nil {
+		return x.AuthorId
+	}
+	return ""
+}
+
+func (x *AddWikiMessageReferenceRequest) GetAuthorUsername() string {
+	if x != nil {
+		return x.AuthorUsername
+	}
+	return ""
+}
+
+func (x *AddWikiMessageReferenceRequest) GetAuthorDisplayName() string {
+	if x != nil {
+		return x.AuthorDisplayName
+	}
+	return ""
+}
+
+func (x *AddWikiMessageReferenceRequest) GetMessageTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.MessageTimestamp
+	}
+	return nil
+}
+
+func (x *AddWikiMessageReferenceRequest) GetAttachmentUrls() []string {
+	if x != nil {
+		return x.AttachmentUrls
+	}
+	return nil
+}
+
+func (x *AddWikiMessageReferenceRequest) GetAttachments() []*AttachmentMetadata {
+	if x != nil {
+		return x.Attachments
+	}
+	return nil
+}
+
+type ListWikiMessageReferencesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WikiPageId    string                 `protobuf:"bytes,1,opt,name=wiki_page_id,json=wikiPageId,proto3" json:"wiki_page_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWikiMessageReferencesRequest) Reset() {
+	*x = ListWikiMessageReferencesRequest{}
+	mi := &file_wiki_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWikiMessageReferencesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWikiMessageReferencesRequest) ProtoMessage() {}
+
+func (x *ListWikiMessageReferencesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wiki_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWikiMessageReferencesRequest.ProtoReflect.Descriptor instead.
+func (*ListWikiMessageReferencesRequest) Descriptor() ([]byte, []int) {
+	return file_wiki_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ListWikiMessageReferencesRequest) GetWikiPageId() string {
+	if x != nil {
+		return x.WikiPageId
+	}
+	return ""
+}
+
+type ListWikiMessageReferencesResponse struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	References    []*WikiMessageReference `protobuf:"bytes,1,rep,name=references,proto3" json:"references,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWikiMessageReferencesResponse) Reset() {
+	*x = ListWikiMessageReferencesResponse{}
+	mi := &file_wiki_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWikiMessageReferencesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWikiMessageReferencesResponse) ProtoMessage() {}
+
+func (x *ListWikiMessageReferencesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_wiki_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWikiMessageReferencesResponse.ProtoReflect.Descriptor instead.
+func (*ListWikiMessageReferencesResponse) Descriptor() ([]byte, []int) {
+	return file_wiki_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ListWikiMessageReferencesResponse) GetReferences() []*WikiMessageReference {
+	if x != nil {
+		return x.References
+	}
+	return nil
+}
+
 var File_wiki_proto protoreflect.FileDescriptor
 
 const file_wiki_proto_rawDesc = "" +
@@ -851,7 +1323,58 @@ const file_wiki_proto_rawDesc = "" +
 	"\tascending\x18\x05 \x01(\bR\tascending\"\\\n" +
 	"\x15ListWikiPagesResponse\x12-\n" +
 	"\x05pages\x18\x01 \x03(\v2\x17.hivemind.wiki.WikiPageR\x05pages\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total2\xf4\x04\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\x97\x05\n" +
+	"\x14WikiMessageReference\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
+	"\fwiki_page_id\x18\x02 \x01(\tR\n" +
+	"wikiPageId\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x03 \x01(\tR\tmessageId\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x04 \x01(\tR\tchannelId\x12\x19\n" +
+	"\bguild_id\x18\x05 \x01(\tR\aguildId\x12\x18\n" +
+	"\acontent\x18\x06 \x01(\tR\acontent\x12\x1b\n" +
+	"\tauthor_id\x18\a \x01(\tR\bauthorId\x12'\n" +
+	"\x0fauthor_username\x18\b \x01(\tR\x0eauthorUsername\x12.\n" +
+	"\x13author_display_name\x18\t \x01(\tR\x11authorDisplayName\x12*\n" +
+	"\x11author_avatar_url\x18\x10 \x01(\tR\x0fauthorAvatarUrl\x12G\n" +
+	"\x11message_timestamp\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\x10messageTimestamp\x12'\n" +
+	"\x0fattachment_urls\x18\v \x03(\tR\x0eattachmentUrls\x12C\n" +
+	"\vattachments\x18\x0f \x03(\v2!.hivemind.wiki.AttachmentMetadataR\vattachments\x125\n" +
+	"\badded_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\x12'\n" +
+	"\x10added_by_user_id\x18\r \x01(\tR\raddedByUserId\x12!\n" +
+	"\fdiscord_link\x18\x0e \x01(\tR\vdiscordLink\"\xa7\x01\n" +
+	"\x12AttachmentMetadata\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12!\n" +
+	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\x12\x1a\n" +
+	"\bfilename\x18\x03 \x01(\tR\bfilename\x12\x14\n" +
+	"\x05width\x18\x04 \x01(\x05R\x05width\x12\x16\n" +
+	"\x06height\x18\x05 \x01(\x05R\x06height\x12\x12\n" +
+	"\x04size\x18\x06 \x01(\x03R\x04size\"\xe2\x03\n" +
+	"\x1eAddWikiMessageReferenceRequest\x12 \n" +
+	"\fwiki_page_id\x18\x01 \x01(\tR\n" +
+	"wikiPageId\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x02 \x01(\tR\tmessageId\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x03 \x01(\tR\tchannelId\x12\x19\n" +
+	"\bguild_id\x18\x04 \x01(\tR\aguildId\x12\x18\n" +
+	"\acontent\x18\x05 \x01(\tR\acontent\x12\x1b\n" +
+	"\tauthor_id\x18\x06 \x01(\tR\bauthorId\x12'\n" +
+	"\x0fauthor_username\x18\a \x01(\tR\x0eauthorUsername\x12.\n" +
+	"\x13author_display_name\x18\b \x01(\tR\x11authorDisplayName\x12G\n" +
+	"\x11message_timestamp\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x10messageTimestamp\x12'\n" +
+	"\x0fattachment_urls\x18\n" +
+	" \x03(\tR\x0eattachmentUrls\x12C\n" +
+	"\vattachments\x18\v \x03(\v2!.hivemind.wiki.AttachmentMetadataR\vattachments\"D\n" +
+	" ListWikiMessageReferencesRequest\x12 \n" +
+	"\fwiki_page_id\x18\x01 \x01(\tR\n" +
+	"wikiPageId\"h\n" +
+	"!ListWikiMessageReferencesResponse\x12C\n" +
+	"\n" +
+	"references\x18\x01 \x03(\v2#.hivemind.wiki.WikiMessageReferenceR\n" +
+	"references2\xe3\x06\n" +
 	"\vWikiService\x12O\n" +
 	"\x0eCreateWikiPage\x12$.hivemind.wiki.CreateWikiPageRequest\x1a\x17.hivemind.wiki.WikiPage\x12I\n" +
 	"\vGetWikiPage\x12!.hivemind.wiki.GetWikiPageRequest\x1a\x17.hivemind.wiki.WikiPage\x12`\n" +
@@ -859,7 +1382,9 @@ const file_wiki_proto_rawDesc = "" +
 	"\x0eUpdateWikiPage\x12$.hivemind.wiki.UpdateWikiPageRequest\x1a\x17.hivemind.wiki.WikiPage\x12]\n" +
 	"\x0eUpsertWikiPage\x12$.hivemind.wiki.UpsertWikiPageRequest\x1a%.hivemind.wiki.UpsertWikiPageResponse\x12[\n" +
 	"\x0eDeleteWikiPage\x12$.hivemind.wiki.DeleteWikiPageRequest\x1a#.hivemind.common.v1.SuccessResponse\x12Z\n" +
-	"\rListWikiPages\x12#.hivemind.wiki.ListWikiPagesRequest\x1a$.hivemind.wiki.ListWikiPagesResponseB<Z:github.com/devilmonastery/hivemind/api/generated/go/wikipbb\x06proto3"
+	"\rListWikiPages\x12#.hivemind.wiki.ListWikiPagesRequest\x1a$.hivemind.wiki.ListWikiPagesResponse\x12m\n" +
+	"\x17AddWikiMessageReference\x12-.hivemind.wiki.AddWikiMessageReferenceRequest\x1a#.hivemind.wiki.WikiMessageReference\x12~\n" +
+	"\x19ListWikiMessageReferences\x12/.hivemind.wiki.ListWikiMessageReferencesRequest\x1a0.hivemind.wiki.ListWikiMessageReferencesResponseB<Z:github.com/devilmonastery/hivemind/api/generated/go/wikipbb\x06proto3"
 
 var (
 	file_wiki_proto_rawDescOnce sync.Once
@@ -873,47 +1398,62 @@ func file_wiki_proto_rawDescGZIP() []byte {
 	return file_wiki_proto_rawDescData
 }
 
-var file_wiki_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_wiki_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_wiki_proto_goTypes = []any{
-	(*WikiPage)(nil),                 // 0: hivemind.wiki.WikiPage
-	(*CreateWikiPageRequest)(nil),    // 1: hivemind.wiki.CreateWikiPageRequest
-	(*GetWikiPageRequest)(nil),       // 2: hivemind.wiki.GetWikiPageRequest
-	(*SearchWikiPagesRequest)(nil),   // 3: hivemind.wiki.SearchWikiPagesRequest
-	(*SearchWikiPagesResponse)(nil),  // 4: hivemind.wiki.SearchWikiPagesResponse
-	(*UpdateWikiPageRequest)(nil),    // 5: hivemind.wiki.UpdateWikiPageRequest
-	(*UpsertWikiPageRequest)(nil),    // 6: hivemind.wiki.UpsertWikiPageRequest
-	(*UpsertWikiPageResponse)(nil),   // 7: hivemind.wiki.UpsertWikiPageResponse
-	(*DeleteWikiPageRequest)(nil),    // 8: hivemind.wiki.DeleteWikiPageRequest
-	(*ListWikiPagesRequest)(nil),     // 9: hivemind.wiki.ListWikiPagesRequest
-	(*ListWikiPagesResponse)(nil),    // 10: hivemind.wiki.ListWikiPagesResponse
-	(*timestamppb.Timestamp)(nil),    // 11: google.protobuf.Timestamp
-	(*commonpb.SuccessResponse)(nil), // 12: hivemind.common.v1.SuccessResponse
+	(*WikiPage)(nil),                          // 0: hivemind.wiki.WikiPage
+	(*CreateWikiPageRequest)(nil),             // 1: hivemind.wiki.CreateWikiPageRequest
+	(*GetWikiPageRequest)(nil),                // 2: hivemind.wiki.GetWikiPageRequest
+	(*SearchWikiPagesRequest)(nil),            // 3: hivemind.wiki.SearchWikiPagesRequest
+	(*SearchWikiPagesResponse)(nil),           // 4: hivemind.wiki.SearchWikiPagesResponse
+	(*UpdateWikiPageRequest)(nil),             // 5: hivemind.wiki.UpdateWikiPageRequest
+	(*UpsertWikiPageRequest)(nil),             // 6: hivemind.wiki.UpsertWikiPageRequest
+	(*UpsertWikiPageResponse)(nil),            // 7: hivemind.wiki.UpsertWikiPageResponse
+	(*DeleteWikiPageRequest)(nil),             // 8: hivemind.wiki.DeleteWikiPageRequest
+	(*ListWikiPagesRequest)(nil),              // 9: hivemind.wiki.ListWikiPagesRequest
+	(*ListWikiPagesResponse)(nil),             // 10: hivemind.wiki.ListWikiPagesResponse
+	(*WikiMessageReference)(nil),              // 11: hivemind.wiki.WikiMessageReference
+	(*AttachmentMetadata)(nil),                // 12: hivemind.wiki.AttachmentMetadata
+	(*AddWikiMessageReferenceRequest)(nil),    // 13: hivemind.wiki.AddWikiMessageReferenceRequest
+	(*ListWikiMessageReferencesRequest)(nil),  // 14: hivemind.wiki.ListWikiMessageReferencesRequest
+	(*ListWikiMessageReferencesResponse)(nil), // 15: hivemind.wiki.ListWikiMessageReferencesResponse
+	(*timestamppb.Timestamp)(nil),             // 16: google.protobuf.Timestamp
+	(*commonpb.SuccessResponse)(nil),          // 17: hivemind.common.v1.SuccessResponse
 }
 var file_wiki_proto_depIdxs = []int32{
-	11, // 0: hivemind.wiki.WikiPage.created_at:type_name -> google.protobuf.Timestamp
-	11, // 1: hivemind.wiki.WikiPage.updated_at:type_name -> google.protobuf.Timestamp
+	16, // 0: hivemind.wiki.WikiPage.created_at:type_name -> google.protobuf.Timestamp
+	16, // 1: hivemind.wiki.WikiPage.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: hivemind.wiki.SearchWikiPagesResponse.pages:type_name -> hivemind.wiki.WikiPage
 	0,  // 3: hivemind.wiki.UpsertWikiPageResponse.page:type_name -> hivemind.wiki.WikiPage
 	0,  // 4: hivemind.wiki.ListWikiPagesResponse.pages:type_name -> hivemind.wiki.WikiPage
-	1,  // 5: hivemind.wiki.WikiService.CreateWikiPage:input_type -> hivemind.wiki.CreateWikiPageRequest
-	2,  // 6: hivemind.wiki.WikiService.GetWikiPage:input_type -> hivemind.wiki.GetWikiPageRequest
-	3,  // 7: hivemind.wiki.WikiService.SearchWikiPages:input_type -> hivemind.wiki.SearchWikiPagesRequest
-	5,  // 8: hivemind.wiki.WikiService.UpdateWikiPage:input_type -> hivemind.wiki.UpdateWikiPageRequest
-	6,  // 9: hivemind.wiki.WikiService.UpsertWikiPage:input_type -> hivemind.wiki.UpsertWikiPageRequest
-	8,  // 10: hivemind.wiki.WikiService.DeleteWikiPage:input_type -> hivemind.wiki.DeleteWikiPageRequest
-	9,  // 11: hivemind.wiki.WikiService.ListWikiPages:input_type -> hivemind.wiki.ListWikiPagesRequest
-	0,  // 12: hivemind.wiki.WikiService.CreateWikiPage:output_type -> hivemind.wiki.WikiPage
-	0,  // 13: hivemind.wiki.WikiService.GetWikiPage:output_type -> hivemind.wiki.WikiPage
-	4,  // 14: hivemind.wiki.WikiService.SearchWikiPages:output_type -> hivemind.wiki.SearchWikiPagesResponse
-	0,  // 15: hivemind.wiki.WikiService.UpdateWikiPage:output_type -> hivemind.wiki.WikiPage
-	7,  // 16: hivemind.wiki.WikiService.UpsertWikiPage:output_type -> hivemind.wiki.UpsertWikiPageResponse
-	12, // 17: hivemind.wiki.WikiService.DeleteWikiPage:output_type -> hivemind.common.v1.SuccessResponse
-	10, // 18: hivemind.wiki.WikiService.ListWikiPages:output_type -> hivemind.wiki.ListWikiPagesResponse
-	12, // [12:19] is the sub-list for method output_type
-	5,  // [5:12] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	16, // 5: hivemind.wiki.WikiMessageReference.message_timestamp:type_name -> google.protobuf.Timestamp
+	12, // 6: hivemind.wiki.WikiMessageReference.attachments:type_name -> hivemind.wiki.AttachmentMetadata
+	16, // 7: hivemind.wiki.WikiMessageReference.added_at:type_name -> google.protobuf.Timestamp
+	16, // 8: hivemind.wiki.AddWikiMessageReferenceRequest.message_timestamp:type_name -> google.protobuf.Timestamp
+	12, // 9: hivemind.wiki.AddWikiMessageReferenceRequest.attachments:type_name -> hivemind.wiki.AttachmentMetadata
+	11, // 10: hivemind.wiki.ListWikiMessageReferencesResponse.references:type_name -> hivemind.wiki.WikiMessageReference
+	1,  // 11: hivemind.wiki.WikiService.CreateWikiPage:input_type -> hivemind.wiki.CreateWikiPageRequest
+	2,  // 12: hivemind.wiki.WikiService.GetWikiPage:input_type -> hivemind.wiki.GetWikiPageRequest
+	3,  // 13: hivemind.wiki.WikiService.SearchWikiPages:input_type -> hivemind.wiki.SearchWikiPagesRequest
+	5,  // 14: hivemind.wiki.WikiService.UpdateWikiPage:input_type -> hivemind.wiki.UpdateWikiPageRequest
+	6,  // 15: hivemind.wiki.WikiService.UpsertWikiPage:input_type -> hivemind.wiki.UpsertWikiPageRequest
+	8,  // 16: hivemind.wiki.WikiService.DeleteWikiPage:input_type -> hivemind.wiki.DeleteWikiPageRequest
+	9,  // 17: hivemind.wiki.WikiService.ListWikiPages:input_type -> hivemind.wiki.ListWikiPagesRequest
+	13, // 18: hivemind.wiki.WikiService.AddWikiMessageReference:input_type -> hivemind.wiki.AddWikiMessageReferenceRequest
+	14, // 19: hivemind.wiki.WikiService.ListWikiMessageReferences:input_type -> hivemind.wiki.ListWikiMessageReferencesRequest
+	0,  // 20: hivemind.wiki.WikiService.CreateWikiPage:output_type -> hivemind.wiki.WikiPage
+	0,  // 21: hivemind.wiki.WikiService.GetWikiPage:output_type -> hivemind.wiki.WikiPage
+	4,  // 22: hivemind.wiki.WikiService.SearchWikiPages:output_type -> hivemind.wiki.SearchWikiPagesResponse
+	0,  // 23: hivemind.wiki.WikiService.UpdateWikiPage:output_type -> hivemind.wiki.WikiPage
+	7,  // 24: hivemind.wiki.WikiService.UpsertWikiPage:output_type -> hivemind.wiki.UpsertWikiPageResponse
+	17, // 25: hivemind.wiki.WikiService.DeleteWikiPage:output_type -> hivemind.common.v1.SuccessResponse
+	10, // 26: hivemind.wiki.WikiService.ListWikiPages:output_type -> hivemind.wiki.ListWikiPagesResponse
+	11, // 27: hivemind.wiki.WikiService.AddWikiMessageReference:output_type -> hivemind.wiki.WikiMessageReference
+	15, // 28: hivemind.wiki.WikiService.ListWikiMessageReferences:output_type -> hivemind.wiki.ListWikiMessageReferencesResponse
+	20, // [20:29] is the sub-list for method output_type
+	11, // [11:20] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_wiki_proto_init() }
@@ -927,7 +1467,7 @@ func file_wiki_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_wiki_proto_rawDesc), len(file_wiki_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

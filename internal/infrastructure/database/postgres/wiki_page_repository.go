@@ -173,16 +173,16 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 	}
 
 	// Build WHERE clause - if guildID is empty, get from all guilds
-	whereClause := "deleted_at IS NULL"
+	whereClause := "wp.deleted_at IS NULL"
 	args := []interface{}{}
 	if guildID != "" {
-		whereClause = "guild_id = $1 AND deleted_at IS NULL"
+		whereClause = "wp.guild_id = $1 AND wp.deleted_at IS NULL"
 		args = append(args, guildID)
 	}
 
 	// Get total count
 	var total int
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM wiki_pages WHERE %s", whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM wiki_pages wp WHERE %s", whereClause)
 	var err error
 	if guildID != "" {
 		err = r.db.QueryRowContext(ctx, countQuery, guildID).Scan(&total)
@@ -239,21 +239,21 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 	}
 
 	// Build search conditions
-	conditions := []string{"guild_id = $1", "deleted_at IS NULL"}
+	conditions := []string{"wp.guild_id = $1", "wp.deleted_at IS NULL"}
 	args := []interface{}{guildID}
 	argCount := 1
 
 	// Full-text search on title and body
 	if query != "" {
 		argCount++
-		conditions = append(conditions, fmt.Sprintf("(to_tsvector('english', title || ' ' || body) @@ plainto_tsquery('english', $%d))", argCount))
+		conditions = append(conditions, fmt.Sprintf("(to_tsvector('english', wp.title || ' ' || wp.body) @@ plainto_tsquery('english', $%d))", argCount))
 		args = append(args, query)
 	}
 
 	// Tag filtering
 	if len(tags) > 0 {
 		argCount++
-		conditions = append(conditions, fmt.Sprintf("tags && $%d", argCount))
+		conditions = append(conditions, fmt.Sprintf("wp.tags && $%d", argCount))
 		args = append(args, pq.Array(tags))
 	}
 
@@ -261,7 +261,7 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 
 	// Get total count
 	var total int
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM wiki_pages WHERE %s", whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM wiki_pages wp WHERE %s", whereClause)
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -269,10 +269,11 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 
 	// Get pages with ranking
 	searchQuery := fmt.Sprintf(`
-		SELECT id, title, body, author_id, guild_id, channel_id, tags, created_at, updated_at
-		FROM wiki_pages
+		SELECT wp.id, wp.title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at
+		FROM wiki_pages wp
+		LEFT JOIN discord_guilds dg ON wp.guild_id = dg.guild_id
 		WHERE %s
-		ORDER BY ts_rank(to_tsvector('english', title || ' ' || body), plainto_tsquery('english', $%d)) DESC
+		ORDER BY ts_rank(to_tsvector('english', wp.title || ' ' || wp.body), plainto_tsquery('english', $%d)) DESC
 		LIMIT $%d OFFSET $%d
 	`, whereClause, argCount, argCount+1, argCount+2)
 
@@ -289,16 +290,18 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		page := &entities.WikiPage{}
 		var tagArray pq.StringArray
 		var channelID sql.NullString
+		var guildName sql.NullString
 
 		err := rows.Scan(
 			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
-			&channelID, &tagArray, &page.CreatedAt, &page.UpdatedAt,
+			&guildName, &channelID, &tagArray, &page.CreatedAt, &page.UpdatedAt,
 		)
 		if err != nil {
 			return nil, 0, err
 		}
 
 		page.ChannelID = channelID.String
+		page.GuildName = guildName.String
 		page.Tags = tagArray
 		pages = append(pages, page)
 	}

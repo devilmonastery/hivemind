@@ -1,0 +1,177 @@
+{{define "wiki_page"}}
+{{template "base" .}}
+{{end}}
+
+{{define "title"}}{{.Page.Title}} - Hivemind{{end}}
+
+{{define "content"}}
+<div class="max-w-4xl mx-auto">
+  <!-- Wiki Page Header -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-cyan-400 mb-2">{{.Page.Title}}</h1>
+    <div class="flex items-center gap-4 text-sm text-gray-400">
+      <span>By {{.Page.AuthorUsername}}</span>
+      <span>•</span>
+      <span>{{.Page.CreatedAt | formatDate}}</span>
+      {{if .Page.GuildName}}
+      <span>•</span>
+      <a href="https://discord.com/channels/{{.Page.GuildId}}" target="_blank" class="text-cyan-400 hover:text-cyan-300 hover:underline">
+        {{.Page.GuildName}}
+      </a>
+      {{else}}
+      <span>guild: {{.Page.GuildId}}</span>
+      {{end}}
+    </div>
+    {{if .Page.Tags}}
+    <div class="mt-2 flex flex-wrap gap-2">
+      {{range .Page.Tags}}
+      <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded">#{{.}}</span>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+
+  <!-- Wiki Page Body -->
+  <div class="border-2 border-hive-metal rounded-lg p-6 mb-6 bg-hive-surface">
+    <div class="prose prose-invert prose-cyan max-w-none">
+      {{renderMarkdown .Page.Body}}
+    </div>
+  </div>
+
+  <!-- References Section -->
+  {{if .References}}
+  <div class="border-2 border-hive-metal rounded-lg p-6 bg-hive-surface">
+    <h2 class="text-xl font-semibold text-cyan-400 mb-4">
+      References ({{len .References}})
+    </h2>
+    
+    <div class="space-y-4">
+      {{range .References}}
+      <div class="border-l-2 border-purple-500 pl-4 py-2 bg-hive-bg rounded-r-lg">
+        <!-- Reference Header -->
+        <div class="flex justify-between items-start mb-3">
+          <div class="flex items-center gap-3">
+            <!-- User Avatar -->
+            {{$displayName := .AuthorDisplayName}}
+            {{if not $displayName}}{{$displayName = .AuthorUsername}}{{end}}
+            {{if .AuthorAvatarUrl}}
+              <img src="{{.AuthorAvatarUrl}}" alt="{{$displayName}}" class="w-8 h-8 rounded-full border-glitch" />
+            {{else}}
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br {{avatarColors $displayName}} flex items-center justify-center text-white text-sm font-bold border-glitch">
+                {{initials $displayName}}
+              </div>
+            {{end}}
+            
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-purple-400 font-mono text-sm font-semibold">
+                  {{if .AuthorDisplayName}}{{.AuthorDisplayName}}{{else}}{{.AuthorUsername}}{{end}}
+                </span>
+                {{if .AuthorDisplayName}}
+                <span class="text-gray-500 text-xs">@{{.AuthorUsername}}</span>
+                {{end}}
+              </div>
+              <span class="text-gray-500 text-xs">
+                {{formatDate .MessageTimestamp}}
+              </span>
+            </div>
+          </div>
+          <a href="{{.DiscordLink}}" 
+             target="_blank"
+             class="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1 whitespace-nowrap">
+            View in Discord →
+          </a>
+        </div>
+        
+        <!-- Reference Content -->
+        {{if .Content}}
+        <div class="text-gray-300 text-sm mb-2 whitespace-pre-wrap bg-gray-900 p-3 rounded">{{.Content}}</div>
+        {{else}}
+        <div class="text-gray-500 text-sm mb-2 italic">(no text content)</div>
+        {{end}}
+        
+        <!-- Attachments -->
+        {{if or .AttachmentUrls .Attachments}}
+        <div class="mt-3">
+          <div class="flex gap-3 flex-wrap">
+            {{if .Attachments}}
+              {{range .Attachments}}
+                {{if hasPrefix .ContentType "image/"}}
+                  <!-- Image Thumbnail (using content type) -->
+                  <a href="{{.Url}}" target="_blank" class="block">
+                    <img src="{{thumbnailURL .Url}}" alt="{{.Filename}}" 
+                         class="max-w-[128px] max-h-[128px] object-contain rounded border-2 border-gray-700 hover:border-cyan-400 transition-colors bg-gray-900" />
+                  </a>
+                {{else if hasPrefix .ContentType "video/"}}
+                  <!-- Video Thumbnail (using content type) -->
+                  <a href="{{.Url}}" target="_blank" class="group relative block">
+                    <div class="w-32 h-32 bg-gray-800 rounded border-2 border-gray-700 group-hover:border-cyan-400 transition-colors flex items-center justify-center">
+                      <svg class="w-12 h-12 text-gray-400 group-hover:text-cyan-400 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
+                      </svg>
+                    </div>
+                    <div class="absolute bottom-1 right-1 bg-black bg-opacity-75 px-1.5 py-0.5 rounded text-xs text-white">
+                      {{fileExtension .Url}}
+                    </div>
+                  </a>
+                {{else}}
+                  <!-- File Icon (using content type) -->
+                  <a href="{{.Url}}" target="_blank" class="group relative block">
+                    <div class="w-32 h-32 bg-gray-800 rounded border-2 border-gray-700 group-hover:border-cyan-400 transition-colors flex flex-col items-center justify-center p-2">
+                      <svg class="w-10 h-10 text-gray-400 group-hover:text-cyan-400 transition-colors mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                      </svg>
+                      <span class="text-xs text-gray-400 group-hover:text-cyan-400 font-mono transition-colors">{{fileExtension .Url}}</span>
+                    </div>
+                  </a>
+                {{end}}
+              {{end}}
+            {{else}}
+              {{/* Fallback to AttachmentUrls for backwards compatibility */}}
+              {{range .AttachmentUrls}}
+                {{if isImageURL .}}
+                  <!-- Image Thumbnail (using URL detection) -->
+                  <a href="{{.}}" target="_blank" class="block">
+                    <img src="{{thumbnailURL .}}" alt="Attachment" 
+                         class="max-w-[128px] max-h-[128px] object-contain rounded border-2 border-gray-700 hover:border-cyan-400 transition-colors bg-gray-900" />
+                  </a>
+                {{else if isVideoURL .}}
+                  <!-- Video Thumbnail (using URL detection) -->
+                  <a href="{{.}}" target="_blank" class="group relative block">
+                    <div class="w-32 h-32 bg-gray-800 rounded border-2 border-gray-700 group-hover:border-cyan-400 transition-colors flex items-center justify-center">
+                      <svg class="w-12 h-12 text-gray-400 group-hover:text-cyan-400 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
+                      </svg>
+                    </div>
+                    <div class="absolute bottom-1 right-1 bg-black bg-opacity-75 px-1.5 py-0.5 rounded text-xs text-white">
+                      {{fileExtension .}}
+                    </div>
+                  </a>
+                {{else}}
+                  <!-- File Icon (using URL detection) -->
+                  <a href="{{.}}" target="_blank" class="group relative block">
+                    <div class="w-32 h-32 bg-gray-800 rounded border-2 border-gray-700 group-hover:border-cyan-400 transition-colors flex flex-col items-center justify-center p-2">
+                      <svg class="w-10 h-10 text-gray-400 group-hover:text-cyan-400 transition-colors mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                      </svg>
+                      <span class="text-xs text-gray-400 group-hover:text-cyan-400 font-mono transition-colors">{{fileExtension .}}</span>
+                    </div>
+                  </a>
+                {{end}}
+              {{end}}
+            {{end}}
+          </div>
+        </div>
+        {{end}}
+        
+        <!-- Added metadata -->
+        <div class="text-xs text-gray-500 mt-2">
+          Added to wiki {{formatDate .AddedAt}}
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+</div>
+{{end}}

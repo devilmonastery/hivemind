@@ -48,3 +48,32 @@ type Quote struct {
 	CreatedAt                time.Time  `json:"created_at"`
 	DeletedAt                *time.Time `json:"deleted_at,omitempty"`
 }
+
+// WikiMessageReference represents a Discord message tagged with a wiki page topic
+type WikiMessageReference struct {
+	ID                string               `json:"id"`
+	WikiPageID        string               `json:"wiki_page_id"`
+	MessageID         string               `json:"message_id"`
+	ChannelID         string               `json:"channel_id"`
+	GuildID           string               `json:"guild_id"`
+	Content           string               `json:"content"`
+	AuthorID          string               `json:"author_id"`
+	AuthorUsername    string               `json:"author_username"`
+	AuthorDisplayName string               `json:"author_display_name,omitempty"`
+	AuthorAvatarURL   string               `json:"author_avatar_url,omitempty"`
+	MessageTimestamp  time.Time            `json:"message_timestamp"`
+	AttachmentURLs    []string             `json:"attachment_urls,omitempty"` // Deprecated, use Attachments
+	Attachments       []AttachmentMetadata `json:"attachments,omitempty"`     // Attachment metadata with content types
+	AddedAt           time.Time            `json:"added_at"`
+	AddedByUserID     string               `json:"added_by_user_id,omitempty"`
+}
+
+// AttachmentMetadata stores Discord attachment information
+type AttachmentMetadata struct {
+	URL         string `json:"url"`
+	ContentType string `json:"content_type,omitempty"` // MIME type (e.g., "image/png", "video/mp4")
+	Filename    string `json:"filename,omitempty"`
+	Width       int    `json:"width,omitempty"`  // For images/videos
+	Height      int    `json:"height,omitempty"` // For images/videos
+	Size        int64  `json:"size,omitempty"`   // File size in bytes
+}

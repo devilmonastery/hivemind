@@ -10,13 +10,15 @@ import (
 
 // WikiService handles business logic for wiki pages
 type WikiService struct {
-	wikiRepo repositories.WikiPageRepository
+	wikiRepo    repositories.WikiPageRepository
+	wikiRefRepo repositories.WikiMessageReferenceRepository
 }
 
 // NewWikiService creates a new wiki service
-func NewWikiService(wikiRepo repositories.WikiPageRepository) *WikiService {
+func NewWikiService(wikiRepo repositories.WikiPageRepository, wikiRefRepo repositories.WikiMessageReferenceRepository) *WikiService {
 	return &WikiService{
-		wikiRepo: wikiRepo,
+		wikiRepo:    wikiRepo,
+		wikiRefRepo: wikiRefRepo,
 	}
 }
 
@@ -116,4 +118,21 @@ func (s *WikiService) SearchWikiPages(ctx context.Context, guildID, query string
 		return nil, 0, fmt.Errorf("failed to search wiki pages: %w", err)
 	}
 	return pages, total, nil
+}
+
+// AddWikiMessageReference adds a Discord message reference to a wiki page
+func (s *WikiService) AddWikiMessageReference(ctx context.Context, ref *entities.WikiMessageReference) error {
+	if err := s.wikiRefRepo.Create(ctx, ref); err != nil {
+		return fmt.Errorf("failed to add wiki message reference: %w", err)
+	}
+	return nil
+}
+
+// ListWikiMessageReferences retrieves all message references for a wiki page
+func (s *WikiService) ListWikiMessageReferences(ctx context.Context, pageID string) ([]*entities.WikiMessageReference, error) {
+	refs, err := s.wikiRefRepo.GetByPageID(ctx, pageID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list wiki message references: %w", err)
+	}
+	return refs, nil
 }

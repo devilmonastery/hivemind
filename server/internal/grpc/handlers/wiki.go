@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -66,11 +67,6 @@ func (h *wikiHandler) GetWikiPage(ctx context.Context, req *wikipb.GetWikiPageRe
 }
 
 func (h *wikiHandler) SearchWikiPages(ctx context.Context, req *wikipb.SearchWikiPagesRequest) (*wikipb.SearchWikiPagesResponse, error) {
-	userCtx, err := interceptors.GetUserFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	limit := int(req.Limit)
 	if limit <= 0 {
 		limit = 10
@@ -83,7 +79,8 @@ func (h *wikiHandler) SearchWikiPages(ctx context.Context, req *wikipb.SearchWik
 
 	protoPages := make([]*wikipb.WikiPage, len(pages))
 	for i, page := range pages {
-		protoPages[i] = toProtoWikiPage(page, userCtx.Username)
+		authorUsername := h.getUsernameForAuthor(ctx, page.AuthorID)
+		protoPages[i] = toProtoWikiPage(page, authorUsername)
 	}
 
 	return &wikipb.SearchWikiPagesResponse{
@@ -206,8 +203,111 @@ func (h *wikiHandler) getUsernameForAuthor(ctx context.Context, authorID string)
 	// Try to get Discord user for this author
 	discordUser, err := h.discordService.GetDiscordUserByHivemindID(ctx, authorID)
 	if err == nil && discordUser != nil {
+		// Prefer global name, fallback to username
+		if discordUser.DiscordGlobalName != nil && *discordUser.DiscordGlobalName != "" {
+			return *discordUser.DiscordGlobalName
+		}
 		return discordUser.DiscordUsername
 	}
 	// Fallback to author ID if username not found
 	return authorID
+}
+
+func (h *wikiHandler) AddWikiMessageReference(ctx context.Context, req *wikipb.AddWikiMessageReferenceRequest) (*wikipb.WikiMessageReference, error) {
+	// Get user context from auth interceptor
+	userCtx, err := interceptors.GetUserFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Debug logging
+	log.Printf("AddWikiMessageReference request: GuildId=%q, Content=%q (len=%d)", req.GuildId, req.Content, len(req.Content))
+
+	// Convert proto attachments to entity attachments
+	attachments := make([]entities.AttachmentMetadata, len(req.Attachments))
+	for i, att := range req.Attachments {
+		attachments[i] = entities.AttachmentMetadata{
+			URL:         att.Url,
+			ContentType: att.ContentType,
+			Filename:    att.Filename,
+			Width:       int(att.Width),
+			Height:      int(att.Height),
+			Size:        att.Size,
+		}
+	}
+
+	ref := &entities.WikiMessageReference{
+		WikiPageID:        req.WikiPageId,
+		MessageID:         req.MessageId,
+		ChannelID:         req.ChannelId,
+		GuildID:           req.GuildId,
+		Content:           req.Content,
+		AuthorID:          req.AuthorId,
+		AuthorUsername:    req.AuthorUsername,
+		AuthorDisplayName: req.AuthorDisplayName,
+		MessageTimestamp:  req.MessageTimestamp.AsTime(),
+		AttachmentURLs:    req.AttachmentUrls, // Keep for backwards compatibility
+		Attachments:       attachments,
+		AddedByUserID:     userCtx.UserID,
+	}
+
+	err = h.wikiService.AddWikiMessageReference(ctx, ref)
+	if err != nil {
+		log.Printf("error adding message reference: %v", err)
+		return nil, err
+	}
+
+	return toProtoWikiMessageReference(ref), nil
+}
+
+func (h *wikiHandler) ListWikiMessageReferences(ctx context.Context, req *wikipb.ListWikiMessageReferencesRequest) (*wikipb.ListWikiMessageReferencesResponse, error) {
+	refs, err := h.wikiService.ListWikiMessageReferences(ctx, req.WikiPageId)
+	if err != nil {
+		return nil, err
+	}
+
+	protoRefs := make([]*wikipb.WikiMessageReference, len(refs))
+	for i, ref := range refs {
+		protoRefs[i] = toProtoWikiMessageReference(ref)
+	}
+
+	return &wikipb.ListWikiMessageReferencesResponse{
+		References: protoRefs,
+	}, nil
+}
+
+func toProtoWikiMessageReference(ref *entities.WikiMessageReference) *wikipb.WikiMessageReference {
+	discordLink := "https://discord.com/channels/" + ref.GuildID + "/" + ref.ChannelID + "/" + ref.MessageID
+
+	// Convert entity attachments to proto attachments
+	protoAttachments := make([]*wikipb.AttachmentMetadata, len(ref.Attachments))
+	for i, att := range ref.Attachments {
+		protoAttachments[i] = &wikipb.AttachmentMetadata{
+			Url:         att.URL,
+			ContentType: att.ContentType,
+			Filename:    att.Filename,
+			Width:       int32(att.Width),
+			Height:      int32(att.Height),
+			Size:        att.Size,
+		}
+	}
+
+	return &wikipb.WikiMessageReference{
+		Id:                ref.ID,
+		WikiPageId:        ref.WikiPageID,
+		MessageId:         ref.MessageID,
+		ChannelId:         ref.ChannelID,
+		GuildId:           ref.GuildID,
+		Content:           ref.Content,
+		AuthorId:          ref.AuthorID,
+		AuthorUsername:    ref.AuthorUsername,
+		AuthorDisplayName: ref.AuthorDisplayName,
+		AuthorAvatarUrl:   ref.AuthorAvatarURL,
+		MessageTimestamp:  timestamppb.New(ref.MessageTimestamp),
+		AttachmentUrls:    ref.AttachmentURLs, // Keep for backwards compatibility
+		Attachments:       protoAttachments,
+		AddedAt:           timestamppb.New(ref.AddedAt),
+		AddedByUserId:     ref.AddedByUserID,
+		DiscordLink:       discordLink,
+	}
 }

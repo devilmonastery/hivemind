@@ -7,7 +7,7 @@
     {{/* Logged in view: Recent Activity Feed */}}
     <div class="space-y-6">
         <div class="mb-6">
-            <h1 class="text-3xl font-bold font-heading text-neon-cyan mb-2">
+            <h1 class="text-3xl font-bold font-heading text-neon-cyan mb-2 text-left">
                 [ RECENT ACTIVITY ]
             </h1>
             <p class="text-gray-400">
@@ -26,6 +26,7 @@
                         <th class="px-4 py-3 text-left text-xs font-mono text-gray-400 uppercase tracking-wider">Author</th>
                         <th class="px-4 py-3 text-left text-xs font-mono text-gray-400 uppercase tracking-wider">Location</th>
                         <th class="px-4 py-3 text-left text-xs font-mono text-gray-400 uppercase tracking-wider">Tags</th>
+                        <th class="px-4 py-3 text-left text-xs font-mono text-gray-400 uppercase tracking-wider">Refs</th>
                         <th class="px-4 py-3 text-left text-xs font-mono text-gray-400 uppercase tracking-wider">Date</th>
                     </tr>
                 </thead>
@@ -49,9 +50,15 @@
                         </td>
                         <td class="px-4 py-3">
                             {{if .Title}}
+                            {{if eq .Type "wiki"}}
+                            <a href="/wiki?title={{.Title}}&guild_id={{.GuildID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
+                                {{.Title}}
+                            </a>
+                            {{else}}
                             <a href="/{{.Type}}s/{{.ID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
                                 {{.Title}}
                             </a>
+                            {{end}}
                             {{else}}
                             <a href="/{{.Type}}s/{{.ID}}" class="text-gray-400 italic hover:text-neon-cyan transition-colors">
                                 (no title)
@@ -87,6 +94,17 @@
                             </div>
                             {{else}}
                             <span class="text-gray-500">-</span>
+                            {{end}}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                            {{if eq .Type "wiki"}}
+                                {{if gt .ReferenceCount 0}}
+                                <span class="text-neon-green font-mono text-sm">{{.ReferenceCount}}</span>
+                                {{else}}
+                                <span class="text-gray-500">-</span>
+                                {{end}}
+                            {{else}}
+                            <span class="text-gray-600">-</span>
                             {{end}}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500">

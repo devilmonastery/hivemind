@@ -29,6 +29,12 @@ service WikiService {
 
   // ListWikiPages lists all wiki pages in a guild with pagination
   rpc ListWikiPages(ListWikiPagesRequest) returns (ListWikiPagesResponse);
+
+  // AddWikiMessageReference tags a Discord message with a wiki page topic
+  rpc AddWikiMessageReference(AddWikiMessageReferenceRequest) returns (WikiMessageReference);
+
+  // ListWikiMessageReferences retrieves all message references for a wiki page
+  rpc ListWikiMessageReferences(ListWikiMessageReferencesRequest) returns (ListWikiMessageReferencesResponse);
 }
 
 // WikiPage represents a guild knowledge base article
@@ -114,4 +120,76 @@ message ListWikiPagesRequest {
 message ListWikiPagesResponse {
   repeated WikiPage pages = 1;
   int32 total = 2;
+}
+
+// WikiMessageReference represents a Discord message tagged with a wiki page topic
+message WikiMessageReference {
+  string id = 1;
+  string wiki_page_id = 2;
+
+  // Discord identifiers
+  string message_id = 3;
+  string channel_id = 4;
+  string guild_id = 5;
+
+  // Captured message content (snapshot at time of reference)
+  string content = 6;
+  string author_id = 7;
+  string author_username = 8;
+  string author_display_name = 9;
+  string author_avatar_url = 16; // Discord avatar URL (joined from discord_users)
+  google.protobuf.Timestamp message_timestamp = 10;
+
+  // Attachment URLs (images, files, etc)
+  repeated string attachment_urls = 11;
+
+  // Attachment metadata (content type, filename, size)
+  repeated AttachmentMetadata attachments = 15;
+
+  // Metadata
+  google.protobuf.Timestamp added_at = 12;
+  string added_by_user_id = 13;
+
+  // Computed Discord link
+  string discord_link = 14;
+}
+
+// AttachmentMetadata stores Discord attachment information
+message AttachmentMetadata {
+  string url = 1;
+  string content_type = 2; // MIME type (e.g., "image/png", "video/mp4")
+  string filename = 3;
+  int32 width = 4; // For images/videos
+  int32 height = 5; // For images/videos
+  int64 size = 6; // File size in bytes
+}
+
+message AddWikiMessageReferenceRequest {
+  string wiki_page_id = 1;
+
+  // Discord identifiers
+  string message_id = 2;
+  string channel_id = 3;
+  string guild_id = 4;
+
+  // Message content
+  string content = 5;
+  string author_id = 6;
+  string author_username = 7;
+  string author_display_name = 8;
+  google.protobuf.Timestamp message_timestamp = 9;
+
+  // Attachment URLs (deprecated, use attachments instead)
+  repeated string attachment_urls = 10;
+
+  // Attachment metadata
+  repeated AttachmentMetadata attachments = 11;
+}
+
+message ListWikiMessageReferencesRequest {
+  string wiki_page_id = 1;
+}
+
+message ListWikiMessageReferencesResponse {
+  repeated WikiMessageReference references = 1;
 }

@@ -33,7 +33,8 @@ func New(cfg *config.Config, log *slog.Logger) (*Bot, error) {
 	// Set intents
 	session.Identify.Intents = discordgo.IntentsGuilds |
 		discordgo.IntentsGuildMessages |
-		discordgo.IntentsGuildMembers
+		discordgo.IntentsGuildMembers |
+		discordgo.IntentsMessageContent
 
 	// Create gRPC client for backend communication
 	grpcClient, err := botgrpc.NewClient(cfg)

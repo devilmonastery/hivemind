@@ -209,6 +209,7 @@ func runServer(configPath string, forceVersion int) error {
 	wikiPageRepo := postgres.NewWikiPageRepository(pgConn.DB.DB)
 	noteRepo := postgres.NewNoteRepository(pgConn.DB.DB)
 	quoteRepo := postgres.NewQuoteRepository(pgConn.DB.DB)
+	wikiMessageRefRepo := postgres.NewWikiMessageReferenceRepository(pgConn.DB.DB)
 
 	// Initialize JWT manager from config
 	if cfg.Auth.JWT.SigningKey == "" {
@@ -225,7 +226,7 @@ func runServer(configPath string, forceVersion int) error {
 	userService := services.NewUserService(userRepo, auditRepo)
 	tokenService := services.NewTokenService(tokenRepo, userRepo, auditRepo)
 	discordService := services.NewDiscordService(discordUserRepo, discordGuildRepo, userRepo, logger)
-	wikiService := services.NewWikiService(wikiPageRepo)
+	wikiService := services.NewWikiService(wikiPageRepo, wikiMessageRefRepo)
 	noteService := services.NewNoteService(noteRepo)
 	quoteService := services.NewQuoteService(quoteRepo)
 	authHandler := handlers.NewAuthHandler(userRepo, tokenRepo, sessionRepo, discordUserRepo, jwtManager, cfg)
