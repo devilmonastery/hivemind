@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -133,7 +132,7 @@ func handleNoteCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate,
 	}
 
 	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
-	ctx := context.Background()
+	ctx := discordContextFor(i)
 
 	req := &notespb.CreateNoteRequest{
 		Title: title,
@@ -209,7 +208,7 @@ func handleNoteList(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 	}
 
 	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
-	ctx := context.Background()
+	ctx := discordContextFor(i)
 
 	req := &notespb.ListNotesRequest{
 		GuildId: guildID,
@@ -278,7 +277,7 @@ func handleNoteView(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 	}
 
 	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
-	ctx := context.Background()
+	ctx := discordContextFor(i)
 
 	note, err := noteClient.GetNote(ctx, &notespb.GetNoteRequest{Id: noteID})
 	if err != nil {
@@ -362,7 +361,7 @@ func handleNoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 	}
 
 	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
-	ctx := context.Background()
+	ctx := discordContextFor(i)
 
 	req := &notespb.SearchNotesRequest{
 		Query:   query,

@@ -12,14 +12,20 @@
                 <!-- Desktop navigation -->
                 <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
                     {{$currentPage := .CurrentPage}}
-                    <!-- Logged out navigation -->
+                    <!-- Home link (always visible) -->
                     <a href="/" class="{{if eq $currentPage "home"}}border-neon-cyan text-neon-cyan{{else}}border-transparent text-gray-300 hover:border-neon-cyan hover:text-neon-cyan{{end}} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors">
                         Home
                     </a>
                     {{if .User}}
                         <!-- Logged in navigation -->
-                        <a href="/" class="{{if eq $currentPage "home"}}border-neon-cyan text-neon-cyan{{else}}border-transparent text-gray-300 hover:border-neon-cyan hover:text-neon-cyan{{end}} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors">
-                            Logged-In TBD
+                        <a href="/notes" class="{{if eq $currentPage "notes"}}border-neon-cyan text-neon-cyan{{else}}border-transparent text-gray-300 hover:border-neon-cyan hover:text-neon-cyan{{end}} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors">
+                            Notes
+                        </a>
+                        <a href="/quotes" class="{{if eq $currentPage "quotes"}}border-neon-magenta text-neon-magenta{{else}}border-transparent text-gray-300 hover:border-neon-magenta hover:text-neon-magenta{{end}} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors">
+                            Quotes
+                        </a>
+                        <a href="/wiki" class="{{if eq $currentPage "wiki"}}border-neon-green text-neon-green{{else}}border-transparent text-gray-300 hover:border-neon-green hover:text-neon-green{{end}} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors">
+                            Wiki
                         </a>
                     {{else}}
                     {{end}}
@@ -60,6 +66,15 @@
                 </a>
             {{if .User}}
                 <!-- Mobile logged in navigation -->
+                <a href="/notes" class="{{if eq $currentPage "notes"}}bg-hive-bg border-neon-cyan text-neon-cyan{{else}}border-transparent text-gray-300 hover:bg-hive-bg hover:border-neon-cyan hover:text-neon-cyan{{end}} block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors">
+                    Notes
+                </a>
+                <a href="/quotes" class="{{if eq $currentPage "quotes"}}bg-hive-bg border-neon-magenta text-neon-magenta{{else}}border-transparent text-gray-300 hover:bg-hive-bg hover:border-neon-magenta hover:text-neon-magenta{{end}} block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors">
+                    Quotes
+                </a>
+                <a href="/wiki" class="{{if eq $currentPage "wiki"}}bg-hive-bg border-neon-green text-neon-green{{else}}border-transparent text-gray-300 hover:bg-hive-bg hover:border-neon-green hover:text-neon-green{{end}} block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors">
+                    Wiki
+                </a>
                 <!-- Mobile user menu -->
                 <div class="pt-4 pb-3 border-t border-hive-metal">
                     <div class="flex items-center px-4">
