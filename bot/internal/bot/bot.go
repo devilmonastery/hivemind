@@ -7,6 +7,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 
+	discordpb "github.com/devilmonastery/hivemind/api/generated/go/discordpb"
 	"github.com/devilmonastery/hivemind/bot/internal/bot/handlers"
 	"github.com/devilmonastery/hivemind/bot/internal/config"
 	botgrpc "github.com/devilmonastery/hivemind/bot/internal/grpc"
@@ -120,7 +121,30 @@ func (b *Bot) onGuildCreate(s *discordgo.Session, event *discordgo.GuildCreate) 
 		slog.Int("member_count", event.MemberCount),
 	)
 
-	// TODO: Register guild in database via gRPC
+	// Register/update guild in database via gRPC
+	ctx := context.Background()
+	discordClient := discordpb.NewDiscordServiceClient(b.grpcClient.Conn())
+
+	iconURL := ""
+	if event.Icon != "" {
+		iconURL = fmt.Sprintf("https://cdn.discordapp.com/icons/%s/%s.png", event.ID, event.Icon)
+	}
+
+	_, err := discordClient.UpsertGuild(ctx, &discordpb.UpsertGuildRequest{
+		GuildId:        event.ID,
+		GuildName:      event.Name,
+		IconUrl:        iconURL,
+		OwnerDiscordId: event.OwnerID,
+	})
+	if err != nil {
+		b.log.Error("failed to upsert guild",
+			slog.String("guild_id", event.ID),
+			slog.String("error", err.Error()))
+	} else {
+		b.log.Info("guild registered in database",
+			slog.String("guild_id", event.ID),
+			slog.String("guild_name", event.Name))
+	}
 }
 
 // onGuildDelete is called when the bot is removed from a guild
@@ -129,5 +153,19 @@ func (b *Bot) onGuildDelete(s *discordgo.Session, event *discordgo.GuildDelete) 
 		slog.String("guild_id", event.ID),
 	)
 
-	// TODO: Mark guild as disabled in database via gRPC
+	// Disable guild in database via gRPC
+	ctx := context.Background()
+	discordClient := discordpb.NewDiscordServiceClient(b.grpcClient.Conn())
+
+	_, err := discordClient.DisableGuild(ctx, &discordpb.DisableGuildRequest{
+		GuildId: event.ID,
+	})
+	if err != nil {
+		b.log.Error("failed to disable guild",
+			slog.String("guild_id", event.ID),
+			slog.String("error", err.Error()))
+	} else {
+		b.log.Info("guild disabled in database",
+			slog.String("guild_id", event.ID))
+	}
 }

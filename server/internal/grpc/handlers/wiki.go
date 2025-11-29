@@ -14,13 +14,15 @@ import (
 
 type wikiHandler struct {
 	wikipb.UnimplementedWikiServiceServer
-	wikiService *services.WikiService
+	wikiService    *services.WikiService
+	discordService *services.DiscordService
 }
 
 // NewWikiHandler creates a new wiki gRPC handler
-func NewWikiHandler(wikiService *services.WikiService) wikipb.WikiServiceServer {
+func NewWikiHandler(wikiService *services.WikiService, discordService *services.DiscordService) wikipb.WikiServiceServer {
 	return &wikiHandler{
-		wikiService: wikiService,
+		wikiService:    wikiService,
+		discordService: discordService,
 	}
 }
 
@@ -45,7 +47,8 @@ func (h *wikiHandler) CreateWikiPage(ctx context.Context, req *wikipb.CreateWiki
 		return nil, err
 	}
 
-	return toProtoWikiPage(created, userCtx.Username), nil
+	authorUsername := h.getUsernameForAuthor(ctx, created.AuthorID)
+	return toProtoWikiPage(created, authorUsername), nil
 }
 
 func (h *wikiHandler) GetWikiPage(ctx context.Context, req *wikipb.GetWikiPageRequest) (*wikipb.WikiPage, error) {
@@ -122,7 +125,7 @@ func (h *wikiHandler) DeleteWikiPage(ctx context.Context, req *wikipb.DeleteWiki
 }
 
 func (h *wikiHandler) ListWikiPages(ctx context.Context, req *wikipb.ListWikiPagesRequest) (*wikipb.ListWikiPagesResponse, error) {
-	userCtx, err := interceptors.GetUserFromContext(ctx)
+	_, err := interceptors.GetUserFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +147,8 @@ func (h *wikiHandler) ListWikiPages(ctx context.Context, req *wikipb.ListWikiPag
 
 	protoPages := make([]*wikipb.WikiPage, len(pages))
 	for i, page := range pages {
-		protoPages[i] = toProtoWikiPage(page, userCtx.Username)
+		authorUsername := h.getUsernameForAuthor(ctx, page.AuthorID)
+		protoPages[i] = toProtoWikiPage(page, authorUsername)
 	}
 
 	return &wikipb.ListWikiPagesResponse{
@@ -153,17 +157,28 @@ func (h *wikiHandler) ListWikiPages(ctx context.Context, req *wikipb.ListWikiPag
 	}, nil
 }
 
-func toProtoWikiPage(page *entities.WikiPage, username string) *wikipb.WikiPage {
+func toProtoWikiPage(page *entities.WikiPage, authorUsername string) *wikipb.WikiPage {
 	return &wikipb.WikiPage{
 		Id:             page.ID,
 		Title:          page.Title,
 		Body:           page.Body,
 		AuthorId:       page.AuthorID,
-		AuthorUsername: username,
+		AuthorUsername: authorUsername,
 		GuildId:        page.GuildID,
 		ChannelId:      page.ChannelID,
 		Tags:           page.Tags,
 		CreatedAt:      timestamppb.New(page.CreatedAt),
 		UpdatedAt:      timestamppb.New(page.UpdatedAt),
 	}
+}
+
+// getUsernameForAuthor looks up the username for a given author ID
+func (h *wikiHandler) getUsernameForAuthor(ctx context.Context, authorID string) string {
+	// Try to get Discord user for this author
+	discordUser, err := h.discordService.GetDiscordUserByHivemindID(ctx, authorID)
+	if err == nil && discordUser != nil {
+		return discordUser.DiscordUsername
+	}
+	// Fallback to author ID if username not found
+	return authorID
 }

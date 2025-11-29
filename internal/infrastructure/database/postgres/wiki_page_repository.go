@@ -172,10 +172,23 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 		direction = "ASC"
 	}
 
+	// Build WHERE clause - if guildID is empty, get from all guilds
+	whereClause := "deleted_at IS NULL"
+	args := []interface{}{}
+	if guildID != "" {
+		whereClause = "guild_id = $1 AND deleted_at IS NULL"
+		args = append(args, guildID)
+	}
+
 	// Get total count
 	var total int
-	countQuery := `SELECT COUNT(*) FROM wiki_pages WHERE guild_id = $1 AND deleted_at IS NULL`
-	err := r.db.QueryRowContext(ctx, countQuery, guildID).Scan(&total)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM wiki_pages WHERE %s", whereClause)
+	var err error
+	if guildID != "" {
+		err = r.db.QueryRowContext(ctx, countQuery, guildID).Scan(&total)
+	} else {
+		err = r.db.QueryRowContext(ctx, countQuery).Scan(&total)
+	}
 	if err != nil {
 		return nil, 0, err
 	}
@@ -184,12 +197,13 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 	query := fmt.Sprintf(`
 		SELECT id, title, body, author_id, guild_id, channel_id, tags, created_at, updated_at
 		FROM wiki_pages
-		WHERE guild_id = $1 AND deleted_at IS NULL
+		WHERE %s
 		ORDER BY %s %s
-		LIMIT $2 OFFSET $3
-	`, orderBy, direction)
+		LIMIT $%d OFFSET $%d
+	`, whereClause, orderBy, direction, len(args)+1, len(args)+2)
 
-	rows, err := r.db.QueryContext(ctx, query, guildID, limit, offset)
+	args = append(args, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, 0, err
 	}

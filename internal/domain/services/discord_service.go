@@ -13,21 +13,24 @@ import (
 
 // DiscordService handles Discord-related business logic
 type DiscordService struct {
-	discordUserRepo repositories.DiscordUserRepository
-	userRepo        repositories.UserRepository
-	logger          *slog.Logger
+	discordUserRepo  repositories.DiscordUserRepository
+	discordGuildRepo repositories.DiscordGuildRepository
+	userRepo         repositories.UserRepository
+	logger           *slog.Logger
 }
 
 // NewDiscordService creates a new Discord service
 func NewDiscordService(
 	discordUserRepo repositories.DiscordUserRepository,
+	discordGuildRepo repositories.DiscordGuildRepository,
 	userRepo repositories.UserRepository,
 	logger *slog.Logger,
 ) *DiscordService {
 	return &DiscordService{
-		discordUserRepo: discordUserRepo,
-		userRepo:        userRepo,
-		logger:          logger,
+		discordUserRepo:  discordUserRepo,
+		discordGuildRepo: discordGuildRepo,
+		userRepo:         userRepo,
+		logger:           logger,
 	}
 }
 
@@ -44,16 +47,16 @@ func (s *DiscordService) GetOrCreateUserFromDiscord(
 	discordUser, err := s.discordUserRepo.GetByDiscordID(ctx, discordID)
 	if err == nil {
 		// Found existing mapping - update last seen and return the Hivemind user
-		if err := s.discordUserRepo.UpdateLastSeen(ctx, discordID); err != nil {
+		if updateErr := s.discordUserRepo.UpdateLastSeen(ctx, discordID); updateErr != nil {
 			s.logger.Warn("failed to update last seen",
 				slog.String("discord_id", discordID),
-				slog.String("error", err.Error()))
+				slog.String("error", updateErr.Error()))
 		}
 
 		// Get the Hivemind user
-		user, err := s.userRepo.GetByID(ctx, discordUser.UserID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get user: %w", err)
+		user, getUserErr := s.userRepo.GetByID(ctx, discordUser.UserID)
+		if getUserErr != nil {
+			return nil, fmt.Errorf("failed to get user: %w", getUserErr)
 		}
 
 		return user, nil
@@ -140,4 +143,159 @@ func (s *DiscordService) UpdateDiscordUserInfo(
 	}
 
 	return nil
+}
+
+// GetOrCreateGuild gets or creates a Discord guild record
+func (s *DiscordService) GetOrCreateGuild(
+	ctx context.Context,
+	guildID string,
+	guildName string,
+) (*entities.DiscordGuild, error) {
+	// Try to find existing guild
+	guild, err := s.discordGuildRepo.GetByID(ctx, guildID)
+	if err == nil {
+		// Found existing guild - update last activity
+		now := time.Now()
+		guild.LastActivity = &now
+		if updateErr := s.discordGuildRepo.Update(ctx, guild); updateErr != nil {
+			s.logger.Warn("failed to update guild last activity",
+				slog.String("guild_id", guildID),
+				slog.String("error", updateErr.Error()))
+		}
+		return guild, nil
+	}
+
+	// If error is not "not found", return it
+	if err != repositories.ErrDiscordGuildNotFound {
+		return nil, fmt.Errorf("failed to query discord guild: %w", err)
+	}
+
+	// Guild doesn't exist - create new one
+	s.logger.Info("auto-registering new Discord guild",
+		slog.String("guild_id", guildID),
+		slog.String("guild_name", guildName))
+
+	now := time.Now()
+	guild = &entities.DiscordGuild{
+		GuildID:      guildID,
+		GuildName:    guildName,
+		Enabled:      true,
+		Settings:     "{}",
+		AddedAt:      now,
+		LastActivity: &now,
+	}
+
+	if err := s.discordGuildRepo.Create(ctx, guild); err != nil {
+		return nil, fmt.Errorf("failed to create discord guild: %w", err)
+	}
+
+	s.logger.Info("guild auto-registered",
+		slog.String("guild_id", guildID),
+		slog.String("guild_name", guildName))
+
+	return guild, nil
+}
+
+// UpsertGuild creates or updates a Discord guild with full information
+func (s *DiscordService) UpsertGuild(
+	ctx context.Context,
+	guildID string,
+	guildName string,
+	iconURL string,
+	ownerDiscordID string,
+) (*entities.DiscordGuild, error) {
+	// Try to find existing guild
+	guild, err := s.discordGuildRepo.GetByID(ctx, guildID)
+	if err == nil {
+		// Update existing guild
+		guild.GuildName = guildName
+		if iconURL != "" {
+			guild.IconURL = &iconURL
+		}
+		if ownerDiscordID != "" {
+			guild.OwnerID = &ownerDiscordID
+		}
+		now := time.Now()
+		guild.LastActivity = &now
+
+		if updateErr := s.discordGuildRepo.Update(ctx, guild); updateErr != nil {
+			return nil, fmt.Errorf("failed to update guild: %w", updateErr)
+		}
+
+		s.logger.Info("guild updated",
+			slog.String("guild_id", guildID),
+			slog.String("guild_name", guildName))
+
+		return guild, nil
+	}
+
+	// If error is not "not found", return it
+	if err != repositories.ErrDiscordGuildNotFound {
+		return nil, fmt.Errorf("failed to query discord guild: %w", err)
+	}
+
+	// Create new guild
+	s.logger.Info("registering new Discord guild",
+		slog.String("guild_id", guildID),
+		slog.String("guild_name", guildName))
+
+	now := time.Now()
+	guild = &entities.DiscordGuild{
+		GuildID:      guildID,
+		GuildName:    guildName,
+		Enabled:      true,
+		Settings:     "{}",
+		AddedAt:      now,
+		LastActivity: &now,
+	}
+
+	if iconURL != "" {
+		guild.IconURL = &iconURL
+	}
+	if ownerDiscordID != "" {
+		guild.OwnerID = &ownerDiscordID
+	}
+
+	if err := s.discordGuildRepo.Create(ctx, guild); err != nil {
+		return nil, fmt.Errorf("failed to create discord guild: %w", err)
+	}
+
+	s.logger.Info("guild registered",
+		slog.String("guild_id", guildID),
+		slog.String("guild_name", guildName))
+
+	return guild, nil
+}
+
+// DisableGuild marks a guild as disabled (when bot is removed)
+func (s *DiscordService) DisableGuild(ctx context.Context, guildID string) error {
+	guild, err := s.discordGuildRepo.GetByID(ctx, guildID)
+	if err != nil {
+		return fmt.Errorf("failed to get guild: %w", err)
+	}
+
+	guild.Enabled = false
+	if err := s.discordGuildRepo.Update(ctx, guild); err != nil {
+		return fmt.Errorf("failed to disable guild: %w", err)
+	}
+
+	s.logger.Info("guild disabled",
+		slog.String("guild_id", guildID))
+
+	return nil
+}
+
+// GetGuild retrieves a guild by ID
+func (s *DiscordService) GetGuild(ctx context.Context, guildID string) (*entities.DiscordGuild, error) {
+	return s.discordGuildRepo.GetByID(ctx, guildID)
+}
+
+// GetDiscordUserByHivemindID gets a Discord user by their Hivemind user ID
+func (s *DiscordService) GetDiscordUserByHivemindID(ctx context.Context, userID string) (*entities.DiscordUser, error) {
+	// Query by user_id field (the reverse lookup from GetOrCreateUserFromDiscord)
+	discordUser, err := s.discordUserRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get discord user: %w", err)
+	}
+	return discordUser, nil
 }

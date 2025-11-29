@@ -99,9 +99,15 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, authorDiscor
 	}
 
 	// Build WHERE conditions
-	conditions := []string{"guild_id = $1", "deleted_at IS NULL"}
-	args := []interface{}{guildID}
-	argCount := 1
+	conditions := []string{"deleted_at IS NULL"}
+	args := []interface{}{}
+	argCount := 0
+
+	if guildID != "" {
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("guild_id = $%d", argCount))
+		args = append(args, guildID)
+	}
 
 	if authorDiscordID != "" {
 		argCount++

@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
 
 	wikipb "github.com/devilmonastery/hivemind/api/generated/go/wikipb"
-	"github.com/devilmonastery/hivemind/bot/internal/grpc"
 	"github.com/devilmonastery/hivemind/internal/client"
 )
 
@@ -48,16 +46,7 @@ func handleWikiSearch(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 		return
 	}
 
-	// Get user info
-	var discordUserID, username string
-	if i.Member != nil && i.Member.User != nil {
-		discordUserID = i.Member.User.ID
-		username = i.Member.User.Username
-	}
-
-	// Create context with Discord metadata
-	ctx := context.Background()
-	ctx = grpc.WithDiscordContext(ctx, discordUserID, i.GuildID, username)
+	ctx := discordContextFor(i)
 
 	// Call backend to search wiki pages
 	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
@@ -116,16 +105,7 @@ func handleWikiGet(s *discordgo.Session, i *discordgo.InteractionCreate, subcomm
 		return
 	}
 
-	// Get user info
-	var discordUserID, username string
-	if i.Member != nil && i.Member.User != nil {
-		discordUserID = i.Member.User.ID
-		username = i.Member.User.Username
-	}
-
-	// Create context with Discord metadata
-	ctx := context.Background()
-	ctx = grpc.WithDiscordContext(ctx, discordUserID, i.GuildID, username)
+	ctx := discordContextFor(i)
 
 	// Search by title to get ID (simplified approach)
 	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
@@ -241,16 +221,7 @@ func handleWikiCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate,
 		}
 	}
 
-	// Get user info
-	var discordUserID, username string
-	if i.Member != nil && i.Member.User != nil {
-		discordUserID = i.Member.User.ID
-		username = i.Member.User.Username
-	}
-
-	// Create context with Discord metadata
-	ctx := context.Background()
-	ctx = grpc.WithDiscordContext(ctx, discordUserID, i.GuildID, username)
+	ctx := discordContextFor(i)
 
 	// Call backend to create wiki page
 	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
