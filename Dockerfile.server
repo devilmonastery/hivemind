@@ -1,0 +1,39 @@
+# Build stage
+FROM golang:1.24-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git
+
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the server binary
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o hivemind-server ./server
+
+# Runtime stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/hivemind-server .
+
+# Copy migrations
+COPY migrations/ ./migrations/
+
+# Copy example config
+COPY configs/example_server.yaml ./configs/example_server.yaml
+
+# Expose gRPC port
+EXPOSE 50051
+
+# Run the server
+ENTRYPOINT ["./hivemind-server"]

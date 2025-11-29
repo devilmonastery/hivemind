@@ -37,9 +37,27 @@ func New(serverAddress string, sessionManager *session.Manager, templates *rende
 	}
 
 	// Fetch Discord install URLs at startup (cached for lifetime of handler)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Retry for up to 60 seconds to allow the gRPC server to start up
+	// This blocks the web server from becoming "ready" until backend is available
+	log.Printf("Waiting for gRPC backend to be ready...")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	h.discordGuildURL, h.discordUserURL = h.getDiscordInstallURLs(ctx)
+
+	maxRetries := 12
+	for i := 0; i < maxRetries; i++ {
+		h.discordGuildURL, h.discordUserURL = h.getDiscordInstallURLs(ctx)
+		if h.discordGuildURL != "" {
+			log.Printf("✓ Backend ready - Discord install URLs initialized successfully")
+			break
+		}
+
+		if i < maxRetries-1 {
+			log.Printf("Backend not ready yet (attempt %d/%d), retrying in 5s...", i+1, maxRetries)
+			time.Sleep(5 * time.Second)
+		} else {
+			log.Fatalf("FATAL: Failed to connect to gRPC backend after %d attempts - check that the server is running and accessible", maxRetries)
+		}
+	}
 
 	return h
 }
@@ -165,6 +183,7 @@ func (h *Handler) getCurrentUser(r *http.Request) map[string]interface{} {
 func (h *Handler) getDiscordInstallURLs(ctx context.Context) (guildURL, userURL string) {
 	providers, err := h.getAvailableProviders(ctx)
 	if err != nil {
+		log.Printf("Failed to get OAuth providers for Discord install URLs: %v", err)
 		return "", ""
 	}
 
@@ -178,6 +197,7 @@ func (h *Handler) getDiscordInstallURLs(ctx context.Context) (guildURL, userURL 
 	}
 
 	if discordClientID == "" {
+		log.Printf("Discord provider not found in OAuth config - bot invite links will not be available")
 		return "", ""
 	}
 
