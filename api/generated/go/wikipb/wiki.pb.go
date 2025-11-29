@@ -785,9 +785,7 @@ func (x *ListWikiPagesResponse) GetTotal() int32 {
 
 type AutocompleteWikiTitlesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`                    // Partial title to match
-	GuildId       string                 `protobuf:"bytes,2,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"` // Required: guild context
-	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`                   // Default: 25 (Discord autocomplete limit)
+	GuildId       string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"` // Required: guild context
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -822,25 +820,11 @@ func (*AutocompleteWikiTitlesRequest) Descriptor() ([]byte, []int) {
 	return file_wiki_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *AutocompleteWikiTitlesRequest) GetQuery() string {
-	if x != nil {
-		return x.Query
-	}
-	return ""
-}
-
 func (x *AutocompleteWikiTitlesRequest) GetGuildId() string {
 	if x != nil {
 		return x.GuildId
 	}
 	return ""
-}
-
-func (x *AutocompleteWikiTitlesRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
 }
 
 type AutocompleteWikiTitlesResponse struct {
@@ -1479,11 +1463,9 @@ const file_wiki_proto_rawDesc = "" +
 	"\tascending\x18\x05 \x01(\bR\tascending\"\\\n" +
 	"\x15ListWikiPagesResponse\x12-\n" +
 	"\x05pages\x18\x01 \x03(\v2\x17.hivemind.wiki.WikiPageR\x05pages\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\"f\n" +
-	"\x1dAutocompleteWikiTitlesRequest\x12\x14\n" +
-	"\x05query\x18\x01 \x01(\tR\x05query\x12\x19\n" +
-	"\bguild_id\x18\x02 \x01(\tR\aguildId\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"f\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\":\n" +
+	"\x1dAutocompleteWikiTitlesRequest\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\"f\n" +
 	"\x1eAutocompleteWikiTitlesResponse\x12D\n" +
 	"\vsuggestions\x18\x01 \x03(\v2\".hivemind.wiki.WikiTitleSuggestionR\vsuggestions\";\n" +
 	"\x13WikiTitleSuggestion\x12\x0e\n" +

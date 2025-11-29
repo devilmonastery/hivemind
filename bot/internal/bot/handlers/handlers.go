@@ -11,7 +11,7 @@ import (
 )
 
 // HandleInteraction routes interactions to the appropriate handler
-func HandleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
+func HandleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client, cache *TitlesCache) {
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
 		handleCommand(s, i, cfg, log, grpcClient)
@@ -20,7 +20,7 @@ func HandleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, cfg
 	case discordgo.InteractionModalSubmit:
 		handleModal(s, i, cfg, log, grpcClient)
 	case discordgo.InteractionApplicationCommandAutocomplete:
-		handleAutocomplete(s, i, cfg, log, grpcClient)
+		handleAutocomplete(s, i, cfg, log, grpcClient, cache)
 	}
 }
 
@@ -149,7 +149,7 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 	}
 }
 
-func handleAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
+func handleAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client, cache *TitlesCache) {
 	data := i.ApplicationCommandData()
 
 	log.Debug("autocomplete request received",
@@ -159,9 +159,9 @@ func handleAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, cf
 
 	switch data.Name {
 	case "note":
-		handleNoteAutocomplete(s, i, log, grpcClient)
+		handleNoteAutocomplete(s, i, log, grpcClient, cache)
 	case "wiki":
-		handleWikiAutocomplete(s, i, log, grpcClient)
+		handleWikiAutocomplete(s, i, log, grpcClient, cache)
 	default:
 		log.Warn("no autocomplete handler for command", slog.String("command", data.Name))
 	}

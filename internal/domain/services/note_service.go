@@ -137,30 +137,15 @@ func (s *NoteService) ListMessageReferences(ctx context.Context, noteID string) 
 	return refs, nil
 }
 
-// AutocompleteNoteTitles returns note titles matching a query (lightweight for autocomplete)
-func (s *NoteService) AutocompleteNoteTitles(ctx context.Context, authorID, guildID, query string, limit int) ([]*entities.Note, error) {
+// AutocompleteNoteTitles returns all note titles for a user in a guild (lightweight for autocomplete)
+func (s *NoteService) AutocompleteNoteTitles(ctx context.Context, authorID, guildID string) ([]struct{ ID, Title string }, error) {
 	// Get all titles for the user in the guild (with caching)
 	titles, err := s.getNoteTitlesForUser(ctx, authorID, guildID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get note titles: %w", err)
 	}
 
-	// Convert to Note entities with only ID and Title populated
-	var results []*entities.Note
-	for _, t := range titles {
-		// Simple case-insensitive substring matching
-		if query == "" || contains(t.Title, query) {
-			results = append(results, &entities.Note{
-				ID:    t.ID,
-				Title: t.Title,
-			})
-			if len(results) >= limit {
-				break
-			}
-		}
-	}
-
-	return results, nil
+	return titles, nil
 }
 
 // getNoteTitlesForUser retrieves note titles with caching

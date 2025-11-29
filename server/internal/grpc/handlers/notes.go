@@ -329,21 +329,16 @@ func (h *NoteHandler) AutocompleteNoteTitles(ctx context.Context, req *notespb.A
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
-	limit := int(req.Limit)
-	if limit <= 0 || limit > 25 {
-		limit = 25
-	}
-
-	notes, err := h.noteService.AutocompleteNoteTitles(ctx, user.UserID, req.GuildId, req.Query, limit)
+	titles, err := h.noteService.AutocompleteNoteTitles(ctx, user.UserID, req.GuildId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to autocomplete note titles: %v", err)
 	}
 
-	suggestions := make([]*notespb.NoteTitleSuggestion, len(notes))
-	for i, note := range notes {
+	suggestions := make([]*notespb.NoteTitleSuggestion, len(titles))
+	for i, title := range titles {
 		suggestions[i] = &notespb.NoteTitleSuggestion{
-			Id:    note.ID,
-			Title: note.Title,
+			Id:    title.ID,
+			Title: title.Title,
 		}
 	}
 

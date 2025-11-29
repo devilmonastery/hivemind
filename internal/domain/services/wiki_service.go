@@ -170,30 +170,15 @@ func (s *WikiService) ListWikiMessageReferences(ctx context.Context, pageID stri
 	return refs, nil
 }
 
-// AutocompleteWikiTitles returns wiki page titles matching a query (lightweight for autocomplete)
-func (s *WikiService) AutocompleteWikiTitles(ctx context.Context, guildID, query string, limit int) ([]*entities.WikiPage, error) {
+// AutocompleteWikiTitles returns all wiki page titles for a guild (lightweight for autocomplete)
+func (s *WikiService) AutocompleteWikiTitles(ctx context.Context, guildID string) ([]struct{ ID, Title string }, error) {
 	// Get all titles for the guild (with caching)
 	titles, err := s.getWikiTitlesForGuild(ctx, guildID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wiki titles: %w", err)
 	}
 
-	// Convert to WikiPage entities with only ID and Title populated
-	var results []*entities.WikiPage
-	for _, t := range titles {
-		// Simple case-insensitive substring matching
-		if query == "" || contains(t.Title, query) {
-			results = append(results, &entities.WikiPage{
-				ID:    t.ID,
-				Title: t.Title,
-			})
-			if len(results) >= limit {
-				break
-			}
-		}
-	}
-
-	return results, nil
+	return titles, nil
 }
 
 // getWikiTitlesForGuild retrieves wiki titles with caching

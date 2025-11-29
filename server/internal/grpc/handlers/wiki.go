@@ -290,21 +290,16 @@ func (h *wikiHandler) ListWikiMessageReferences(ctx context.Context, req *wikipb
 }
 
 func (h *wikiHandler) AutocompleteWikiTitles(ctx context.Context, req *wikipb.AutocompleteWikiTitlesRequest) (*wikipb.AutocompleteWikiTitlesResponse, error) {
-	limit := int(req.Limit)
-	if limit <= 0 || limit > 25 {
-		limit = 25
-	}
-
-	pages, err := h.wikiService.AutocompleteWikiTitles(ctx, req.GuildId, req.Query, limit)
+	titles, err := h.wikiService.AutocompleteWikiTitles(ctx, req.GuildId)
 	if err != nil {
 		return nil, err
 	}
 
-	suggestions := make([]*wikipb.WikiTitleSuggestion, len(pages))
-	for i, page := range pages {
+	suggestions := make([]*wikipb.WikiTitleSuggestion, len(titles))
+	for i, title := range titles {
 		suggestions[i] = &wikipb.WikiTitleSuggestion{
-			Id:    page.ID,
-			Title: page.Title,
+			Id:    title.ID,
+			Title: title.Title,
 		}
 	}
 
