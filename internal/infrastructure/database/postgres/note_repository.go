@@ -174,10 +174,11 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 
 	// Get notes
 	query := fmt.Sprintf(`
-		SELECT id, title, body, author_id, guild_id, channel_id, source_msg_id, source_channel_id, tags, created_at, updated_at
-		FROM notes
+		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, dg.guild_name, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at
+		FROM notes n
+		LEFT JOIN discord_guilds dg ON n.guild_id = dg.guild_id
 		WHERE %s
-		ORDER BY %s %s
+		ORDER BY n.%s %s
 		LIMIT $%d OFFSET $%d
 	`, whereClause, orderBy, direction, argCount+1, argCount+2)
 
@@ -193,10 +194,10 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 	for rows.Next() {
 		note := &entities.Note{}
 		var tags pq.StringArray
-		var title, guildID, channelID, sourceMsgID, sourceChannelID sql.NullString
+		var title, guildID, guildName, channelID, sourceMsgID, sourceChannelID sql.NullString
 
 		err := rows.Scan(
-			&note.ID, &title, &note.Body, &note.AuthorID, &guildID,
+			&note.ID, &title, &note.Body, &note.AuthorID, &guildID, &guildName,
 			&channelID, &sourceMsgID, &sourceChannelID, &tags,
 			&note.CreatedAt, &note.UpdatedAt,
 		)
@@ -206,6 +207,7 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 
 		note.Title = title.String
 		note.GuildID = guildID.String
+		note.GuildName = guildName.String
 		note.ChannelID = channelID.String
 		note.SourceMsgID = sourceMsgID.String
 		note.SourceChannelID = sourceChannelID.String

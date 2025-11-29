@@ -22,7 +22,7 @@ func NewWikiService(wikiRepo repositories.WikiPageRepository) *WikiService {
 
 // CreateWikiPage creates a new wiki page
 func (s *WikiService) CreateWikiPage(ctx context.Context, page *entities.WikiPage) (*entities.WikiPage, error) {
-	// Check for duplicate title in guild
+	// Check for duplicate title in guild - keeps explicit error message
 	existing, err := s.wikiRepo.GetByGuildAndTitle(ctx, page.GuildID, page.Title)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for duplicate: %w", err)
@@ -56,6 +56,40 @@ func (s *WikiService) UpdateWikiPage(ctx context.Context, page *entities.WikiPag
 
 	// Fetch updated page
 	return s.wikiRepo.GetByID(ctx, page.ID)
+}
+
+// UpsertWikiPage creates a new wiki page or updates an existing one with the same title
+func (s *WikiService) UpsertWikiPage(ctx context.Context, page *entities.WikiPage) (*entities.WikiPage, bool, error) {
+	// Check if a page with this title already exists in the guild
+	existing, err := s.wikiRepo.GetByGuildAndTitle(ctx, page.GuildID, page.Title)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to check for existing page: %w", err)
+	}
+
+	if existing != nil {
+		// Update existing page
+		page.ID = existing.ID
+		page.CreatedAt = existing.CreatedAt
+		page.AuthorID = existing.AuthorID
+
+		if err := s.wikiRepo.Update(ctx, page); err != nil {
+			return nil, false, fmt.Errorf("failed to update wiki page: %w", err)
+		}
+
+		// Fetch updated page
+		updated, err := s.wikiRepo.GetByID(ctx, page.ID)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to fetch updated page: %w", err)
+		}
+		return updated, false, nil
+	}
+
+	// Create new page
+	if err := s.wikiRepo.Create(ctx, page); err != nil {
+		return nil, false, fmt.Errorf("failed to create wiki page: %w", err)
+	}
+
+	return page, true, nil
 }
 
 // DeleteWikiPage soft-deletes a wiki page

@@ -195,10 +195,11 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 
 	// Get pages
 	query := fmt.Sprintf(`
-		SELECT id, title, body, author_id, guild_id, channel_id, tags, created_at, updated_at
-		FROM wiki_pages
+		SELECT wp.id, wp.title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at
+		FROM wiki_pages wp
+		LEFT JOIN discord_guilds dg ON wp.guild_id = dg.guild_id
 		WHERE %s
-		ORDER BY %s %s
+		ORDER BY wp.%s %s
 		LIMIT $%d OFFSET $%d
 	`, whereClause, orderBy, direction, len(args)+1, len(args)+2)
 
@@ -213,16 +214,17 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 	for rows.Next() {
 		page := &entities.WikiPage{}
 		var tags pq.StringArray
-		var channelID sql.NullString
+		var guildName, channelID sql.NullString
 
 		err := rows.Scan(
-			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
+			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID, &guildName,
 			&channelID, &tags, &page.CreatedAt, &page.UpdatedAt,
 		)
 		if err != nil {
 			return nil, 0, err
 		}
 
+		page.GuildName = guildName.String
 		page.ChannelID = channelID.String
 		page.Tags = tags
 		pages = append(pages, page)

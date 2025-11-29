@@ -9,6 +9,7 @@ type WikiPage struct {
 	Body      string     `json:"body"`
 	AuthorID  string     `json:"author_id"`
 	GuildID   string     `json:"guild_id"`
+	GuildName string     `json:"guild_name,omitempty"`
 	ChannelID string     `json:"channel_id,omitempty"`
 	Tags      []string   `json:"tags,omitempty"`
 	CreatedAt time.Time  `json:"created_at"`
@@ -23,6 +24,7 @@ type Note struct {
 	Body            string     `json:"body"`
 	AuthorID        string     `json:"author_id"`
 	GuildID         string     `json:"guild_id,omitempty"` // NULL for personal notes
+	GuildName       string     `json:"guild_name,omitempty"`
 	ChannelID       string     `json:"channel_id,omitempty"`
 	SourceMsgID     string     `json:"source_msg_id,omitempty"`
 	SourceChannelID string     `json:"source_channel_id,omitempty"`
@@ -38,6 +40,7 @@ type Quote struct {
 	Body                     string     `json:"body"`
 	AuthorID                 string     `json:"author_id"` // Who saved the quote
 	GuildID                  string     `json:"guild_id"`
+	GuildName                string     `json:"guild_name,omitempty"`
 	SourceMsgID              string     `json:"source_msg_id"`
 	SourceChannelID          string     `json:"source_channel_id"`
 	SourceMsgAuthorDiscordID string     `json:"source_msg_author_discord_id"`

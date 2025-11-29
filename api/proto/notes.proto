@@ -40,20 +40,21 @@ message Note {
 
   // Context (optional)
   string guild_id = 6; // NULL for personal notes
-  string channel_id = 7;
-  string channel_name = 8;
+  string guild_name = 7; // Guild display name
+  string channel_id = 8;
+  string channel_name = 9;
 
   // Reference (optional)
-  string source_msg_id = 9; // Message that inspired this note
-  string source_channel_id = 10;
-  repeated string mentioned_user_ids = 11; // Discord user IDs mentioned
+  string source_msg_id = 10; // Message that inspired this note
+  string source_channel_id = 11;
+  repeated string mentioned_user_ids = 12; // Discord user IDs mentioned
 
   // Metadata
-  repeated string tags = 12;
+  repeated string tags = 13;
 
   // Timestamps
-  google.protobuf.Timestamp created_at = 13;
-  google.protobuf.Timestamp updated_at = 14;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
 }
 
 message CreateNoteRequest {

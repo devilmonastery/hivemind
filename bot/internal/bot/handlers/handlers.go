@@ -36,20 +36,50 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *co
 	case "ping":
 		handlePing(s, i, log, grpcClient)
 	case "wiki":
-		handleWiki(s, i, log, grpcClient)
+		handleWiki(s, i, cfg, log, grpcClient)
 	case "note":
 		handleNote(s, i, log, grpcClient)
+	case "quote":
+		handleQuote(s, i, log, grpcClient)
+	// Context menu commands
+	case "Save as Quote":
+		handleContextMenuQuote(s, i, log, grpcClient)
+	case "Create Note":
+		handleContextMenuNote(s, i, log, grpcClient)
+	case "Add to Wiki":
+		handleContextMenuWiki(s, i, log, grpcClient)
 	default:
 		respondError(s, i, "Unknown command", log)
 	}
 }
 
 func handleComponent(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
-	// TODO: Handle button clicks, select menus, etc.
+	customID := i.MessageComponentData().CustomID
+
 	log.Info("component interaction received",
-		slog.String("custom_id", i.MessageComponentData().CustomID),
+		slog.String("custom_id", customID),
 		slog.String("user_id", i.Member.User.ID),
 	)
+
+	// Handle wiki select menu: wiki_select:query
+	if len(customID) > 12 && customID[:12] == "wiki_select:" {
+		query := customID[12:]
+		handleWikiSelectMenu(s, i, query, cfg, log, grpcClient)
+		return
+	}
+
+	// Handle wiki result action buttons
+	if len(customID) > 16 && customID[:16] == "wiki_action_btn:" {
+		handleWikiActionButton(s, i, customID, cfg, log, grpcClient)
+		return
+	}
+
+	// Handle wiki edit button: wiki_edit_btn:PageTitle
+	if len(customID) > 14 && customID[:14] == "wiki_edit_btn:" {
+		title := customID[14:]
+		handleWikiEditButton(s, i, title, cfg, log, grpcClient)
+		return
+	}
 }
 
 func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
@@ -61,10 +91,16 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 	)
 
 	switch customID {
-	case "wiki_create_modal":
-		handleWikiCreateModal(s, i, log, grpcClient)
+	case "wiki_edit_modal":
+		handleWikiEditModal(s, i, log, grpcClient)
 	case "note_create_modal":
 		handleNoteCreateModal(s, i, log, grpcClient)
+	case "context_quote_modal":
+		handleContextQuoteModal(s, i, log, grpcClient)
+	case "context_note_modal":
+		handleContextNoteModal(s, i, log, grpcClient)
+	case "context_wiki_modal":
+		handleContextWikiModal(s, i, log, grpcClient)
 	default:
 		respondError(s, i, "Unknown modal", log)
 	}

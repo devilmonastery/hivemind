@@ -152,8 +152,9 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, authorDiscor
 
 	// Get quotes
 	query := fmt.Sprintf(`
-		SELECT id, body, author_id, guild_id, source_msg_id, source_channel_id, source_msg_author_discord_id, tags, created_at
-		FROM quotes
+		SELECT q.id, q.body, q.author_id, q.guild_id, dg.guild_name, q.source_msg_id, q.source_channel_id, q.source_msg_author_discord_id, q.tags, q.created_at
+		FROM quotes q
+		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
 		WHERE %s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
@@ -171,9 +172,10 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, authorDiscor
 	for rows.Next() {
 		quote := &entities.Quote{}
 		var tags pq.StringArray
+		var guildName sql.NullString
 
 		err := rows.Scan(
-			&quote.ID, &quote.Body, &quote.AuthorID, &quote.GuildID,
+			&quote.ID, &quote.Body, &quote.AuthorID, &quote.GuildID, &guildName,
 			&quote.SourceMsgID, &quote.SourceChannelID, &quote.SourceMsgAuthorDiscordID,
 			&tags, &quote.CreatedAt,
 		)
@@ -181,6 +183,7 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, authorDiscor
 			return nil, 0, err
 		}
 
+		quote.GuildName = guildName.String
 		quote.Tags = tags
 		quotes = append(quotes, quote)
 	}

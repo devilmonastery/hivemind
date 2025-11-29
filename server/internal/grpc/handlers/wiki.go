@@ -113,6 +113,34 @@ func (h *wikiHandler) UpdateWikiPage(ctx context.Context, req *wikipb.UpdateWiki
 	return toProtoWikiPage(updated, userCtx.Username), nil
 }
 
+func (h *wikiHandler) UpsertWikiPage(ctx context.Context, req *wikipb.UpsertWikiPageRequest) (*wikipb.UpsertWikiPageResponse, error) {
+	// Get user context from auth interceptor
+	userCtx, err := interceptors.GetUserFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	page := &entities.WikiPage{
+		Title:     req.Title,
+		Body:      req.Body,
+		AuthorID:  userCtx.UserID,
+		GuildID:   req.GuildId,
+		ChannelID: req.ChannelId,
+		Tags:      req.Tags,
+	}
+
+	upserted, created, err := h.wikiService.UpsertWikiPage(ctx, page)
+	if err != nil {
+		return nil, err
+	}
+
+	authorUsername := h.getUsernameForAuthor(ctx, upserted.AuthorID)
+	return &wikipb.UpsertWikiPageResponse{
+		Page:    toProtoWikiPage(upserted, authorUsername),
+		Created: created,
+	}, nil
+}
+
 func (h *wikiHandler) DeleteWikiPage(ctx context.Context, req *wikipb.DeleteWikiPageRequest) (*commonpb.SuccessResponse, error) {
 	if err := h.wikiService.DeleteWikiPage(ctx, req.Id); err != nil {
 		return nil, err
@@ -165,6 +193,7 @@ func toProtoWikiPage(page *entities.WikiPage, authorUsername string) *wikipb.Wik
 		AuthorId:       page.AuthorID,
 		AuthorUsername: authorUsername,
 		GuildId:        page.GuildID,
+		GuildName:      page.GuildName,
 		ChannelId:      page.ChannelID,
 		Tags:           page.Tags,
 		CreatedAt:      timestamppb.New(page.CreatedAt),
