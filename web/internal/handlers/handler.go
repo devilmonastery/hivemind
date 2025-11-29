@@ -62,6 +62,27 @@ func (h *Handler) renderTemplate(w http.ResponseWriter, name string, data interf
 	}
 }
 
+// isAuthError checks if a gRPC error indicates authentication failure
+func isAuthError(err error) bool {
+	if err == nil {
+		return false
+	}
+	st, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	return st.Code() == codes.Unauthenticated || st.Code() == codes.NotFound
+}
+
+// clearSessionAndRedirect clears the session and redirects to login
+func (h *Handler) clearSessionAndRedirect(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Clearing invalid session and redirecting to login")
+	if err := h.sessionManager.ClearToken(r, w); err != nil {
+		log.Printf("Error clearing session: %v", err)
+	}
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
 // getCurrentUser gets the current user info from the session token
 // Returns nil if not authenticated
 func (h *Handler) getCurrentUser(r *http.Request) map[string]interface{} {
