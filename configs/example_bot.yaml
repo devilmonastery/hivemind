@@ -11,9 +11,16 @@
 #   In Docker:
 #     docker exec <container-name> ./hivemind-bot register --config /config/bot.yaml
 #   
-#   In Kubernetes:
+#   In Kubernetes (using args to preserve ENTRYPOINT):
 #     kubectl exec deployment/hivemind-bot -- ./hivemind-bot register --config /config/bot.yaml
+#     
+#     For the main container, use args in your pod spec:
+#       args:
+#         - run
+#         - --config
+#         - /etc/hivemind/config.yaml
 #
+# NOTE: The --config flag must come AFTER the subcommand (register or run), not before.
 # Guild-specific registration is recommended for development (instant updates).
 # Global registration is recommended for production (available in all servers).
 

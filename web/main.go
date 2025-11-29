@@ -85,6 +85,7 @@ func main() {
 	authMw := middleware.NewAuthMiddleware(sessionMgr)
 
 	// Initialize handlers with server address and redirect URI from config
+	slog.Info("Initializing handlers and waiting for backend...")
 	h := handlers.New(cfg.GRPC.Address, sessionMgr, templates, cfg.OAuth.RedirectURI)
 
 	// Create HTTP router
