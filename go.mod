@@ -3,6 +3,7 @@ module github.com/devilmonastery/hivemind
 go 1.24.10
 
 require (
+	github.com/bwmarrin/discordgo v0.29.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -39,6 +40,7 @@ require (
 	github.com/docker/docker v28.4.0+incompatible // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

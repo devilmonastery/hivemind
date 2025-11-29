@@ -8,6 +8,7 @@ export
 SERVER_BIN := bin/hivemind-server
 CLI_BIN := bin/hivemind
 WEB_BIN := bin/hivemind-web
+BOT_BIN := bin/hivemind-bot
 
 # Go parameters
 GOCMD := go
@@ -20,7 +21,7 @@ GOMOD := $(GOCMD) mod
 all: build
 
 ## build: Build all binaries
-build: server cli web
+build: server cli web bot
 
 ## server: Build the gRPC server
 server:
@@ -37,11 +38,16 @@ web:
 	@echo "Building hivemind web..."
 	@$(GOBUILD) -o $(WEB_BIN) ./web
 
+## bot: Build the Discord bot
+bot:
+	@echo "Building hivemind bot..."
+	@$(GOBUILD) -o $(BOT_BIN) ./bot
+
 ## clean: Remove build artifacts
 clean:
 	@echo "Cleaning..."
 	@$(GOCLEAN)
-	@rm -f $(SERVER_BIN) $(CLI_BIN) $(WEB_BIN)
+	@rm -f $(SERVER_BIN) $(CLI_BIN) $(WEB_BIN) $(BOT_BIN)
 
 ## test: Run tests
 test:
@@ -100,6 +106,11 @@ run-cli: cli
 run-web: web
 	@echo "Starting hivemind web..."
 	@$(WEB_BIN) --config configs/dev-web.yaml
+
+## run-bot: Build and run the Discord bot
+run-bot: bot
+	@echo "Starting hivemind bot..."
+	@$(BOT_BIN) run --config configs/dev-bot.yaml
 
 ## help: Show this help message
 help:

@@ -1,0 +1,25 @@
+# Example bot configuration
+# Copy this to dev-bot.yaml and fill in your values
+
+bot:
+  # Get your bot token from https://discord.com/developers/applications
+  token: "YOUR_BOT_TOKEN_HERE"
+  # Your Discord application ID (found on the same page)
+  application_id: "YOUR_APPLICATION_ID_HERE"
+
+backend:
+  grpc_host: "localhost"
+  grpc_port: 9091
+  tls_enabled: false
+
+logging:
+  level: "info"      # debug, info, warn, error
+  format: "json"     # json or text
+  output: "stdout"   # stdout or file path
+
+features:
+  enable_quotes: true
+  enable_wiki: true
+  enable_notes: true
+  max_note_size: 10000    # Max characters for notes
+  max_wiki_size: 50000    # Max characters for wiki pages
