@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package hivemind.discord;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/devilmonastery/hivemind/api/generated/go/discordpb";
+
+// DiscordService handles Discord guild and user management
+service DiscordService {
+  // UpsertGuild creates or updates a Discord guild
+  rpc UpsertGuild(UpsertGuildRequest) returns (UpsertGuildResponse);
+
+  // DisableGuild marks a guild as disabled (when bot is removed)
+  rpc DisableGuild(DisableGuildRequest) returns (DisableGuildResponse);
+
+  // GetGuild retrieves guild information
+  rpc GetGuild(GetGuildRequest) returns (GetGuildResponse);
+}
+
+// Guild represents a Discord server
+message Guild {
+  string guild_id = 1;
+  string guild_name = 2;
+  string icon_url = 3;
+  string owner_discord_id = 4;
+  bool enabled = 5;
+  google.protobuf.Timestamp added_at = 6;
+  google.protobuf.Timestamp last_activity = 7;
+}
+
+message UpsertGuildRequest {
+  string guild_id = 1;
+  string guild_name = 2;
+  string icon_url = 3;
+  string owner_discord_id = 4;
+}
+
+message UpsertGuildResponse {
+  Guild guild = 1;
+}
+
+message DisableGuildRequest {
+  string guild_id = 1;
+}
+
+message DisableGuildResponse {
+  bool success = 1;
+}
+
+message GetGuildRequest {
+  string guild_id = 1;
+}
+
+message GetGuildResponse {
+  Guild guild = 1;
+}

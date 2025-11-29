@@ -59,6 +59,11 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 
 		activity, err := h.fetchRecentActivity(ctx, r, w)
 		if err != nil {
+			// Check if it's an auth error (token not found, session expired, etc.)
+			if isAuthError(err) {
+				h.clearSessionAndRedirect(w, r)
+				return
+			}
 			log.Printf("Failed to fetch recent activity: %v", err)
 			// Continue with empty activity rather than error
 			activity = []ActivityItem{}
@@ -89,6 +94,9 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		Ascending: false,
 	})
 	if err != nil {
+		if isAuthError(err) {
+			return nil, err // Return auth error to trigger session clear
+		}
 		log.Printf("Failed to fetch notes: %v", err)
 	} else {
 		log.Printf("Fetched %d notes from server", len(notesResp.Notes))
@@ -109,6 +117,7 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 
 	// Fetch recent quotes (get from all guilds user has access to)
 	quoteClient := quotespb.NewQuoteServiceClient(client.Conn())
+	log.Printf("Fetching quotes...")
 	quotesResp, err := quoteClient.ListQuotes(ctx, &quotespb.ListQuotesRequest{
 		GuildId:   "", // Empty = all guilds
 		Limit:     limit,
@@ -116,8 +125,12 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		Ascending: false,
 	})
 	if err != nil {
+		if isAuthError(err) {
+			return nil, err // Return auth error to trigger session clear
+		}
 		log.Printf("Failed to fetch quotes: %v", err)
 	} else {
+		log.Printf("Fetched %d quotes from server", len(quotesResp.Quotes))
 		for _, quote := range quotesResp.Quotes {
 			activity = append(activity, ActivityItem{
 				Type:      "quote",
@@ -134,6 +147,7 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 
 	// Fetch recent wiki pages (get from all guilds)
 	wikiClient := wikipb.NewWikiServiceClient(client.Conn())
+	log.Printf("Fetching wiki pages...")
 	wikiResp, err := wikiClient.ListWikiPages(ctx, &wikipb.ListWikiPagesRequest{
 		GuildId:   "", // Empty = all guilds
 		Limit:     limit,
@@ -141,8 +155,12 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		Ascending: false,
 	})
 	if err != nil {
+		if isAuthError(err) {
+			return nil, err // Return auth error to trigger session clear
+		}
 		log.Printf("Failed to fetch wiki pages: %v", err)
 	} else {
+		log.Printf("Fetched %d wiki pages from server", len(wikiResp.Pages))
 		for _, page := range wikiResp.Pages {
 			activity = append(activity, ActivityItem{
 				Type:      "wiki",

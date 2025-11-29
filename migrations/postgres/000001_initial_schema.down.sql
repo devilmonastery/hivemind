@@ -1,0 +1,11 @@
+-- Drop all tables in reverse order of dependencies
+
+DROP TABLE IF EXISTS audit_logs CASCADE;
+DROP TABLE IF EXISTS quotes CASCADE;
+DROP TABLE IF EXISTS notes CASCADE;
+DROP TABLE IF EXISTS wiki_pages CASCADE;
+DROP TABLE IF EXISTS oidc_sessions CASCADE;
+DROP TABLE IF EXISTS api_tokens CASCADE;
+DROP TABLE IF EXISTS discord_guilds CASCADE;
+DROP TABLE IF EXISTS discord_users CASCADE;
+DROP TABLE IF EXISTS users CASCADE;

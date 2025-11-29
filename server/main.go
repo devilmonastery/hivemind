@@ -17,6 +17,7 @@ import (
 
 	adminpb "github.com/devilmonastery/hivemind/api/generated/go/adminpb"
 	authpb "github.com/devilmonastery/hivemind/api/generated/go/authpb"
+	discordpb "github.com/devilmonastery/hivemind/api/generated/go/discordpb"
 	notespb "github.com/devilmonastery/hivemind/api/generated/go/notespb"
 	quotespb "github.com/devilmonastery/hivemind/api/generated/go/quotespb"
 	"github.com/devilmonastery/hivemind/api/generated/go/tokenspb"
@@ -204,6 +205,7 @@ func runServer(configPath string, forceVersion int) error {
 	sessionRepo = postgres.NewSessionRepository(pgConn.DB)
 	auditRepo = postgres.NewAuditRepository(pgConn.DB)
 	discordUserRepo := postgres.NewDiscordUserRepository(pgConn.DB)
+	discordGuildRepo := postgres.NewDiscordGuildRepository(pgConn.DB)
 	wikiPageRepo := postgres.NewWikiPageRepository(pgConn.DB.DB)
 	noteRepo := postgres.NewNoteRepository(pgConn.DB.DB)
 	quoteRepo := postgres.NewQuoteRepository(pgConn.DB.DB)
@@ -222,7 +224,7 @@ func runServer(configPath string, forceVersion int) error {
 	// Initialize services
 	userService := services.NewUserService(userRepo, auditRepo)
 	tokenService := services.NewTokenService(tokenRepo, userRepo, auditRepo)
-	discordService := services.NewDiscordService(discordUserRepo, userRepo, logger)
+	discordService := services.NewDiscordService(discordUserRepo, discordGuildRepo, userRepo, logger)
 	wikiService := services.NewWikiService(wikiPageRepo)
 	noteService := services.NewNoteService(noteRepo)
 	quoteService := services.NewQuoteService(quoteRepo)
@@ -234,7 +236,8 @@ func runServer(configPath string, forceVersion int) error {
 	// Initialize gRPC handlers
 	adminHandler := handlers.NewAdminHandler(userService)
 	tokenHandler := handlers.NewTokenHandler(tokenService)
-	wikiHandler := handlers.NewWikiHandler(wikiService)
+	discordHandler := handlers.NewDiscordHandler(discordService)
+	wikiHandler := handlers.NewWikiHandler(wikiService, discordService)
 	noteHandler := handlers.NewNoteHandler(noteService)
 	quoteHandler := handlers.NewQuoteHandler(quoteService)
 
@@ -260,6 +263,7 @@ func runServer(configPath string, forceVersion int) error {
 	adminpb.RegisterAdminServiceServer(grpcServer, adminHandler)
 	tokenspb.RegisterTokenServiceServer(grpcServer, tokenHandler)
 	authpb.RegisterAuthServiceServer(grpcServer, authHandler)
+	discordpb.RegisterDiscordServiceServer(grpcServer, discordHandler)
 	wikipb.RegisterWikiServiceServer(grpcServer, wikiHandler)
 	notespb.RegisterNoteServiceServer(grpcServer, noteHandler)
 	quotespb.RegisterQuoteServiceServer(grpcServer, quoteHandler)
