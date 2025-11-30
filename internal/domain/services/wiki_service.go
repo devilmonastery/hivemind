@@ -153,6 +153,15 @@ func (s *WikiService) SearchWikiPages(ctx context.Context, guildID, query string
 	return pages, total, nil
 }
 
+// GetWikiPageByTitle retrieves a wiki page by guild ID and title (case-insensitive)
+func (s *WikiService) GetWikiPageByTitle(ctx context.Context, guildID, title string) (*entities.WikiPage, error) {
+	page, err := s.wikiRepo.GetByGuildAndTitle(ctx, guildID, title)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get wiki page by title: %w", err)
+	}
+	return page, nil
+}
+
 // AddWikiMessageReference adds a Discord message reference to a wiki page
 func (s *WikiService) AddWikiMessageReference(ctx context.Context, ref *entities.WikiMessageReference) error {
 	if err := s.wikiRefRepo.Create(ctx, ref); err != nil {

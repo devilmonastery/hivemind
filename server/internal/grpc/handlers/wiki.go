@@ -72,6 +72,20 @@ func (h *wikiHandler) GetWikiPage(ctx context.Context, req *wikipb.GetWikiPageRe
 	return toProtoWikiPage(page, userCtx.Username), nil
 }
 
+func (h *wikiHandler) GetWikiPageByTitle(ctx context.Context, req *wikipb.GetWikiPageByTitleRequest) (*wikipb.WikiPage, error) {
+	userCtx, err := interceptors.GetUserFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.wikiService.GetWikiPageByTitle(ctx, req.GuildId, req.Title)
+	if err != nil {
+		return nil, err
+	}
+
+	return toProtoWikiPage(page, userCtx.Username), nil
+}
+
 func (h *wikiHandler) SearchWikiPages(ctx context.Context, req *wikipb.SearchWikiPagesRequest) (*wikipb.SearchWikiPagesResponse, error) {
 	limit := int(req.Limit)
 	if limit <= 0 {
