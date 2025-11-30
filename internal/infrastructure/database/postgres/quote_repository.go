@@ -223,7 +223,8 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 	// Full-text search on body
 	if query != "" {
 		argCount++
-		conditions = append(conditions, fmt.Sprintf("(to_tsvector('english', q.body) @@ plainto_tsquery('english', $%d))", argCount))
+		// Use hybrid search vector: searches both english (stemmed, weight A) and simple (literal, weight B)
+		conditions = append(conditions, fmt.Sprintf("(q.search_vector @@ websearch_to_tsquery('english', $%d) OR q.search_vector @@ websearch_to_tsquery('simple', $%d))", argCount, argCount))
 		args = append(args, query)
 	}
 
@@ -256,7 +257,7 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 			LEFT JOIN users u ON q.author_id = u.id
 			LEFT JOIN discord_users du ON q.source_msg_author_discord_id = du.discord_id
 			WHERE %s
-			ORDER BY ts_rank(to_tsvector('english', q.body), plainto_tsquery('english', $2)) DESC
+			ORDER BY ts_rank(q.search_vector, websearch_to_tsquery('english', $2)) DESC
 			LIMIT $%d OFFSET $%d
 		`, whereClause, argCount+1, argCount+2)
 	} else {

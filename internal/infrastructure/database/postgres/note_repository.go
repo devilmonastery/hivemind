@@ -231,7 +231,8 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 	// Full-text search on title and body
 	if query != "" {
 		argCount++
-		conditions = append(conditions, fmt.Sprintf("(to_tsvector('english', COALESCE(title, '') || ' ' || body) @@ plainto_tsquery('english', $%d))", argCount))
+		// Use hybrid search vector: searches both english and simple dictionaries
+		conditions = append(conditions, fmt.Sprintf("(search_vector @@ websearch_to_tsquery('english', $%d) OR search_vector @@ websearch_to_tsquery('simple', $%d))", argCount, argCount))
 		args = append(args, query)
 	}
 
@@ -266,7 +267,7 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 			SELECT id, title, body, author_id, guild_id, channel_id, source_msg_id, source_channel_id, tags, created_at, updated_at
 			FROM notes
 			WHERE %s
-			ORDER BY ts_rank(to_tsvector('english', COALESCE(title, '') || ' ' || body), plainto_tsquery('english', $2)) DESC
+			ORDER BY ts_rank(search_vector, websearch_to_tsquery('english', $2)) DESC
 			LIMIT $%d OFFSET $%d
 		`, whereClause, argCount+1, argCount+2)
 	} else {
