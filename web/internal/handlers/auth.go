@@ -17,8 +17,8 @@ import (
 
 // Login initiates OAuth authorization code flow or shows login page
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	// If already logged in, redirect to home
-	if h.sessionManager.HasToken(r) {
+	// If already logged in with valid token, redirect to home
+	if h.getCurrentUser(r) != nil {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -346,8 +346,8 @@ func (h *Handler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If already logged in, redirect to home
-	if h.sessionManager.HasToken(r) {
+	// If already logged in with valid token, redirect to home
+	if h.getCurrentUser(r) != nil {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
