@@ -139,6 +139,8 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 		handleWikiEditModal(s, i, log, grpcClient)
 	case "note_create_modal":
 		handleNoteCreateModal(s, i, cfg, log, grpcClient)
+	case "note_edit_modal":
+		handleNoteEditModal(s, i, cfg, log, grpcClient)
 	case "context_quote_modal":
 		handleContextQuoteModal(s, i, log, grpcClient)
 	case "context_note_modal":
