@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -13,7 +13,8 @@ func (h *Handler) NotesListPage(w http.ResponseWriter, r *http.Request) {
 	// Get authenticated client
 	client, err := h.getClient(r, w)
 	if err != nil {
-		log.Printf("Failed to create client: %v", err)
+		h.log.Error("Failed to create client for notes list",
+			slog.String("error", err.Error()))
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -42,7 +43,10 @@ func (h *Handler) NotesListPage(w http.ResponseWriter, r *http.Request) {
 		Ascending: false,
 	})
 	if err != nil {
-		log.Printf("Failed to fetch notes: %v", err)
+		h.log.Error("Failed to fetch notes",
+			slog.String("guild_id", guildID),
+			slog.Any("tags", tags),
+			slog.String("error", err.Error()))
 		http.Error(w, "Failed to fetch notes", http.StatusInternalServerError)
 		return
 	}
@@ -69,7 +73,9 @@ func (h *Handler) NotePage(w http.ResponseWriter, r *http.Request) {
 	// Get authenticated client
 	client, err := h.getClient(r, w)
 	if err != nil {
-		log.Printf("Failed to create client: %v", err)
+		h.log.Error("Failed to create client for note page",
+			slog.String("note_id", noteID),
+			slog.String("error", err.Error()))
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -81,7 +87,9 @@ func (h *Handler) NotePage(w http.ResponseWriter, r *http.Request) {
 		Id: noteID,
 	})
 	if err != nil {
-		log.Printf("Failed to fetch note: %v", err)
+		h.log.Error("Failed to fetch note",
+			slog.String("note_id", noteID),
+			slog.String("error", err.Error()))
 		http.Error(w, "Note not found", http.StatusNotFound)
 		return
 	}
@@ -91,7 +99,9 @@ func (h *Handler) NotePage(w http.ResponseWriter, r *http.Request) {
 		NoteId: noteID,
 	})
 	if err != nil {
-		log.Printf("Failed to fetch note references: %v", err)
+		h.log.Error("Failed to fetch note references",
+			slog.String("note_id", noteID),
+			slog.String("error", err.Error()))
 		// Continue without references rather than failing completely
 	}
 

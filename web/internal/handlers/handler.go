@@ -3,9 +3,9 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -60,7 +60,9 @@ func New(serverAddress string, sessionManager *session.Manager, templates *rende
 				slog.Int("max_retries", maxRetries))
 			time.Sleep(5 * time.Second)
 		} else {
-			log.Fatalf("FATAL: Failed to connect to gRPC backend after %d attempts - check that the server is running and accessible", maxRetries)
+			h.log.Error("FATAL: Failed to connect to gRPC backend - check that the server is running and accessible",
+				slog.Int("max_retries", maxRetries))
+			os.Exit(1)
 		}
 	}
 
