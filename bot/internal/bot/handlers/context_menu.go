@@ -740,18 +740,55 @@ func handleContextMenuAddNoteForUser(s *discordgo.Session, i *discordgo.Interact
 		return
 	}
 
-	// Determine default title (use display name or username)
+	// Search for existing notes about this user
+	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
+	ctx := discordContextFor(i)
+
+	resp, err := noteClient.SearchNotes(ctx, &notespb.SearchNotesRequest{
+		Query:   user.Username,
+		GuildId: i.GuildID,
+		Limit:   1, // Just get the first one
+	})
+
+	// Default values
 	defaultTitle := user.Username
 	if user.GlobalName != "" {
 		defaultTitle = user.GlobalName
 	}
+	defaultBody := ""
+	noteID := "new"
+	modalTitle := fmt.Sprintf("Note about @%s", user.Username)
 
-	// Show modal to create a note about this user
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	// If existing note found, pre-fill with its content
+	if err == nil && len(resp.Notes) > 0 {
+		existingNote := resp.Notes[0]
+		defaultTitle = existingNote.Title
+		defaultBody = existingNote.Body
+		noteID = existingNote.Id
+		modalTitle = fmt.Sprintf("Edit Note about @%s", user.Username)
+
+		// Remove the user mention prefix if present (added during creation)
+		userMentionPrefix := fmt.Sprintf("**Note about <@%s>", targetID)
+		if strings.HasPrefix(defaultBody, userMentionPrefix) {
+			// Find the end of the first line and remove it
+			if idx := strings.Index(defaultBody, "\n\n"); idx != -1 {
+				defaultBody = defaultBody[idx+2:]
+			}
+		}
+
+		// Check if body exceeds Discord's modal limit
+		if len(defaultBody) > 4000 {
+			truncatedBody := defaultBody[:3900]
+			defaultBody = truncatedBody + "\n\n[Note truncated - please use web interface to edit full content]"
+		}
+	}
+
+	// Show modal to create or edit a note about this user
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
-			CustomID: fmt.Sprintf("user_note_modal:%s", targetID),
-			Title:    fmt.Sprintf("Note about @%s", user.Username),
+			CustomID: fmt.Sprintf("user_note_modal:%s:%s", targetID, noteID),
+			Title:    modalTitle,
 			Components: []discordgo.MessageComponent{
 				discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
@@ -773,6 +810,7 @@ func handleContextMenuAddNoteForUser(s *discordgo.Session, i *discordgo.Interact
 							Label:       "Note Content",
 							Style:       discordgo.TextInputParagraph,
 							Required:    true,
+							Value:       defaultBody,
 							MaxLength:   4000,
 							Placeholder: "What do you want to remember about this person? Use #hashtags for tags.",
 						},
@@ -857,14 +895,14 @@ func handleContextMenuViewNotesForUser(s *discordgo.Session, i *discordgo.Intera
 
 // handleUserNoteModal handles submission of the user note modal
 func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
-	// Extract user ID and title from custom ID (format: user_note_modal:{userID}:{title})
+	// Extract user ID and note ID from custom ID (format: user_note_modal:{userID}:{noteID})
 	parts := strings.SplitN(i.ModalSubmitData().CustomID, ":", 3)
 	if len(parts) != 3 {
 		respondError(s, i, "Invalid modal format", log)
 		return
 	}
 	targetUserID := parts[1]
-	title := parts[2]
+	noteID := parts[2]
 
 	// Get the target user
 	targetUser, err := s.User(targetUserID)
@@ -875,12 +913,15 @@ func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, l
 
 	// Extract fields from modal
 	data := i.ModalSubmitData()
-	var body string
+	var title, body string
 	for _, component := range data.Components {
 		if actionRow, ok := component.(*discordgo.ActionsRow); ok {
 			for _, innerComponent := range actionRow.Components {
 				if textInput, ok := innerComponent.(*discordgo.TextInput); ok {
-					if textInput.CustomID == "note_body" {
+					switch textInput.CustomID {
+					case "note_title":
+						title = textInput.Value
+					case "note_body":
 						body = textInput.Value
 					}
 				}
@@ -906,6 +947,9 @@ func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, l
 	userMention := fmt.Sprintf("**Note about <@%s> (@%s)**\n\n", targetUserID, targetUser.Username)
 	body = userMention + body
 
+	// Extract hashtags for tags
+	tags := extractHashtags(body)
+
 	// Defer response
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -918,43 +962,70 @@ func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, l
 		return
 	}
 
-	// Create note with gRPC
 	ctx := discordContextFor(i)
 	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
 
-	req := &notespb.CreateNoteRequest{
-		Title:   title,
-		Body:    body,
-		GuildId: i.GuildID,
-	}
+	var resultNote *notespb.Note
+	var actionText string
 
-	resp, err := noteClient.CreateNote(ctx, req)
-	if err != nil {
-		log.Error("Failed to create note", "error", err)
-		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: fmt.Sprintf("❌ Failed to create note: %v", err),
-			Flags:   discordgo.MessageFlagsEphemeral,
-		})
-		return
-	}
+	// Check if we're updating an existing note or creating a new one
+	if noteID != "new" {
+		// Update existing note
+		updateReq := &notespb.UpdateNoteRequest{
+			Id:    noteID,
+			Title: title,
+			Body:  body,
+			Tags:  tags,
+		}
 
-	// Add user message reference
-	refReq := &notespb.AddNoteMessageReferenceRequest{
-		NoteId:            resp.Id,
-		MessageId:         "",
-		ChannelId:         "",
-		GuildId:           i.GuildID,
-		Content:           "",
-		AuthorId:          targetUserID,
-		AuthorUsername:    targetUser.Username,
-		AuthorDisplayName: targetUser.GlobalName,
-		MessageTimestamp:  timestamppb.Now(),
-	}
+		resultNote, err = noteClient.UpdateNote(ctx, updateReq)
+		if err != nil {
+			log.Error("Failed to update note", "note_id", noteID, "error", err)
+			_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+				Content: fmt.Sprintf("❌ Failed to update note: %v", err),
+				Flags:   discordgo.MessageFlagsEphemeral,
+			})
+			return
+		}
+		actionText = "updated"
+	} else {
+		// Create new note
+		createReq := &notespb.CreateNoteRequest{
+			Title:   title,
+			Body:    body,
+			GuildId: i.GuildID,
+			Tags:    tags,
+		}
 
-	_, err = noteClient.AddNoteMessageReference(ctx, refReq)
-	if err != nil {
-		log.Warn("Failed to add user reference", "error", err)
-		// Don't fail the whole operation if reference fails
+		resultNote, err = noteClient.CreateNote(ctx, createReq)
+		if err != nil {
+			log.Error("Failed to create note", "error", err)
+			_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+				Content: fmt.Sprintf("❌ Failed to create note: %v", err),
+				Flags:   discordgo.MessageFlagsEphemeral,
+			})
+			return
+		}
+
+		// Add user message reference for new notes
+		refReq := &notespb.AddNoteMessageReferenceRequest{
+			NoteId:            resultNote.Id,
+			MessageId:         "",
+			ChannelId:         "",
+			GuildId:           i.GuildID,
+			Content:           "",
+			AuthorId:          targetUserID,
+			AuthorUsername:    targetUser.Username,
+			AuthorDisplayName: targetUser.GlobalName,
+			MessageTimestamp:  timestamppb.Now(),
+		}
+
+		_, err = noteClient.AddNoteMessageReference(ctx, refReq)
+		if err != nil {
+			log.Warn("Failed to add user reference", "error", err)
+			// Don't fail the whole operation if reference fails
+		}
+		actionText = "created"
 	}
 
 	// Success response
@@ -963,7 +1034,7 @@ func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, l
 		displayTitle = "(untitled)"
 	}
 
-	content := fmt.Sprintf("✅ Note created successfully!\n\n**Title:** %s\n**About:** <@%s>\n\n_Use `/note view` to see the full note_", displayTitle, targetUserID)
+	content := fmt.Sprintf("✅ Note %s successfully!\n\n**Title:** %s\n**About:** <@%s>\n\n_Use `/note view` to see the full note_", actionText, displayTitle, targetUserID)
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 		Content: content,
@@ -973,8 +1044,9 @@ func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, l
 		log.Error("Failed to send followup", "error", err)
 	}
 
-	log.Info("Note created via user context menu",
-		"note_id", resp.Id,
+	log.Info("Note operation completed via user context menu",
+		"note_id", resultNote.Id,
+		"action", actionText,
 		"title", title,
 		"author_id", i.Member.User.ID,
 		"target_user_id", targetUserID,
