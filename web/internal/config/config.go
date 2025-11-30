@@ -20,6 +20,7 @@ type WebServerConfig struct {
 	OAuth     OAuthConfig     `yaml:"oauth"`
 	Session   SessionConfig   `yaml:"session"`
 	Templates TemplatesConfig `yaml:"templates"`
+	Logging   LoggingConfig   `yaml:"logging"`
 }
 
 // HTTPServer holds HTTP server configuration
@@ -46,6 +47,12 @@ type SessionConfig struct {
 // TemplatesConfig holds template loading configuration
 type TemplatesConfig struct {
 	Path string `yaml:"path" default:"web/templates"` // Path to templates directory
+}
+
+// LoggingConfig holds logging configuration
+type LoggingConfig struct {
+	Level  string `yaml:"level" default:"info"`  // Log level: debug, info, warn, error
+	Format string `yaml:"format" default:"json"` // Log format: json, text
 }
 
 // DefaultConfigPaths defines the default locations to search for web configuration files
@@ -75,6 +82,10 @@ func Load(configPath string) (*WebServerConfig, error) {
 		},
 		Templates: TemplatesConfig{
 			Path: "web/templates",
+		},
+		Logging: LoggingConfig{
+			Level:  "info",
+			Format: "json",
 		},
 	}
 

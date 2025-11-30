@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,12 +12,32 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/devilmonastery/hivemind/internal/pkg/logger"
 	"github.com/devilmonastery/hivemind/web/internal/config"
 	"github.com/devilmonastery/hivemind/web/internal/handlers"
 	"github.com/devilmonastery/hivemind/web/internal/middleware"
 	"github.com/devilmonastery/hivemind/web/internal/render"
 	"github.com/devilmonastery/hivemind/web/internal/session"
 )
+
+// setupWebLogging configures the global logger for the web service
+func setupWebLogging(logLevel, logFormat string) error {
+	cfg := logger.Config{
+		Level:       logger.ParseLevel(logLevel),
+		LogToStderr: true, // Web service always logs to stderr
+		Format:      logFormat,
+	}
+
+	globalLogger, err := logger.SetupLogger(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Set as default logger so all slog.Info/Warn/Error calls use our configured logger
+	slog.SetDefault(globalLogger)
+
+	return nil
+}
 
 func main() {
 	// Parse command line flags
@@ -28,13 +47,24 @@ func main() {
 	// Load web configuration
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		fmt.Fprintf(os.Stderr, "Error: failed to load config: %v\n", err)
+		os.Exit(1)
 	}
+
+	// Set up structured logging (must be done before any logging calls)
+	if err = setupWebLogging(cfg.Logging.Level, cfg.Logging.Format); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to setup logging: %v\n", err)
+		os.Exit(1)
+	}
+
+	log := slog.Default().With("component", "web")
+	log.Info("starting hivemind web service")
 
 	// Load templates from configured path (defaults to "web/templates")
 	templates, err := render.LoadTemplates(cfg.Templates.Path)
 	if err != nil {
-		log.Fatalf("failed to load templates: %v", err)
+		log.Error("failed to load templates", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	// Log loaded template names for debugging
@@ -48,7 +78,7 @@ func main() {
 	if envSecret := os.Getenv("SESSION_SECRET"); envSecret != "" {
 		sessionSecret, err = base64.StdEncoding.DecodeString(envSecret)
 		if err != nil {
-			slog.Warn("Failed to decode SESSION_SECRET env var, trying config", slog.Any("error", err))
+			log.Warn("failed to decode SESSION_SECRET env var, trying config", slog.Any("error", err))
 		} else {
 			secretSource = "environment variable"
 		}
@@ -58,7 +88,7 @@ func main() {
 	if sessionSecret == nil && cfg.Session.Secret != "" {
 		sessionSecret, err = base64.StdEncoding.DecodeString(cfg.Session.Secret)
 		if err != nil {
-			slog.Warn("Failed to decode session secret from config", slog.Any("error", err))
+			log.Warn("failed to decode session secret from config", slog.Any("error", err))
 		} else {
 			secretSource = "config file"
 		}
@@ -66,37 +96,39 @@ func main() {
 
 	// 3. Fall back to random generation (dev mode only)
 	if sessionSecret == nil {
-		slog.Warn("No session secret configured, generating random one (sessions won't persist)")
+		log.Warn("no session secret configured, generating random one (sessions won't persist)")
 		sessionSecret = make([]byte, 32)
 		if _, err := rand.Read(sessionSecret); err != nil {
-			log.Fatalf("failed to generate session secret: %v", err)
+			log.Error("failed to generate session secret", slog.Any("error", err))
+			os.Exit(1)
 		}
 		secretSource = "random (temporary)"
 	}
 
 	if secretSource != "random (temporary)" {
-		slog.Info("Using session secret (sessions will persist across restarts)", slog.String("source", secretSource))
+		log.Info("using session secret (sessions will persist across restarts)", slog.String("source", secretSource))
 	}
 
 	// Initialize session manager
 	sessionMgr := session.NewManager(sessionSecret)
 
 	// Initialize auth middleware
-	authMw := middleware.NewAuthMiddleware(sessionMgr, slog.Default())
+	authMw := middleware.NewAuthMiddleware(sessionMgr, log)
 
 	// Initialize handlers with server address and redirect URI from config
-	slog.Info("Initializing handlers and waiting for backend...")
-	h := handlers.New(cfg.GRPC.Address, sessionMgr, templates, cfg.OAuth.RedirectURI, slog.Default())
+	log.Info("initializing handlers and waiting for backend...")
+	h := handlers.New(cfg.GRPC.Address, sessionMgr, templates, cfg.OAuth.RedirectURI, log)
 
 	// Create HTTP router
 	router := createRouter(h, authMw)
 
 	// Start HTTP server
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
-	slog.Info("Starting Hivemind Web Service", slog.String("address", addr))
+	log.Info("starting hivemind web service", slog.String("address", addr))
 
 	if err := http.ListenAndServe(addr, router); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+		log.Error("failed to start server", slog.Any("error", err))
+		os.Exit(1)
 	}
 }
 
