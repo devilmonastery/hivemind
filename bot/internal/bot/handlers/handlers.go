@@ -107,7 +107,7 @@ func handleComponent(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *
 	case "post_quote_select":
 		handlePostQuoteSelect(s, i, log, grpcClient)
 	case "view_note_select":
-		handleViewNoteSelect(s, i, log, grpcClient)
+		handleViewNoteSelect(s, i, cfg, log, grpcClient)
 	default:
 		log.Warn("no handler found for custom_id", slog.String("custom_id", customID))
 	}
