@@ -38,6 +38,15 @@ session:
   # IMPORTANT: Keep this secret! Used to sign session cookies.
   secret: "your-session-secret-here-change-me"
 
+# Logging configuration
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+  # Log format: json, text
+  # json is recommended for production (structured logging)
+  # text is more readable for local development
+  format: "json"
+
 # Example Production Configuration:
 # In production, use environment variables for secrets and adjust settings:
 #
