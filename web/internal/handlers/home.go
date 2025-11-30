@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 	"sort"
 	"time"
@@ -61,7 +61,8 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 				h.clearSessionAndRedirect(w, r)
 				return
 			}
-			log.Printf("Failed to fetch recent activity: %v", err)
+			h.log.Error("failed to fetch recent activity",
+				slog.String("error", err.Error()))
 			// Continue with empty activity rather than error
 			activity = []ActivityItem{}
 		}
@@ -94,9 +95,11 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		if isAuthError(err) {
 			return nil, err // Return auth error to trigger session clear
 		}
-		log.Printf("Failed to fetch notes: %v", err)
+		h.log.Error("failed to fetch notes",
+			slog.String("error", err.Error()))
 	} else {
-		log.Printf("Fetched %d notes from server", len(notesResp.Notes))
+		h.log.Debug("fetched notes from server",
+			slog.Int("count", len(notesResp.Notes)))
 		for _, note := range notesResp.Notes {
 			activity = append(activity, ActivityItem{
 				Type:        "note",
@@ -116,7 +119,7 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 
 	// Fetch recent quotes (get from all guilds user has access to)
 	quoteClient := quotespb.NewQuoteServiceClient(client.Conn())
-	log.Printf("Fetching quotes...")
+	h.log.Debug("fetching quotes")
 	quotesResp, err := quoteClient.ListQuotes(ctx, &quotespb.ListQuotesRequest{
 		GuildId:   "", // Empty = all guilds
 		Limit:     limit,
@@ -127,9 +130,11 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		if isAuthError(err) {
 			return nil, err // Return auth error to trigger session clear
 		}
-		log.Printf("Failed to fetch quotes: %v", err)
+		h.log.Error("failed to fetch quotes",
+			slog.String("error", err.Error()))
 	} else {
-		log.Printf("Fetched %d quotes from server", len(quotesResp.Quotes))
+		h.log.Debug("fetched quotes from server",
+			slog.Int("count", len(quotesResp.Quotes)))
 		for _, quote := range quotesResp.Quotes {
 			activity = append(activity, ActivityItem{
 				Type:        "quote",
@@ -148,7 +153,7 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 
 	// Fetch recent wiki pages (get from all guilds)
 	wikiClient := wikipb.NewWikiServiceClient(client.Conn())
-	log.Printf("Fetching wiki pages...")
+	h.log.Debug("fetching wiki pages")
 	wikiResp, err := wikiClient.ListWikiPages(ctx, &wikipb.ListWikiPagesRequest{
 		GuildId:   "", // Empty = all guilds
 		Limit:     limit,
@@ -159,9 +164,11 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		if isAuthError(err) {
 			return nil, err // Return auth error to trigger session clear
 		}
-		log.Printf("Failed to fetch wiki pages: %v", err)
+		h.log.Error("failed to fetch wiki pages",
+			slog.String("error", err.Error()))
 	} else {
-		log.Printf("Fetched %d wiki pages from server", len(wikiResp.Pages))
+		h.log.Debug("fetched wiki pages from server",
+			slog.Int("count", len(wikiResp.Pages)))
 		for _, page := range wikiResp.Pages {
 			// Fetch reference count for this page
 			refCount := int32(0)

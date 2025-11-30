@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	wikipb "github.com/devilmonastery/hivemind/api/generated/go/wikipb"
@@ -12,7 +12,8 @@ func (h *Handler) WikiListPage(w http.ResponseWriter, r *http.Request) {
 	// Get authenticated client
 	client, err := h.getClient(r, w)
 	if err != nil {
-		log.Printf("Failed to create client: %v", err)
+		h.log.Error("Failed to create client for wiki list",
+			slog.String("error", err.Error()))
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -26,7 +27,8 @@ func (h *Handler) WikiListPage(w http.ResponseWriter, r *http.Request) {
 		Ascending: false,
 	})
 	if err != nil {
-		log.Printf("Failed to fetch wiki pages: %v", err)
+		h.log.Error("Failed to fetch wiki pages",
+			slog.String("error", err.Error()))
 		http.Error(w, "Failed to fetch wiki pages", http.StatusInternalServerError)
 		return
 	}
@@ -53,7 +55,10 @@ func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
 	// Get authenticated client
 	client, err := h.getClient(r, w)
 	if err != nil {
-		log.Printf("Failed to create client: %v", err)
+		h.log.Error("Failed to create client for wiki page",
+			slog.String("title", title),
+			slog.String("guild_id", guildID),
+			slog.String("error", err.Error()))
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -67,7 +72,10 @@ func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
 		Limit:   1,
 	})
 	if err != nil || len(searchResp.Pages) == 0 {
-		log.Printf("Failed to find wiki page: %v", err)
+		h.log.Error("Failed to find wiki page",
+			slog.String("title", title),
+			slog.String("guild_id", guildID),
+			slog.String("error", err.Error()))
 		http.Error(w, "Wiki page not found", http.StatusNotFound)
 		return
 	}
@@ -85,7 +93,9 @@ func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
 		WikiPageId: page.Id,
 	})
 	if err != nil {
-		log.Printf("Failed to fetch wiki references: %v", err)
+		h.log.Error("Failed to fetch wiki references",
+			slog.String("wiki_page_id", page.Id),
+			slog.String("error", err.Error()))
 		// Continue without references rather than failing completely
 	}
 

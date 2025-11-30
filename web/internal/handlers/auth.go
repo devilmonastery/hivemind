@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -26,14 +26,18 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	// Get available providers from server
 	availableProviders, err := h.getAvailableProviders(r.Context())
 	if err != nil {
-		log.Printf("Failed to get available providers: %v", err)
+		h.log.Error("failed to get available providers",
+			slog.String("error", err.Error()))
 		http.Error(w, "Failed to load authentication options", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Login: found %d available providers", len(availableProviders))
+	h.log.Debug("login: found available providers",
+		slog.Int("count", len(availableProviders)))
 	for _, p := range availableProviders {
-		log.Printf("  - Provider: %s (client_id=%s)", p.Name, p.ClientId)
+		h.log.Debug("provider available",
+			slog.String("name", p.Name),
+			slog.String("client_id", p.ClientId))
 	}
 
 	// Check for admin access request
@@ -55,7 +59,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 		// Single provider - render login page with auto-trigger
 		if len(availableProviders) == 1 {
-			log.Printf("Single provider detected (%s), rendering login page with auto-trigger", availableProviders[0].Name)
+			h.log.Debug("single provider detected, rendering login page with auto-trigger",
+				slog.String("provider", availableProviders[0].Name))
 			h.renderLoginPage(w, r, availableProviders)
 			return
 		}
@@ -74,7 +79,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	// Create an unauthenticated client (no session required for GetOAuthConfig)
 	grpcClient, err := h.getUnauthenticatedClient()
 	if err != nil {
-		log.Printf("Failed to create gRPC client: %v", err)
+		h.log.Error("failed to create gRPC client",
+			slog.String("error", err.Error()))
 		http.Error(w, "Failed to start login process", http.StatusInternalServerError)
 		return
 	}
@@ -82,7 +88,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	configResp, err := grpcClient.AuthClient().GetOAuthConfig(ctx, &authpb.GetOAuthConfigRequest{})
 	if err != nil {
-		log.Printf("Failed to get OAuth config: %v", err)
+		h.log.Error("failed to get OAuth config",
+			slog.String("error", err.Error()))
 		http.Error(w, "Failed to start login process", http.StatusInternalServerError)
 		return
 	}
@@ -114,7 +121,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	session.Values["oauth_code_verifier"] = codeVerifier
 	session.Values["oauth_provider"] = provider
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Failed to save session: %v", err)
+		h.log.Error("failed to save session",
+			slog.String("error", err.Error()))
 		http.Error(w, "Failed to start login", http.StatusInternalServerError)
 		return
 	}
@@ -146,7 +154,9 @@ func (h *Handler) AuthCallback(w http.ResponseWriter, r *http.Request) {
 	errorParam := r.URL.Query().Get("error")
 
 	if errorParam != "" {
-		log.Printf("OAuth error: %s - %s", errorParam, r.URL.Query().Get("error_description"))
+		h.log.Error("OAuth error received",
+			slog.String("error", errorParam),
+			slog.String("error_description", r.URL.Query().Get("error_description")))
 		http.Error(w, "Authentication failed", http.StatusBadRequest)
 		return
 	}
@@ -160,7 +170,9 @@ func (h *Handler) AuthCallback(w http.ResponseWriter, r *http.Request) {
 	session, _ := h.sessionManager.GetSession(r)
 	savedState, ok := session.Values["oauth_state"].(string)
 	if !ok || savedState != state {
-		log.Printf("Invalid state parameter - CSRF attempt?")
+		h.log.Warn("invalid state parameter - possible CSRF attempt",
+			slog.String("expected", savedState),
+			slog.String("received", state))
 		http.Error(w, "Invalid state parameter", http.StatusBadRequest)
 		return
 	}
@@ -184,13 +196,16 @@ func (h *Handler) AuthCallback(w http.ResponseWriter, r *http.Request) {
 	// Create an unauthenticated client (no session required for ExchangeAuthCode)
 	grpcClient, err := h.getUnauthenticatedClient()
 	if err != nil {
-		log.Printf("Failed to create gRPC client: %v", err)
+		h.log.Error("failed to create gRPC client",
+			slog.String("error", err.Error()))
 		http.Error(w, "Failed to complete authentication", http.StatusInternalServerError)
 		return
 	}
 	defer grpcClient.Close()
 
-	log.Printf("Exchanging auth code for provider=%s, redirectURI=%s", provider, h.redirectURI)
+	h.log.Info("exchanging auth code",
+		slog.String("provider", provider),
+		slog.String("redirect_uri", h.redirectURI))
 
 	// Must match the redirect_uri used in the authorization request
 	redirectURI := h.redirectURI
@@ -210,14 +225,17 @@ func (h *Handler) AuthCallback(w http.ResponseWriter, r *http.Request) {
 		Timezone:     timezone,
 	})
 	if err != nil {
-		log.Printf("Failed to exchange authorization code: %v", err)
+		h.log.Error("failed to exchange authorization code",
+			slog.String("error", err.Error()),
+			slog.String("provider", provider))
 		http.Error(w, "Failed to complete authentication", http.StatusInternalServerError)
 		return
 	}
 
 	// Store the API token and token ID in session
 	if err := h.sessionManager.SetToken(r, w, resp.ApiToken, resp.TokenId); err != nil {
-		log.Printf("Failed to save session: %v", err)
+		h.log.Error("failed to save session",
+			slog.String("error", err.Error()))
 		http.Error(w, "Failed to save session", http.StatusInternalServerError)
 		return
 	}
@@ -336,7 +354,8 @@ func (h *Handler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Parse form data
 	if err := r.ParseForm(); err != nil {
-		log.Printf("Failed to parse admin login form: %v", err)
+		h.log.Error("Failed to parse admin login form",
+			slog.String("error", err.Error()))
 		http.Redirect(w, r, "/login?admin=1&reason=invalid", http.StatusSeeOther)
 		return
 	}
@@ -355,7 +374,8 @@ func (h *Handler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 
 	grpcClient, err := h.getUnauthenticatedClient()
 	if err != nil {
-		log.Printf("Failed to create gRPC client for admin login: %v", err)
+		h.log.Error("Failed to create gRPC client for admin login",
+			slog.String("error", err.Error()))
 		http.Error(w, "Failed to authenticate", http.StatusInternalServerError)
 		return
 	}
@@ -366,14 +386,17 @@ func (h *Handler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 		Password: password,
 	})
 	if err != nil {
-		log.Printf("Admin authentication failed: %v", err)
+		h.log.Error("Admin authentication failed",
+			slog.String("username", username),
+			slog.String("error", err.Error()))
 		http.Redirect(w, r, "/login?admin=1&reason=invalid", http.StatusSeeOther)
 		return
 	}
 
 	// Store the API token and token ID in session
 	if err := h.sessionManager.SetToken(r, w, resp.ApiToken, resp.TokenId); err != nil {
-		log.Printf("Failed to save admin session: %v", err)
+		h.log.Error("Failed to save admin session",
+			slog.String("error", err.Error()))
 		http.Error(w, "Failed to save session", http.StatusInternalServerError)
 		return
 	}

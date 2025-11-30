@@ -82,7 +82,7 @@ func main() {
 	sessionMgr := session.NewManager(sessionSecret)
 
 	// Initialize auth middleware
-	authMw := middleware.NewAuthMiddleware(sessionMgr)
+	authMw := middleware.NewAuthMiddleware(sessionMgr, slog.Default())
 
 	// Initialize handlers with server address and redirect URI from config
 	slog.Info("Initializing handlers and waiting for backend...")

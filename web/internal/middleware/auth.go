@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/devilmonastery/hivemind/web/internal/session"
@@ -11,12 +11,14 @@ import (
 // Token refresh is now handled automatically by the per-request gRPC clients
 type AuthMiddleware struct {
 	sessionManager *session.Manager
+	log            *slog.Logger
 }
 
 // NewAuthMiddleware creates a new auth middleware
-func NewAuthMiddleware(sessionManager *session.Manager) *AuthMiddleware {
+func NewAuthMiddleware(sessionManager *session.Manager, logger *slog.Logger) *AuthMiddleware {
 	return &AuthMiddleware{
 		sessionManager: sessionManager,
+		log:            logger.With(slog.String("component", "auth_middleware")),
 	}
 }
 
@@ -27,7 +29,9 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		// Check if user has a token
 		token, err := m.sessionManager.GetToken(r)
 		if err != nil || token == "" {
-			log.Printf("No token found in session, redirecting to login")
+			m.log.Info("no token found in session, redirecting to login",
+				slog.String("path", r.URL.Path),
+				slog.String("method", r.Method))
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}

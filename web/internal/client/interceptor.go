@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"google.golang.org/grpc"
@@ -41,13 +41,15 @@ func WithHTTPContext(ctx context.Context, r *http.Request, w http.ResponseWriter
 type AutoRefreshInterceptor struct {
 	authClient     authpb.AuthServiceClient
 	sessionManager SessionManager
+	log            *slog.Logger
 }
 
 // NewAutoRefreshInterceptor creates a new auto-refresh interceptor
-func NewAutoRefreshInterceptor(authClient authpb.AuthServiceClient, sessionManager SessionManager) *AutoRefreshInterceptor {
+func NewAutoRefreshInterceptor(authClient authpb.AuthServiceClient, sessionManager SessionManager, logger *slog.Logger) *AutoRefreshInterceptor {
 	return &AutoRefreshInterceptor{
 		authClient:     authClient,
 		sessionManager: sessionManager,
+		log:            logger.With(slog.String("component", "auto_refresh_interceptor")),
 	}
 }
 
@@ -66,24 +68,28 @@ func (i *AutoRefreshInterceptor) UnaryInterceptor() grpc.UnaryClientInterceptor 
 
 		// If we get Unauthenticated, try to refresh
 		if status.Code(err) == codes.Unauthenticated {
-			log.Printf("Authentication failed for %s, attempting token refresh", method)
+			i.log.Info("authentication failed, attempting token refresh",
+				slog.String("method", method))
 
 			// Get HTTP request and response from context
 			r, ok := ctx.Value(requestKey).(*http.Request)
 			if !ok {
-				log.Printf("No HTTP request in context, cannot refresh token")
+				i.log.Warn("no HTTP request in context, cannot refresh token",
+					slog.String("method", method))
 				return err
 			}
 
 			w, ok := ctx.Value(responseKey).(http.ResponseWriter)
 			if !ok {
-				log.Printf("No HTTP response writer in context, cannot refresh token")
+				i.log.Warn("no HTTP response writer in context, cannot refresh token",
+					slog.String("method", method))
 				return err
 			}
 
 			// Try to refresh the token
 			if refreshErr := i.refreshToken(ctx, r, w); refreshErr == nil {
-				log.Printf("Token refreshed successfully, retrying %s", method)
+				i.log.Info("token refreshed successfully, retrying request",
+					slog.String("method", method))
 
 				// Get the new token and retry with updated auth context
 				token, _ := i.sessionManager.GetToken(r)
@@ -92,7 +98,9 @@ func (i *AutoRefreshInterceptor) UnaryInterceptor() grpc.UnaryClientInterceptor 
 				// Retry the request with new token
 				err = invoker(retryCtx, method, req, reply, cc, opts...)
 			} else {
-				log.Printf("Token refresh failed: %v", refreshErr)
+				i.log.Error("token refresh failed",
+					slog.String("method", method),
+					slog.String("error", refreshErr.Error()))
 				return err
 			}
 		}
@@ -105,7 +113,8 @@ func (i *AutoRefreshInterceptor) UnaryInterceptor() grpc.UnaryClientInterceptor 
 func (i *AutoRefreshInterceptor) refreshToken(ctx context.Context, r *http.Request, w http.ResponseWriter) error {
 	tokenID, err := i.sessionManager.GetTokenID(r)
 	if err != nil || tokenID == "" {
-		log.Printf("No token ID available for refresh")
+		i.log.Warn("no token ID available for refresh",
+			slog.String("error", err.Error()))
 		return err
 	}
 
@@ -114,16 +123,18 @@ func (i *AutoRefreshInterceptor) refreshToken(ctx context.Context, r *http.Reque
 		TokenId: tokenID,
 	})
 	if err != nil {
-		log.Printf("RefreshToken RPC failed: %v", err)
+		i.log.Error("RefreshToken RPC failed",
+			slog.String("error", err.Error()))
 		return err
 	}
 
 	// Update session with new token (keep same token ID)
 	if err := i.sessionManager.SetToken(r, w, resp.ApiToken, tokenID); err != nil {
-		log.Printf("Failed to save refreshed token: %v", err)
+		i.log.Error("failed to save refreshed token",
+			slog.String("error", err.Error()))
 		return err
 	}
 
-	log.Printf("Successfully refreshed token")
+	i.log.Info("successfully refreshed token")
 	return nil
 }
