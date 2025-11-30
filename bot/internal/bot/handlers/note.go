@@ -604,16 +604,73 @@ func handleViewNoteSelect(s *discordgo.Session, i *discordgo.InteractionCreate, 
 
 // handleNoteEditButton handles the edit button click
 func handleNoteEditButton(s *discordgo.Session, i *discordgo.InteractionCreate, noteID string, log *slog.Logger, grpcClient *client.Client) {
-	// TODO: Implement note editing - for now just show a message
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
+	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
+	ctx := discordContextFor(i)
+
+	// Fetch the note to edit
+	note, err := noteClient.GetNote(ctx, &notespb.GetNoteRequest{
+		Id: noteID,
+	})
+	if err != nil {
+		log.Error("Failed to fetch note for editing", "note_id", noteID, "error", err)
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("❌ Failed to fetch note: %v", err),
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		if err != nil {
+			log.Error("Failed to respond to edit button", "error", err)
+		}
+		return
+	}
+
+	// Check if body exceeds Discord's modal limit
+	body := note.Body
+	if len(body) > 4000 {
+		truncatedBody := body[:3900]
+		body = truncatedBody + "\n\n[Note truncated - please use web interface to edit full content]"
+	}
+
+	// Show modal to edit the note
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
-			Content: fmt.Sprintf("✏️ Note editing is coming soon! Note ID: %s\n\nFor now, please use the web interface to edit this note.", noteID),
-			Flags:   discordgo.MessageFlagsEphemeral,
+			CustomID: fmt.Sprintf("note_edit_modal:%s", noteID),
+			Title:    "Edit Note",
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.TextInput{
+							CustomID:    "note_title",
+							Label:       "Title",
+							Style:       discordgo.TextInputShort,
+							Required:    true,
+							Value:       note.Title,
+							MaxLength:   200,
+							Placeholder: "Note title",
+						},
+					},
+				},
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.TextInput{
+							CustomID:    "note_body",
+							Label:       "Note Content",
+							Style:       discordgo.TextInputParagraph,
+							Required:    true,
+							Value:       body,
+							MaxLength:   4000,
+							Placeholder: "Note content. Use #hashtags for tags.",
+						},
+					},
+				},
+			},
 		},
 	})
 	if err != nil {
-		log.Error("Failed to respond to edit button", "error", err)
+		log.Error("Failed to show edit modal", "error", err)
 	}
 }
 
@@ -649,6 +706,108 @@ func handleNoteDeleteButton(s *discordgo.Session, i *discordgo.InteractionCreate
 }
 
 // handleNoteCloseButton handles the close button click
+// handleNoteEditModal handles the edit note modal submission
+func handleNoteEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
+	// Extract note ID from custom ID (format: note_edit_modal:{noteID})
+	parts := strings.SplitN(i.ModalSubmitData().CustomID, ":", 2)
+	if len(parts) != 2 {
+		respondError(s, i, "Invalid modal format", log)
+		return
+	}
+	noteID := parts[1]
+
+	// Extract fields from modal
+	data := i.ModalSubmitData()
+	var title, body string
+	for _, component := range data.Components {
+		if actionRow, ok := component.(*discordgo.ActionsRow); ok {
+			for _, innerComponent := range actionRow.Components {
+				if textInput, ok := innerComponent.(*discordgo.TextInput); ok {
+					switch textInput.CustomID {
+					case "note_title":
+						title = textInput.Value
+					case "note_body":
+						body = textInput.Value
+					}
+				}
+			}
+		}
+	}
+
+	// Validate title is not empty
+	title = strings.TrimSpace(title)
+	if title == "" {
+		respondError(s, i, "Note title cannot be empty", log)
+		return
+	}
+
+	// Validate body is not empty
+	body = strings.TrimSpace(body)
+	if body == "" {
+		respondError(s, i, "Note body cannot be empty", log)
+		return
+	}
+
+	// Extract hashtags for tags
+	tags := extractHashtags(body)
+
+	// Defer response
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		log.Error("Failed to defer response", "error", err)
+		return
+	}
+
+	ctx := discordContextFor(i)
+	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
+
+	// Update the note
+	updateReq := &notespb.UpdateNoteRequest{
+		Id:    noteID,
+		Title: title,
+		Body:  body,
+		Tags:  tags,
+	}
+
+	resultNote, err := noteClient.UpdateNote(ctx, updateReq)
+	if err != nil {
+		log.Error("Failed to update note", "note_id", noteID, "error", err)
+		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+			Content: fmt.Sprintf("❌ Failed to update note: %v", err),
+			Flags:   discordgo.MessageFlagsEphemeral,
+		})
+		return
+	}
+
+	// Success response - show standard note embed
+	// Fetch message references
+	refs := fetchNoteMessageReferences(ctx, noteClient, resultNote.Id, log)
+	embed, components := createNoteEmbed(resultNote, refs, cfg)
+
+	// Add success message to title
+	embed.Title = "✅ Note Updated\n\n" + embed.Title
+
+	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+		Embeds:     []*discordgo.MessageEmbed{embed},
+		Components: components,
+		Flags:      discordgo.MessageFlagsEphemeral,
+	})
+	if err != nil {
+		log.Error("Failed to send followup", "error", err)
+	}
+
+	log.Info("Note updated via edit button",
+		"note_id", resultNote.Id,
+		"title", title,
+		"author_id", i.Member.User.ID,
+	)
+}
+
 func handleNoteCloseButton(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger) {
 	// Delete the message
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
