@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -10,6 +11,28 @@ import (
 	"github.com/devilmonastery/hivemind/bot/internal/config"
 	"github.com/devilmonastery/hivemind/internal/client"
 )
+
+// fetchNoteMessageReferences fetches message references for a note
+func fetchNoteMessageReferences(ctx context.Context, noteClient notespb.NoteServiceClient, noteID string, log *slog.Logger) []*notespb.NoteMessageReference {
+	log.Info("fetching note message references",
+		slog.String("note_id", noteID))
+
+	resp, err := noteClient.ListNoteMessageReferences(ctx, &notespb.ListNoteMessageReferencesRequest{
+		NoteId: noteID,
+	})
+	if err != nil {
+		log.Warn("failed to fetch note message references",
+			slog.String("note_id", noteID),
+			slog.String("error", err.Error()))
+		return nil
+	}
+
+	log.Info("fetched note message references",
+		slog.String("note_id", noteID),
+		slog.Int("count", len(resp.References)))
+
+	return resp.References
+}
 
 // handleNote routes /note subcommands to the appropriate handler
 func handleNote(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
@@ -163,7 +186,7 @@ func handleNoteCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate,
 
 // handleNoteList lists user's notes
 // createNoteEmbed creates an embed for displaying a note with action buttons
-func createNoteEmbed(note *notespb.Note, cfg *config.Config) (*discordgo.MessageEmbed, []discordgo.MessageComponent) {
+func createNoteEmbed(note *notespb.Note, references []*notespb.NoteMessageReference, cfg *config.Config) (*discordgo.MessageEmbed, []discordgo.MessageComponent) {
 	title := note.Title
 	if title == "" {
 		title = "(untitled)"
@@ -174,6 +197,45 @@ func createNoteEmbed(note *notespb.Note, cfg *config.Config) (*discordgo.Message
 		Description: note.Body,
 		Color:       0x5865F2,
 		Timestamp:   note.CreatedAt.AsTime().Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	// Add message references field if any exist
+	if len(references) > 0 {
+		// Build reference list with datetime and content preview
+		refsList := ""
+		displayCount := min(5, len(references)) // Show up to 5
+		for idx := 0; idx < displayCount; idx++ {
+			ref := references[idx]
+			messageLink := fmt.Sprintf("https://discord.com/channels/%s/%s/%s", ref.GuildId, ref.ChannelId, ref.MessageId)
+
+			// Format timestamp
+			timestamp := ref.MessageTimestamp.AsTime().Format("2006-01-02 15:04")
+
+			// Truncate content preview
+			contentPreview := ref.Content
+			if len(contentPreview) > 60 {
+				contentPreview = contentPreview[:57] + "..."
+			}
+
+			refsList += fmt.Sprintf("• [%s](%s) - %s\n  _%s_\n", ref.AuthorUsername, messageLink, timestamp, contentPreview)
+		}
+		if len(references) > displayCount {
+			refsList += fmt.Sprintf("_...and %d more_", len(references)-displayCount)
+		}
+
+		slog.Default().Info("adding message references field to note embed",
+			slog.Int("ref_count", len(references)),
+			slog.Int("displayed", displayCount))
+
+		embed.Fields = []*discordgo.MessageEmbedField{
+			{
+				Name:   fmt.Sprintf("📌 Referenced Messages (%d)", len(references)),
+				Value:  refsList,
+				Inline: false,
+			},
+		}
+	} else {
+		slog.Default().Info("no message references to display for note")
 	}
 
 	if len(note.Tags) > 0 {
@@ -275,7 +337,15 @@ func handleNoteView(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 	// If exactly one match, show it
 	if len(searchResp.Notes) == 1 {
 		note := searchResp.Notes[0]
-		embed, components := createNoteEmbed(note, cfg)
+
+		// Fetch message references
+		refs := fetchNoteMessageReferences(ctx, noteClient, note.Id, log)
+		log.Info("note view - displaying with references",
+			slog.String("note_id", note.Id),
+			slog.String("note_title", note.Title),
+			slog.Int("ref_count", len(refs)))
+
+		embed, components := createNoteEmbed(note, refs, cfg)
 
 		_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Embeds:     []*discordgo.MessageEmbed{embed},
@@ -473,7 +543,7 @@ func handleNoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 }
 
 // handleViewNoteSelect handles dropdown selection to view a note ephemerally
-func handleViewNoteSelect(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleViewNoteSelect(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
 	// Get the selected note ID from the dropdown
 	data := i.MessageComponentData()
 	if len(data.Values) == 0 {
@@ -502,24 +572,15 @@ func handleViewNoteSelect(s *discordgo.Session, i *discordgo.InteractionCreate, 
 		return
 	}
 
-	// Build note embed
-	title := note.Title
-	if title == "" {
-		title = "(untitled)"
-	}
+	// Fetch message references
+	refs := fetchNoteMessageReferences(ctx, noteClient, note.Id, log)
+	log.Info("note select - displaying with references",
+		slog.String("note_id", note.Id),
+		slog.String("note_title", note.Title),
+		slog.Int("ref_count", len(refs)))
 
-	embed := &discordgo.MessageEmbed{
-		Title:       title,
-		Description: note.Body,
-		Color:       0x5865F2,
-		Timestamp:   note.CreatedAt.AsTime().Format("2006-01-02T15:04:05Z07:00"),
-	}
-
-	if len(note.Tags) > 0 {
-		embed.Footer = &discordgo.MessageEmbedFooter{
-			Text: "Tags: " + strings.Join(note.Tags, ", "),
-		}
-	}
+	// Use standard embed function
+	embed, _ := createNoteEmbed(note, refs, cfg)
 
 	// Display the note ephemerally (only visible to the user)
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

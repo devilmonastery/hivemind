@@ -874,8 +874,11 @@ func handleContextMenuViewNotesForUser(s *discordgo.Session, i *discordgo.Intera
 	}
 
 	// Display each note with embed and action buttons
+	ctx := discordContextFor(i)
 	for idx, note := range resp.Notes {
-		embed, components := createNoteEmbed(note, cfg)
+		// Fetch message references for each note
+		refs := fetchNoteMessageReferences(ctx, noteClient, note.Id, log)
+		embed, components := createNoteEmbed(note, refs, cfg)
 
 		// Add note number to embed title
 		if idx == 0 {
@@ -1029,7 +1032,9 @@ func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, c
 	}
 
 	// Success response - show standard note embed
-	embed, components := createNoteEmbed(resultNote, cfg)
+	// Fetch message references
+	refs := fetchNoteMessageReferences(ctx, noteClient, resultNote.Id, log)
+	embed, components := createNoteEmbed(resultNote, refs, cfg)
 
 	// Add action text to title
 	if actionText == "updated" {
