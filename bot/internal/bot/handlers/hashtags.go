@@ -6,10 +6,13 @@ import (
 	"strings"
 )
 
-var hashtagRegex = regexp.MustCompile(`#(\w+)`)
+// hashtagRegex matches hashtags with alphanumeric characters, underscores, and hyphens
+// Supports formats like: #tag, #my-tag, #tag_name, #tag123
+var hashtagRegex = regexp.MustCompile(`#([\w-]+)`)
 
 // extractHashtags parses hashtags from text content
 // Returns a sorted list of unique tags
+// Supported formats: #word, #word-with-hyphens, #word_with_underscores, #word123
 func extractHashtags(text string) []string {
 	// Find all hashtags
 	matches := hashtagRegex.FindAllStringSubmatch(text, -1)
