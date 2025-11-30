@@ -10,6 +10,57 @@ import (
 	"github.com/devilmonastery/hivemind/internal/client"
 )
 
+// buildQuoteEmbed creates a standardized embed for displaying a quote
+func buildQuoteEmbed(quote *quotespb.Quote) *discordgo.MessageEmbed {
+	// Format the quote body with markdown quote styling
+	quoteText := ""
+
+	// Add attribution header if we have the original author
+	if quote.SourceMsgAuthorUsername != "" {
+		quoteText = fmt.Sprintf("**%s** said:\n", quote.SourceMsgAuthorUsername)
+	}
+
+	// Add the quote with > markdown
+	lines := strings.Split(quote.Body, "\n")
+	for _, line := range lines {
+		quoteText += "> " + line + "\n"
+	}
+
+	// Add footer with added by and original message link (de-emphasized with italics)
+	footer := []string{}
+	if quote.AuthorUsername != "" {
+		footer = append(footer, fmt.Sprintf("_added by %s_", quote.AuthorUsername))
+	}
+
+	if quote.SourceMsgId != "" && quote.SourceChannelId != "" && quote.GuildId != "" {
+		messageURL := fmt.Sprintf("https://discord.com/channels/%s/%s/%s",
+			quote.GuildId, quote.SourceChannelId, quote.SourceMsgId)
+		footer = append(footer, fmt.Sprintf("_[original message](%s)_", messageURL))
+	}
+
+	if len(footer) > 0 {
+		quoteText += "\n" + strings.Join(footer, " • ")
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Description: quoteText,
+		Color:       0x5865F2, // Discord blurple
+	}
+
+	// Add tags field if present
+	if len(quote.Tags) > 0 {
+		embed.Fields = []*discordgo.MessageEmbedField{
+			{
+				Name:   "Tags",
+				Value:  strings.Join(quote.Tags, ", "),
+				Inline: false,
+			},
+		}
+	}
+
+	return embed
+}
+
 // handleQuote routes /quote subcommands to the appropriate handler
 func handleQuote(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
 	options := i.ApplicationCommandData().Options
@@ -81,14 +132,13 @@ func handleQuoteAdd(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 		return
 	}
 
-	content := fmt.Sprintf("✅ Quote added (ID: %s)", resp.Id)
-	if len(tags) > 0 {
-		content += fmt.Sprintf("\nTags: %s", strings.Join(tags, ", "))
-	}
+	// Show the created quote with standard embed
+	embed := buildQuoteEmbed(resp)
+	embed.Title = "✅ Quote Added"
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: content,
-		Flags:   discordgo.MessageFlagsEphemeral,
+		Embeds: []*discordgo.MessageEmbed{embed},
+		Flags:  discordgo.MessageFlagsEphemeral,
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)
@@ -134,24 +184,8 @@ func handleQuoteRandom(s *discordgo.Session, i *discordgo.InteractionCreate, sub
 		return
 	}
 
-	embed := &discordgo.MessageEmbed{
-		Description: fmt.Sprintf("\"%s\"", resp.Body),
-		Color:       0x5865F2,
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: fmt.Sprintf("Added by %s", resp.AuthorUsername),
-		},
-		Timestamp: resp.CreatedAt.AsTime().Format("2006-01-02T15:04:05Z"),
-	}
-
-	if len(resp.Tags) > 0 {
-		embed.Fields = []*discordgo.MessageEmbedField{
-			{
-				Name:   "Tags",
-				Value:  strings.Join(resp.Tags, ", "),
-				Inline: true,
-			},
-		}
-	}
+	// Use standard quote embed
+	embed := buildQuoteEmbed(resp)
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{embed},
