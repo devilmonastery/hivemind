@@ -31,6 +31,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("Login: found %d available providers", len(availableProviders))
+	for _, p := range availableProviders {
+		log.Printf("  - Provider: %s (client_id=%s)", p.Name, p.ClientId)
+	}
+
 	// Check for admin access request
 	if r.URL.Query().Get("admin") != "" {
 		h.renderAdminLogin(w, r, availableProviders)

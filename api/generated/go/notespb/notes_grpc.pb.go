@@ -49,7 +49,7 @@ type NoteServiceClient interface {
 	DeleteNote(ctx context.Context, in *DeleteNoteRequest, opts ...grpc.CallOption) (*commonpb.SuccessResponse, error)
 	// SearchNotes searches user's notes by full-text query
 	SearchNotes(ctx context.Context, in *SearchNotesRequest, opts ...grpc.CallOption) (*SearchNotesResponse, error)
-	// AutocompleteNoteTitles returns matching note titles for autocomplete (lightweight)
+	// AutocompleteNoteTitles returns all note titles for a user (bot filters locally)
 	AutocompleteNoteTitles(ctx context.Context, in *AutocompleteNoteTitlesRequest, opts ...grpc.CallOption) (*AutocompleteNoteTitlesResponse, error)
 	// AddNoteMessageReference adds a Discord message reference to a note
 	AddNoteMessageReference(ctx context.Context, in *AddNoteMessageReferenceRequest, opts ...grpc.CallOption) (*NoteMessageReference, error)
@@ -173,7 +173,7 @@ type NoteServiceServer interface {
 	DeleteNote(context.Context, *DeleteNoteRequest) (*commonpb.SuccessResponse, error)
 	// SearchNotes searches user's notes by full-text query
 	SearchNotes(context.Context, *SearchNotesRequest) (*SearchNotesResponse, error)
-	// AutocompleteNoteTitles returns matching note titles for autocomplete (lightweight)
+	// AutocompleteNoteTitles returns all note titles for a user (bot filters locally)
 	AutocompleteNoteTitles(context.Context, *AutocompleteNoteTitlesRequest) (*AutocompleteNoteTitlesResponse, error)
 	// AddNoteMessageReference adds a Discord message reference to a note
 	AddNoteMessageReference(context.Context, *AddNoteMessageReferenceRequest) (*NoteMessageReference, error)

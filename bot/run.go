@@ -44,7 +44,7 @@ func newRunCommand() *cobra.Command {
 
 			// Validate required configuration
 			if cfg.Backend.ServiceToken == "" {
-				return fmt.Fatalf("backend.service_token is required - the bot cannot authenticate with the server without it. See example_bot.yaml for instructions on generating a service token")
+				return fmt.Errorf("backend.service_token is required - the bot cannot authenticate with the server without it. See example_bot.yaml for instructions on generating a service token")
 			}
 
 			log.Info("starting hivemind bot",

@@ -197,16 +197,41 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 	quoteClient := quotespb.NewQuoteServiceClient(grpcClient.Conn())
 	ctx := discordContextFor(i)
 
-	// Extract message ID from custom ID if needed
+	// Extract message ID from custom ID
 	// Format: "context_quote_modal:MESSAGE_ID"
-	// For now, we'll just save without the source message reference
-	// Future enhancement: parse customID to get original message details
+	var sourceMessageID, sourceChannelID, sourceChannelName, sourceAuthorDiscordID, sourceAuthorUsername string
+	customID := data.CustomID
+	parts := strings.Split(customID, ":")
+	if len(parts) == 2 {
+		sourceMessageID = parts[1]
+		// Fetch the message to get channel and author details
+		message, msgErr := s.ChannelMessage(i.ChannelID, sourceMessageID)
+		if msgErr != nil {
+			log.Warn("Failed to fetch original message", "message_id", sourceMessageID, "error", msgErr)
+		} else {
+			sourceChannelID = message.ChannelID
+			sourceAuthorDiscordID = message.Author.ID
+			sourceAuthorUsername = message.Author.Username
+
+			// Fetch channel name
+			channel, chanErr := s.Channel(sourceChannelID)
+			if chanErr != nil {
+				log.Warn("Failed to fetch channel", "channel_id", sourceChannelID, "error", chanErr)
+			} else {
+				sourceChannelName = channel.Name
+			}
+		}
+	}
 
 	req := &quotespb.CreateQuoteRequest{
-		Body:    quoteText,
-		Tags:    tags,
-		GuildId: i.GuildID,
-		// Could add source message fields here if we parse the customID
+		Body:                     quoteText,
+		Tags:                     tags,
+		GuildId:                  i.GuildID,
+		SourceMsgId:              sourceMessageID,
+		SourceChannelId:          sourceChannelID,
+		SourceChannelName:        sourceChannelName,
+		SourceMsgAuthorDiscordId: sourceAuthorDiscordID,
+		SourceMsgAuthorUsername:  sourceAuthorUsername,
 	}
 
 	resp, err := quoteClient.CreateQuote(ctx, req)

@@ -31,6 +31,10 @@ func (h *Handler) QuotesListPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for _, quote := range resp.Quotes {
+		log.Printf("quote: %#v", quote)
+	}
+
 	// Prepare template data
 	data := h.newTemplateData(r)
 	data["Quotes"] = resp.Quotes
