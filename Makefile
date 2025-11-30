@@ -1,4 +1,4 @@
-.PHONY: all build clean server cli web bot test lint proto assets build-css watch-css tidy run-server run-web run-bot db-shell docker-server docker-web docker-bot docker-all docker-publish-server docker-publish-web docker-publish-bot docker-publish-all help
+.PHONY: all build clean server cli web bot test lint proto assets build-css watch-css tidy run-server run-web run-bot db-shell docker-server docker-web docker-bot docker-all docker-publish-server docker-publish-web docker-publish-bot docker-publish-all buildx-remote-setup buildx-remote-teardown buildx-info help
 
 # Load .env file if it exists
 -include .env
@@ -13,6 +13,10 @@ BOT_BIN := bin/hivemind-bot
 # Docker configuration
 DOCKER_REGISTRY := devilmonastery
 DOCKER_VERSION ?= $(shell date +%Y.%m.%d.%H.%M)
+
+# BuildKit configuration (optional - set in .env)
+BUILDKIT_REMOTE_HOST ?=
+BUILDX_BUILDER ?= default
 
 # Version information
 VERSION ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
@@ -136,21 +140,21 @@ db-shell:
 ## docker-server: Build Docker image for server
 docker-server:
 	@echo "Building Docker image for server: $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
-	@DOCKER_BUILDKIT=1 docker build --platform linux/amd64 -f Dockerfile.server -t $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) .
+	@docker buildx build --platform linux/amd64 -f Dockerfile.server -t $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) --load .
 	@docker tag $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-server:latest
 	@echo "Built $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
 
 ## docker-web: Build Docker image for web
 docker-web:
 	@echo "Building Docker image for web: $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
-	@DOCKER_BUILDKIT=1 docker build --platform linux/amd64 -f Dockerfile.web --build-arg VERSION=$(DOCKER_VERSION) -t $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) .
+	@docker buildx build --platform linux/amd64 -f Dockerfile.web --build-arg VERSION=$(DOCKER_VERSION) -t $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) --load .
 	@docker tag $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-web:latest
 	@echo "Built $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
 
 ## docker-bot: Build Docker image for bot
 docker-bot:
 	@echo "Building Docker image for bot: $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
-	@DOCKER_BUILDKIT=1 docker build --platform linux/amd64 -f Dockerfile.bot -t $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) .
+	@docker buildx build --platform linux/amd64 -f Dockerfile.bot -t $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) --load .
 	@docker tag $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-bot:latest
 	@echo "Built $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
 
@@ -184,6 +188,40 @@ docker-publish-all: docker-all
 	@$(MAKE) docker-publish-server DOCKER_VERSION=$(DOCKER_VERSION)
 	@$(MAKE) docker-publish-web DOCKER_VERSION=$(DOCKER_VERSION)
 	@$(MAKE) docker-publish-bot DOCKER_VERSION=$(DOCKER_VERSION)
+
+## buildx-remote-setup: Configure Docker buildx to use remote BuildKit (set BUILDKIT_REMOTE_HOST in .env)
+buildx-remote-setup:
+	@if [ -z "$(BUILDKIT_REMOTE_HOST)" ]; then \
+		echo "Error: BUILDKIT_REMOTE_HOST is not set"; \
+		echo ""; \
+		echo "Add to your .env file:"; \
+		echo "  BUILDKIT_REMOTE_HOST=tcp://HOST:PORT"; \
+		echo ""; \
+		echo "Or run with:"; \
+		echo "  make buildx-remote-setup BUILDKIT_REMOTE_HOST=tcp://HOST:PORT"; \
+		exit 1; \
+	fi
+	@echo "Setting up remote BuildKit builder at $(BUILDKIT_REMOTE_HOST)..."
+	@docker buildx inspect remote >/dev/null 2>&1 && \
+		(echo "Builder 'remote' already exists. Removing..."; docker buildx rm remote) || true
+	@docker buildx create --name remote --driver remote $(BUILDKIT_REMOTE_HOST)
+	@docker buildx use remote
+	@docker buildx inspect --bootstrap
+	@echo "✓ Remote BuildKit builder configured."
+
+## buildx-remote-teardown: Switch back to default Docker buildx builder
+buildx-remote-teardown:
+	@echo "Switching to default builder..."
+	@docker buildx use default || true
+	@echo "✓ Using default builder. Remote builder still exists (use 'docker buildx rm remote' to remove)."
+
+## buildx-info: Show current buildx builder information
+buildx-info:
+	@echo "Current builder:"
+	@docker buildx inspect 2>/dev/null || echo "No builder selected"
+	@echo ""
+	@echo "Available builders:"
+	@docker buildx ls
 
 ## help: Show this help message
 help:
