@@ -15,6 +15,9 @@ service WikiService {
   // GetWikiPage retrieves a wiki page by ID
   rpc GetWikiPage(GetWikiPageRequest) returns (WikiPage);
 
+  // GetWikiPageByTitle retrieves a wiki page by guild ID and title (case-insensitive)
+  rpc GetWikiPageByTitle(GetWikiPageByTitleRequest) returns (WikiPage);
+
   // SearchWikiPages searches for wiki pages in a guild
   rpc SearchWikiPages(SearchWikiPagesRequest) returns (SearchWikiPagesResponse);
 
@@ -73,6 +76,11 @@ message CreateWikiPageRequest {
 
 message GetWikiPageRequest {
   string id = 1;
+}
+
+message GetWikiPageByTitleRequest {
+  string guild_id = 1;
+  string title = 2; // Case-insensitive match
 }
 
 message SearchWikiPagesRequest {
