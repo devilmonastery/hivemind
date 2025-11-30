@@ -227,6 +227,9 @@ func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, sub
 
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
 	})
 	if err != nil {
 		log.Error("Failed to defer response", "error", err)
@@ -253,24 +256,146 @@ func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, sub
 	if len(resp.Quotes) == 0 {
 		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: fmt.Sprintf("No quotes found matching \"%s\"", query),
+			Flags:   discordgo.MessageFlagsEphemeral,
 		})
 		return
 	}
 
+	// Show search results with a dropdown to select and post a quote
+	// Limit to 25 results (Discord's max for select menus)
+	displayLimit := len(resp.Quotes)
+	if displayLimit > 25 {
+		displayLimit = 25
+	}
+
 	var content strings.Builder
-	content.WriteString(fmt.Sprintf("🔍 Found %d quote(s) matching \"%s\":\n\n", resp.Total, query))
-	for idx, quote := range resp.Quotes {
-		content.WriteString(fmt.Sprintf("%d. \"%s\" (by %s)\n", idx+1, quote.Body, quote.AuthorUsername))
-		if len(quote.Tags) > 0 {
-			content.WriteString(fmt.Sprintf("   Tags: %s\n", strings.Join(quote.Tags, ", ")))
+	content.WriteString(fmt.Sprintf("🔍 Found %d quote(s) matching \"%s\"\n", resp.Total, query))
+	content.WriteString("Select a quote from the dropdown to post it to the channel:")
+
+	// Build select menu options
+	options := []discordgo.SelectMenuOption{}
+	for idx := 0; idx < displayLimit; idx++ {
+		quote := resp.Quotes[idx]
+		// Create a label (truncate if too long - Discord max is 100 chars)
+		label := quote.Body
+		if len(label) > 100 {
+			label = label[:97] + "..."
 		}
-		content.WriteString("\n")
+
+		// Create a description with attribution
+		description := ""
+		if quote.SourceMsgAuthorUsername != "" {
+			description = fmt.Sprintf("by %s", quote.SourceMsgAuthorUsername)
+			if len(description) > 100 {
+				description = description[:97] + "..."
+			}
+		}
+
+		options = append(options, discordgo.SelectMenuOption{
+			Label:       label,
+			Description: description,
+			Value:       quote.Id,
+			Emoji: &discordgo.ComponentEmoji{
+				Name: "💬",
+			},
+		})
+	}
+
+	components := []discordgo.MessageComponent{
+		discordgo.ActionsRow{
+			Components: []discordgo.MessageComponent{
+				discordgo.SelectMenu{
+					CustomID:    "post_quote_select",
+					Placeholder: "Choose a quote to post...",
+					Options:     options,
+				},
+			},
+		},
+	}
+
+	if resp.Total > int32(displayLimit) {
+		content.WriteString(fmt.Sprintf("\n\n_Showing first %d of %d results. Refine your search for more specific results._", displayLimit, resp.Total))
 	}
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: content.String(),
+		Content:    content.String(),
+		Components: components,
+		Flags:      discordgo.MessageFlagsEphemeral,
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)
 	}
+}
+
+// handlePostQuoteSelect handles dropdown selection to post a quote to the channel
+func handlePostQuoteSelect(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+	// Get the selected quote ID from the dropdown
+	data := i.MessageComponentData()
+	if len(data.Values) == 0 {
+		log.Warn("No value selected in dropdown")
+		return
+	}
+
+	quoteID := data.Values[0]
+
+	// Fetch the quote by ID
+	quoteClient := quotespb.NewQuoteServiceClient(grpcClient.Conn())
+	ctx := discordContextFor(i)
+
+	quote, err := quoteClient.GetQuote(ctx, &quotespb.GetQuoteRequest{
+		Id: quoteID,
+	})
+	if err != nil {
+		log.Error("Failed to fetch quote", "quote_id", quoteID, "error", err)
+		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "❌ Failed to fetch quote",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// First, acknowledge the interaction with an ephemeral update
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseUpdateMessage,
+		Data: &discordgo.InteractionResponseData{
+			Content:    "✅ Posted!",
+			Components: []discordgo.MessageComponent{}, // Remove dropdown
+			Flags:      discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		log.Error("Failed to update interaction", "error", err)
+		return
+	}
+
+	// Post the quote to the channel as a standalone message (not a reply)
+	embed := buildQuoteEmbed(quote)
+
+	// Get the requester's username
+	var requesterUsername string
+	if i.Member != nil && i.Member.User != nil {
+		requesterUsername = i.Member.User.Username
+	}
+
+	// Add footer to show who posted it
+	var content string
+	if requesterUsername != "" {
+		content = fmt.Sprintf("_on behalf of %s_", requesterUsername)
+	}
+
+	_, err = s.ChannelMessageSendComplex(i.ChannelID, &discordgo.MessageSend{
+		Content: content,
+		Embeds:  []*discordgo.MessageEmbed{embed},
+	})
+	if err != nil {
+		log.Error("Failed to post quote to channel", "error", err)
+	}
+}
+
+// strPtr returns a pointer to a string
+func strPtr(s string) *string {
+	return &s
 }
