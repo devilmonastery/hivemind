@@ -137,24 +137,24 @@ endif
 db-shell:
 	@psql postgresql://postgres:postgres@hivemind_devcontainer-postgres-1:5432/hivemind
 
-## docker-server: Build Docker image for server
+## docker-server: Build Docker image for server (loads locally)
 docker-server:
 	@echo "Building Docker image for server: $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
-	@docker buildx build --platform linux/amd64 -f Dockerfile.server -t $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) --load .
+	@docker buildx build --builder default --platform linux/amd64 -f Dockerfile.server -t $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) --load .
 	@docker tag $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-server:latest
 	@echo "Built $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
 
-## docker-web: Build Docker image for web
+## docker-web: Build Docker image for web (loads locally)
 docker-web:
 	@echo "Building Docker image for web: $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
-	@docker buildx build --platform linux/amd64 -f Dockerfile.web --build-arg VERSION=$(DOCKER_VERSION) -t $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) --load .
+	@docker buildx build --builder default --platform linux/amd64 -f Dockerfile.web --build-arg VERSION=$(DOCKER_VERSION) -t $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) --load .
 	@docker tag $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-web:latest
 	@echo "Built $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
 
-## docker-bot: Build Docker image for bot
+## docker-bot: Build Docker image for bot (loads locally)
 docker-bot:
 	@echo "Building Docker image for bot: $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
-	@docker buildx build --platform linux/amd64 -f Dockerfile.bot -t $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) --load .
+	@docker buildx build --builder default --platform linux/amd64 -f Dockerfile.bot -t $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) --load .
 	@docker tag $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/hivemind-bot:latest
 	@echo "Built $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
 
@@ -162,29 +162,42 @@ docker-bot:
 docker-all:
 	@$(MAKE) docker-server docker-web docker-bot
 
-## docker-publish-server: Build and push server Docker image
-docker-publish-server: docker-server
-	@echo "Pushing Docker image: $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
-	@docker push $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)
-	@docker push $(DOCKER_REGISTRY)/hivemind-server:latest
+## docker-publish-server: Build and push server Docker image (uses remote builder if active)
+docker-publish-server:
+	@echo "Building and pushing Docker image: $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
+	@docker buildx build --platform linux/amd64 \
+		$(if $(BUILDKIT_REMOTE_HOST),--builder remote,) \
+		-f Dockerfile.server \
+		-t $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION) \
+		-t $(DOCKER_REGISTRY)/hivemind-server:latest \
+		--push .
 	@echo "Pushed $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
 
-## docker-publish-web: Build and push web Docker image
-docker-publish-web: docker-web
-	@echo "Pushing Docker image: $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
-	@docker push $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)
-	@docker push $(DOCKER_REGISTRY)/hivemind-web:latest
+## docker-publish-web: Build and push web Docker image (uses remote builder if active)
+docker-publish-web:
+	@echo "Building and pushing Docker image: $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
+	@docker buildx build --platform linux/amd64 \
+		$(if $(BUILDKIT_REMOTE_HOST),--builder remote,) \
+		-f Dockerfile.web \
+		--build-arg VERSION=$(DOCKER_VERSION) \
+		-t $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION) \
+		-t $(DOCKER_REGISTRY)/hivemind-web:latest \
+		--push .
 	@echo "Pushed $(DOCKER_REGISTRY)/hivemind-web:$(DOCKER_VERSION)"
 
-## docker-publish-bot: Build and push bot Docker image
-docker-publish-bot: docker-bot
-	@echo "Pushing Docker image: $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
-	@docker push $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)
-	@docker push $(DOCKER_REGISTRY)/hivemind-bot:latest
+## docker-publish-bot: Build and push bot Docker image (uses remote builder if active)
+docker-publish-bot:
+	@echo "Building and pushing Docker image: $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
+	@docker buildx build --platform linux/amd64 \
+		$(if $(BUILDKIT_REMOTE_HOST),--builder remote,) \
+		-f Dockerfile.bot \
+		-t $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION) \
+		-t $(DOCKER_REGISTRY)/hivemind-bot:latest \
+		--push .
 	@echo "Pushed $(DOCKER_REGISTRY)/hivemind-bot:$(DOCKER_VERSION)"
 
-## docker-publish-all: Build and push all Docker images
-docker-publish-all: docker-all
+## docker-publish-all: Build and push all Docker images (uses remote builder if active)
+docker-publish-all:
 	@$(MAKE) docker-publish-server DOCKER_VERSION=$(DOCKER_VERSION)
 	@$(MAKE) docker-publish-web DOCKER_VERSION=$(DOCKER_VERSION)
 	@$(MAKE) docker-publish-bot DOCKER_VERSION=$(DOCKER_VERSION)

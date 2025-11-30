@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	WikiService_CreateWikiPage_FullMethodName            = "/hivemind.wiki.WikiService/CreateWikiPage"
 	WikiService_GetWikiPage_FullMethodName               = "/hivemind.wiki.WikiService/GetWikiPage"
+	WikiService_GetWikiPageByTitle_FullMethodName        = "/hivemind.wiki.WikiService/GetWikiPageByTitle"
 	WikiService_SearchWikiPages_FullMethodName           = "/hivemind.wiki.WikiService/SearchWikiPages"
 	WikiService_AutocompleteWikiTitles_FullMethodName    = "/hivemind.wiki.WikiService/AutocompleteWikiTitles"
 	WikiService_UpdateWikiPage_FullMethodName            = "/hivemind.wiki.WikiService/UpdateWikiPage"
@@ -42,6 +43,8 @@ type WikiServiceClient interface {
 	CreateWikiPage(ctx context.Context, in *CreateWikiPageRequest, opts ...grpc.CallOption) (*WikiPage, error)
 	// GetWikiPage retrieves a wiki page by ID
 	GetWikiPage(ctx context.Context, in *GetWikiPageRequest, opts ...grpc.CallOption) (*WikiPage, error)
+	// GetWikiPageByTitle retrieves a wiki page by guild ID and title (case-insensitive)
+	GetWikiPageByTitle(ctx context.Context, in *GetWikiPageByTitleRequest, opts ...grpc.CallOption) (*WikiPage, error)
 	// SearchWikiPages searches for wiki pages in a guild
 	SearchWikiPages(ctx context.Context, in *SearchWikiPagesRequest, opts ...grpc.CallOption) (*SearchWikiPagesResponse, error)
 	// AutocompleteWikiTitles returns all wiki page titles for a guild (bot filters locally)
@@ -82,6 +85,16 @@ func (c *wikiServiceClient) GetWikiPage(ctx context.Context, in *GetWikiPageRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(WikiPage)
 	err := c.cc.Invoke(ctx, WikiService_GetWikiPage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wikiServiceClient) GetWikiPageByTitle(ctx context.Context, in *GetWikiPageByTitleRequest, opts ...grpc.CallOption) (*WikiPage, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WikiPage)
+	err := c.cc.Invoke(ctx, WikiService_GetWikiPageByTitle_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -178,6 +191,8 @@ type WikiServiceServer interface {
 	CreateWikiPage(context.Context, *CreateWikiPageRequest) (*WikiPage, error)
 	// GetWikiPage retrieves a wiki page by ID
 	GetWikiPage(context.Context, *GetWikiPageRequest) (*WikiPage, error)
+	// GetWikiPageByTitle retrieves a wiki page by guild ID and title (case-insensitive)
+	GetWikiPageByTitle(context.Context, *GetWikiPageByTitleRequest) (*WikiPage, error)
 	// SearchWikiPages searches for wiki pages in a guild
 	SearchWikiPages(context.Context, *SearchWikiPagesRequest) (*SearchWikiPagesResponse, error)
 	// AutocompleteWikiTitles returns all wiki page titles for a guild (bot filters locally)
@@ -208,6 +223,9 @@ func (UnimplementedWikiServiceServer) CreateWikiPage(context.Context, *CreateWik
 }
 func (UnimplementedWikiServiceServer) GetWikiPage(context.Context, *GetWikiPageRequest) (*WikiPage, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetWikiPage not implemented")
+}
+func (UnimplementedWikiServiceServer) GetWikiPageByTitle(context.Context, *GetWikiPageByTitleRequest) (*WikiPage, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWikiPageByTitle not implemented")
 }
 func (UnimplementedWikiServiceServer) SearchWikiPages(context.Context, *SearchWikiPagesRequest) (*SearchWikiPagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchWikiPages not implemented")
@@ -285,6 +303,24 @@ func _WikiService_GetWikiPage_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WikiServiceServer).GetWikiPage(ctx, req.(*GetWikiPageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WikiService_GetWikiPageByTitle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWikiPageByTitleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WikiServiceServer).GetWikiPageByTitle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WikiService_GetWikiPageByTitle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WikiServiceServer).GetWikiPageByTitle(ctx, req.(*GetWikiPageByTitleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -447,6 +483,10 @@ var WikiService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetWikiPage",
 			Handler:    _WikiService_GetWikiPage_Handler,
+		},
+		{
+			MethodName: "GetWikiPageByTitle",
+			Handler:    _WikiService_GetWikiPageByTitle_Handler,
 		},
 		{
 			MethodName: "SearchWikiPages",

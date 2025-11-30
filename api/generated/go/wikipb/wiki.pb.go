@@ -287,6 +287,58 @@ func (x *GetWikiPageRequest) GetId() string {
 	return ""
 }
 
+type GetWikiPageByTitleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GuildId       string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"` // Case-insensitive match
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWikiPageByTitleRequest) Reset() {
+	*x = GetWikiPageByTitleRequest{}
+	mi := &file_wiki_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWikiPageByTitleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWikiPageByTitleRequest) ProtoMessage() {}
+
+func (x *GetWikiPageByTitleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wiki_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWikiPageByTitleRequest.ProtoReflect.Descriptor instead.
+func (*GetWikiPageByTitleRequest) Descriptor() ([]byte, []int) {
+	return file_wiki_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetWikiPageByTitleRequest) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *GetWikiPageByTitleRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
 type SearchWikiPagesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	GuildId       string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
@@ -300,7 +352,7 @@ type SearchWikiPagesRequest struct {
 
 func (x *SearchWikiPagesRequest) Reset() {
 	*x = SearchWikiPagesRequest{}
-	mi := &file_wiki_proto_msgTypes[3]
+	mi := &file_wiki_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -312,7 +364,7 @@ func (x *SearchWikiPagesRequest) String() string {
 func (*SearchWikiPagesRequest) ProtoMessage() {}
 
 func (x *SearchWikiPagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[3]
+	mi := &file_wiki_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -325,7 +377,7 @@ func (x *SearchWikiPagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchWikiPagesRequest.ProtoReflect.Descriptor instead.
 func (*SearchWikiPagesRequest) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{3}
+	return file_wiki_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SearchWikiPagesRequest) GetGuildId() string {
@@ -373,7 +425,7 @@ type SearchWikiPagesResponse struct {
 
 func (x *SearchWikiPagesResponse) Reset() {
 	*x = SearchWikiPagesResponse{}
-	mi := &file_wiki_proto_msgTypes[4]
+	mi := &file_wiki_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -385,7 +437,7 @@ func (x *SearchWikiPagesResponse) String() string {
 func (*SearchWikiPagesResponse) ProtoMessage() {}
 
 func (x *SearchWikiPagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[4]
+	mi := &file_wiki_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -398,7 +450,7 @@ func (x *SearchWikiPagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchWikiPagesResponse.ProtoReflect.Descriptor instead.
 func (*SearchWikiPagesResponse) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{4}
+	return file_wiki_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SearchWikiPagesResponse) GetPages() []*WikiPage {
@@ -427,7 +479,7 @@ type UpdateWikiPageRequest struct {
 
 func (x *UpdateWikiPageRequest) Reset() {
 	*x = UpdateWikiPageRequest{}
-	mi := &file_wiki_proto_msgTypes[5]
+	mi := &file_wiki_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -439,7 +491,7 @@ func (x *UpdateWikiPageRequest) String() string {
 func (*UpdateWikiPageRequest) ProtoMessage() {}
 
 func (x *UpdateWikiPageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[5]
+	mi := &file_wiki_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -452,7 +504,7 @@ func (x *UpdateWikiPageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateWikiPageRequest.ProtoReflect.Descriptor instead.
 func (*UpdateWikiPageRequest) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{5}
+	return file_wiki_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UpdateWikiPageRequest) GetId() string {
@@ -496,7 +548,7 @@ type UpsertWikiPageRequest struct {
 
 func (x *UpsertWikiPageRequest) Reset() {
 	*x = UpsertWikiPageRequest{}
-	mi := &file_wiki_proto_msgTypes[6]
+	mi := &file_wiki_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -508,7 +560,7 @@ func (x *UpsertWikiPageRequest) String() string {
 func (*UpsertWikiPageRequest) ProtoMessage() {}
 
 func (x *UpsertWikiPageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[6]
+	mi := &file_wiki_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -521,7 +573,7 @@ func (x *UpsertWikiPageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertWikiPageRequest.ProtoReflect.Descriptor instead.
 func (*UpsertWikiPageRequest) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{6}
+	return file_wiki_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpsertWikiPageRequest) GetTitle() string {
@@ -569,7 +621,7 @@ type UpsertWikiPageResponse struct {
 
 func (x *UpsertWikiPageResponse) Reset() {
 	*x = UpsertWikiPageResponse{}
-	mi := &file_wiki_proto_msgTypes[7]
+	mi := &file_wiki_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -581,7 +633,7 @@ func (x *UpsertWikiPageResponse) String() string {
 func (*UpsertWikiPageResponse) ProtoMessage() {}
 
 func (x *UpsertWikiPageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[7]
+	mi := &file_wiki_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -594,7 +646,7 @@ func (x *UpsertWikiPageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertWikiPageResponse.ProtoReflect.Descriptor instead.
 func (*UpsertWikiPageResponse) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{7}
+	return file_wiki_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpsertWikiPageResponse) GetPage() *WikiPage {
@@ -620,7 +672,7 @@ type DeleteWikiPageRequest struct {
 
 func (x *DeleteWikiPageRequest) Reset() {
 	*x = DeleteWikiPageRequest{}
-	mi := &file_wiki_proto_msgTypes[8]
+	mi := &file_wiki_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -632,7 +684,7 @@ func (x *DeleteWikiPageRequest) String() string {
 func (*DeleteWikiPageRequest) ProtoMessage() {}
 
 func (x *DeleteWikiPageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[8]
+	mi := &file_wiki_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -645,7 +697,7 @@ func (x *DeleteWikiPageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWikiPageRequest.ProtoReflect.Descriptor instead.
 func (*DeleteWikiPageRequest) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{8}
+	return file_wiki_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DeleteWikiPageRequest) GetId() string {
@@ -668,7 +720,7 @@ type ListWikiPagesRequest struct {
 
 func (x *ListWikiPagesRequest) Reset() {
 	*x = ListWikiPagesRequest{}
-	mi := &file_wiki_proto_msgTypes[9]
+	mi := &file_wiki_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -680,7 +732,7 @@ func (x *ListWikiPagesRequest) String() string {
 func (*ListWikiPagesRequest) ProtoMessage() {}
 
 func (x *ListWikiPagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[9]
+	mi := &file_wiki_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -693,7 +745,7 @@ func (x *ListWikiPagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWikiPagesRequest.ProtoReflect.Descriptor instead.
 func (*ListWikiPagesRequest) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{9}
+	return file_wiki_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListWikiPagesRequest) GetGuildId() string {
@@ -741,7 +793,7 @@ type ListWikiPagesResponse struct {
 
 func (x *ListWikiPagesResponse) Reset() {
 	*x = ListWikiPagesResponse{}
-	mi := &file_wiki_proto_msgTypes[10]
+	mi := &file_wiki_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -753,7 +805,7 @@ func (x *ListWikiPagesResponse) String() string {
 func (*ListWikiPagesResponse) ProtoMessage() {}
 
 func (x *ListWikiPagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[10]
+	mi := &file_wiki_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -766,7 +818,7 @@ func (x *ListWikiPagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWikiPagesResponse.ProtoReflect.Descriptor instead.
 func (*ListWikiPagesResponse) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{10}
+	return file_wiki_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListWikiPagesResponse) GetPages() []*WikiPage {
@@ -792,7 +844,7 @@ type AutocompleteWikiTitlesRequest struct {
 
 func (x *AutocompleteWikiTitlesRequest) Reset() {
 	*x = AutocompleteWikiTitlesRequest{}
-	mi := &file_wiki_proto_msgTypes[11]
+	mi := &file_wiki_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +856,7 @@ func (x *AutocompleteWikiTitlesRequest) String() string {
 func (*AutocompleteWikiTitlesRequest) ProtoMessage() {}
 
 func (x *AutocompleteWikiTitlesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[11]
+	mi := &file_wiki_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -817,7 +869,7 @@ func (x *AutocompleteWikiTitlesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AutocompleteWikiTitlesRequest.ProtoReflect.Descriptor instead.
 func (*AutocompleteWikiTitlesRequest) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{11}
+	return file_wiki_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AutocompleteWikiTitlesRequest) GetGuildId() string {
@@ -836,7 +888,7 @@ type AutocompleteWikiTitlesResponse struct {
 
 func (x *AutocompleteWikiTitlesResponse) Reset() {
 	*x = AutocompleteWikiTitlesResponse{}
-	mi := &file_wiki_proto_msgTypes[12]
+	mi := &file_wiki_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -848,7 +900,7 @@ func (x *AutocompleteWikiTitlesResponse) String() string {
 func (*AutocompleteWikiTitlesResponse) ProtoMessage() {}
 
 func (x *AutocompleteWikiTitlesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[12]
+	mi := &file_wiki_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -861,7 +913,7 @@ func (x *AutocompleteWikiTitlesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AutocompleteWikiTitlesResponse.ProtoReflect.Descriptor instead.
 func (*AutocompleteWikiTitlesResponse) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{12}
+	return file_wiki_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AutocompleteWikiTitlesResponse) GetSuggestions() []*WikiTitleSuggestion {
@@ -881,7 +933,7 @@ type WikiTitleSuggestion struct {
 
 func (x *WikiTitleSuggestion) Reset() {
 	*x = WikiTitleSuggestion{}
-	mi := &file_wiki_proto_msgTypes[13]
+	mi := &file_wiki_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -893,7 +945,7 @@ func (x *WikiTitleSuggestion) String() string {
 func (*WikiTitleSuggestion) ProtoMessage() {}
 
 func (x *WikiTitleSuggestion) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[13]
+	mi := &file_wiki_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -906,7 +958,7 @@ func (x *WikiTitleSuggestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WikiTitleSuggestion.ProtoReflect.Descriptor instead.
 func (*WikiTitleSuggestion) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{13}
+	return file_wiki_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *WikiTitleSuggestion) GetId() string {
@@ -954,7 +1006,7 @@ type WikiMessageReference struct {
 
 func (x *WikiMessageReference) Reset() {
 	*x = WikiMessageReference{}
-	mi := &file_wiki_proto_msgTypes[14]
+	mi := &file_wiki_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -966,7 +1018,7 @@ func (x *WikiMessageReference) String() string {
 func (*WikiMessageReference) ProtoMessage() {}
 
 func (x *WikiMessageReference) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[14]
+	mi := &file_wiki_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -979,7 +1031,7 @@ func (x *WikiMessageReference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WikiMessageReference.ProtoReflect.Descriptor instead.
 func (*WikiMessageReference) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{14}
+	return file_wiki_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *WikiMessageReference) GetId() string {
@@ -1109,7 +1161,7 @@ type AttachmentMetadata struct {
 
 func (x *AttachmentMetadata) Reset() {
 	*x = AttachmentMetadata{}
-	mi := &file_wiki_proto_msgTypes[15]
+	mi := &file_wiki_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1121,7 +1173,7 @@ func (x *AttachmentMetadata) String() string {
 func (*AttachmentMetadata) ProtoMessage() {}
 
 func (x *AttachmentMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[15]
+	mi := &file_wiki_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1134,7 +1186,7 @@ func (x *AttachmentMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentMetadata.ProtoReflect.Descriptor instead.
 func (*AttachmentMetadata) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{15}
+	return file_wiki_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AttachmentMetadata) GetUrl() string {
@@ -1202,7 +1254,7 @@ type AddWikiMessageReferenceRequest struct {
 
 func (x *AddWikiMessageReferenceRequest) Reset() {
 	*x = AddWikiMessageReferenceRequest{}
-	mi := &file_wiki_proto_msgTypes[16]
+	mi := &file_wiki_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1214,7 +1266,7 @@ func (x *AddWikiMessageReferenceRequest) String() string {
 func (*AddWikiMessageReferenceRequest) ProtoMessage() {}
 
 func (x *AddWikiMessageReferenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[16]
+	mi := &file_wiki_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1227,7 +1279,7 @@ func (x *AddWikiMessageReferenceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddWikiMessageReferenceRequest.ProtoReflect.Descriptor instead.
 func (*AddWikiMessageReferenceRequest) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{16}
+	return file_wiki_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *AddWikiMessageReferenceRequest) GetWikiPageId() string {
@@ -1316,7 +1368,7 @@ type ListWikiMessageReferencesRequest struct {
 
 func (x *ListWikiMessageReferencesRequest) Reset() {
 	*x = ListWikiMessageReferencesRequest{}
-	mi := &file_wiki_proto_msgTypes[17]
+	mi := &file_wiki_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1328,7 +1380,7 @@ func (x *ListWikiMessageReferencesRequest) String() string {
 func (*ListWikiMessageReferencesRequest) ProtoMessage() {}
 
 func (x *ListWikiMessageReferencesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[17]
+	mi := &file_wiki_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1341,7 +1393,7 @@ func (x *ListWikiMessageReferencesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWikiMessageReferencesRequest.ProtoReflect.Descriptor instead.
 func (*ListWikiMessageReferencesRequest) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{17}
+	return file_wiki_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListWikiMessageReferencesRequest) GetWikiPageId() string {
@@ -1360,7 +1412,7 @@ type ListWikiMessageReferencesResponse struct {
 
 func (x *ListWikiMessageReferencesResponse) Reset() {
 	*x = ListWikiMessageReferencesResponse{}
-	mi := &file_wiki_proto_msgTypes[18]
+	mi := &file_wiki_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1372,7 +1424,7 @@ func (x *ListWikiMessageReferencesResponse) String() string {
 func (*ListWikiMessageReferencesResponse) ProtoMessage() {}
 
 func (x *ListWikiMessageReferencesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_wiki_proto_msgTypes[18]
+	mi := &file_wiki_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1385,7 +1437,7 @@ func (x *ListWikiMessageReferencesResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ListWikiMessageReferencesResponse.ProtoReflect.Descriptor instead.
 func (*ListWikiMessageReferencesResponse) Descriptor() ([]byte, []int) {
-	return file_wiki_proto_rawDescGZIP(), []int{18}
+	return file_wiki_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListWikiMessageReferencesResponse) GetReferences() []*WikiMessageReference {
@@ -1428,7 +1480,10 @@ const file_wiki_proto_rawDesc = "" +
 	"channel_id\x18\x04 \x01(\tR\tchannelId\x12\x12\n" +
 	"\x04tags\x18\x05 \x03(\tR\x04tags\"$\n" +
 	"\x12GetWikiPageRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x8b\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"L\n" +
+	"\x19GetWikiPageByTitleRequest\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\"\x8b\x01\n" +
 	"\x16SearchWikiPagesRequest\x12\x19\n" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12\x12\n" +
@@ -1521,10 +1576,11 @@ const file_wiki_proto_rawDesc = "" +
 	"!ListWikiMessageReferencesResponse\x12C\n" +
 	"\n" +
 	"references\x18\x01 \x03(\v2#.hivemind.wiki.WikiMessageReferenceR\n" +
-	"references2\xda\a\n" +
+	"references2\xb3\b\n" +
 	"\vWikiService\x12O\n" +
 	"\x0eCreateWikiPage\x12$.hivemind.wiki.CreateWikiPageRequest\x1a\x17.hivemind.wiki.WikiPage\x12I\n" +
-	"\vGetWikiPage\x12!.hivemind.wiki.GetWikiPageRequest\x1a\x17.hivemind.wiki.WikiPage\x12`\n" +
+	"\vGetWikiPage\x12!.hivemind.wiki.GetWikiPageRequest\x1a\x17.hivemind.wiki.WikiPage\x12W\n" +
+	"\x12GetWikiPageByTitle\x12(.hivemind.wiki.GetWikiPageByTitleRequest\x1a\x17.hivemind.wiki.WikiPage\x12`\n" +
 	"\x0fSearchWikiPages\x12%.hivemind.wiki.SearchWikiPagesRequest\x1a&.hivemind.wiki.SearchWikiPagesResponse\x12u\n" +
 	"\x16AutocompleteWikiTitles\x12,.hivemind.wiki.AutocompleteWikiTitlesRequest\x1a-.hivemind.wiki.AutocompleteWikiTitlesResponse\x12O\n" +
 	"\x0eUpdateWikiPage\x12$.hivemind.wiki.UpdateWikiPageRequest\x1a\x17.hivemind.wiki.WikiPage\x12]\n" +
@@ -1546,65 +1602,68 @@ func file_wiki_proto_rawDescGZIP() []byte {
 	return file_wiki_proto_rawDescData
 }
 
-var file_wiki_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_wiki_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_wiki_proto_goTypes = []any{
 	(*WikiPage)(nil),                          // 0: hivemind.wiki.WikiPage
 	(*CreateWikiPageRequest)(nil),             // 1: hivemind.wiki.CreateWikiPageRequest
 	(*GetWikiPageRequest)(nil),                // 2: hivemind.wiki.GetWikiPageRequest
-	(*SearchWikiPagesRequest)(nil),            // 3: hivemind.wiki.SearchWikiPagesRequest
-	(*SearchWikiPagesResponse)(nil),           // 4: hivemind.wiki.SearchWikiPagesResponse
-	(*UpdateWikiPageRequest)(nil),             // 5: hivemind.wiki.UpdateWikiPageRequest
-	(*UpsertWikiPageRequest)(nil),             // 6: hivemind.wiki.UpsertWikiPageRequest
-	(*UpsertWikiPageResponse)(nil),            // 7: hivemind.wiki.UpsertWikiPageResponse
-	(*DeleteWikiPageRequest)(nil),             // 8: hivemind.wiki.DeleteWikiPageRequest
-	(*ListWikiPagesRequest)(nil),              // 9: hivemind.wiki.ListWikiPagesRequest
-	(*ListWikiPagesResponse)(nil),             // 10: hivemind.wiki.ListWikiPagesResponse
-	(*AutocompleteWikiTitlesRequest)(nil),     // 11: hivemind.wiki.AutocompleteWikiTitlesRequest
-	(*AutocompleteWikiTitlesResponse)(nil),    // 12: hivemind.wiki.AutocompleteWikiTitlesResponse
-	(*WikiTitleSuggestion)(nil),               // 13: hivemind.wiki.WikiTitleSuggestion
-	(*WikiMessageReference)(nil),              // 14: hivemind.wiki.WikiMessageReference
-	(*AttachmentMetadata)(nil),                // 15: hivemind.wiki.AttachmentMetadata
-	(*AddWikiMessageReferenceRequest)(nil),    // 16: hivemind.wiki.AddWikiMessageReferenceRequest
-	(*ListWikiMessageReferencesRequest)(nil),  // 17: hivemind.wiki.ListWikiMessageReferencesRequest
-	(*ListWikiMessageReferencesResponse)(nil), // 18: hivemind.wiki.ListWikiMessageReferencesResponse
-	(*timestamppb.Timestamp)(nil),             // 19: google.protobuf.Timestamp
-	(*commonpb.SuccessResponse)(nil),          // 20: hivemind.common.v1.SuccessResponse
+	(*GetWikiPageByTitleRequest)(nil),         // 3: hivemind.wiki.GetWikiPageByTitleRequest
+	(*SearchWikiPagesRequest)(nil),            // 4: hivemind.wiki.SearchWikiPagesRequest
+	(*SearchWikiPagesResponse)(nil),           // 5: hivemind.wiki.SearchWikiPagesResponse
+	(*UpdateWikiPageRequest)(nil),             // 6: hivemind.wiki.UpdateWikiPageRequest
+	(*UpsertWikiPageRequest)(nil),             // 7: hivemind.wiki.UpsertWikiPageRequest
+	(*UpsertWikiPageResponse)(nil),            // 8: hivemind.wiki.UpsertWikiPageResponse
+	(*DeleteWikiPageRequest)(nil),             // 9: hivemind.wiki.DeleteWikiPageRequest
+	(*ListWikiPagesRequest)(nil),              // 10: hivemind.wiki.ListWikiPagesRequest
+	(*ListWikiPagesResponse)(nil),             // 11: hivemind.wiki.ListWikiPagesResponse
+	(*AutocompleteWikiTitlesRequest)(nil),     // 12: hivemind.wiki.AutocompleteWikiTitlesRequest
+	(*AutocompleteWikiTitlesResponse)(nil),    // 13: hivemind.wiki.AutocompleteWikiTitlesResponse
+	(*WikiTitleSuggestion)(nil),               // 14: hivemind.wiki.WikiTitleSuggestion
+	(*WikiMessageReference)(nil),              // 15: hivemind.wiki.WikiMessageReference
+	(*AttachmentMetadata)(nil),                // 16: hivemind.wiki.AttachmentMetadata
+	(*AddWikiMessageReferenceRequest)(nil),    // 17: hivemind.wiki.AddWikiMessageReferenceRequest
+	(*ListWikiMessageReferencesRequest)(nil),  // 18: hivemind.wiki.ListWikiMessageReferencesRequest
+	(*ListWikiMessageReferencesResponse)(nil), // 19: hivemind.wiki.ListWikiMessageReferencesResponse
+	(*timestamppb.Timestamp)(nil),             // 20: google.protobuf.Timestamp
+	(*commonpb.SuccessResponse)(nil),          // 21: hivemind.common.v1.SuccessResponse
 }
 var file_wiki_proto_depIdxs = []int32{
-	19, // 0: hivemind.wiki.WikiPage.created_at:type_name -> google.protobuf.Timestamp
-	19, // 1: hivemind.wiki.WikiPage.updated_at:type_name -> google.protobuf.Timestamp
+	20, // 0: hivemind.wiki.WikiPage.created_at:type_name -> google.protobuf.Timestamp
+	20, // 1: hivemind.wiki.WikiPage.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: hivemind.wiki.SearchWikiPagesResponse.pages:type_name -> hivemind.wiki.WikiPage
 	0,  // 3: hivemind.wiki.UpsertWikiPageResponse.page:type_name -> hivemind.wiki.WikiPage
 	0,  // 4: hivemind.wiki.ListWikiPagesResponse.pages:type_name -> hivemind.wiki.WikiPage
-	13, // 5: hivemind.wiki.AutocompleteWikiTitlesResponse.suggestions:type_name -> hivemind.wiki.WikiTitleSuggestion
-	19, // 6: hivemind.wiki.WikiMessageReference.message_timestamp:type_name -> google.protobuf.Timestamp
-	15, // 7: hivemind.wiki.WikiMessageReference.attachments:type_name -> hivemind.wiki.AttachmentMetadata
-	19, // 8: hivemind.wiki.WikiMessageReference.added_at:type_name -> google.protobuf.Timestamp
-	19, // 9: hivemind.wiki.AddWikiMessageReferenceRequest.message_timestamp:type_name -> google.protobuf.Timestamp
-	15, // 10: hivemind.wiki.AddWikiMessageReferenceRequest.attachments:type_name -> hivemind.wiki.AttachmentMetadata
-	14, // 11: hivemind.wiki.ListWikiMessageReferencesResponse.references:type_name -> hivemind.wiki.WikiMessageReference
+	14, // 5: hivemind.wiki.AutocompleteWikiTitlesResponse.suggestions:type_name -> hivemind.wiki.WikiTitleSuggestion
+	20, // 6: hivemind.wiki.WikiMessageReference.message_timestamp:type_name -> google.protobuf.Timestamp
+	16, // 7: hivemind.wiki.WikiMessageReference.attachments:type_name -> hivemind.wiki.AttachmentMetadata
+	20, // 8: hivemind.wiki.WikiMessageReference.added_at:type_name -> google.protobuf.Timestamp
+	20, // 9: hivemind.wiki.AddWikiMessageReferenceRequest.message_timestamp:type_name -> google.protobuf.Timestamp
+	16, // 10: hivemind.wiki.AddWikiMessageReferenceRequest.attachments:type_name -> hivemind.wiki.AttachmentMetadata
+	15, // 11: hivemind.wiki.ListWikiMessageReferencesResponse.references:type_name -> hivemind.wiki.WikiMessageReference
 	1,  // 12: hivemind.wiki.WikiService.CreateWikiPage:input_type -> hivemind.wiki.CreateWikiPageRequest
 	2,  // 13: hivemind.wiki.WikiService.GetWikiPage:input_type -> hivemind.wiki.GetWikiPageRequest
-	3,  // 14: hivemind.wiki.WikiService.SearchWikiPages:input_type -> hivemind.wiki.SearchWikiPagesRequest
-	11, // 15: hivemind.wiki.WikiService.AutocompleteWikiTitles:input_type -> hivemind.wiki.AutocompleteWikiTitlesRequest
-	5,  // 16: hivemind.wiki.WikiService.UpdateWikiPage:input_type -> hivemind.wiki.UpdateWikiPageRequest
-	6,  // 17: hivemind.wiki.WikiService.UpsertWikiPage:input_type -> hivemind.wiki.UpsertWikiPageRequest
-	8,  // 18: hivemind.wiki.WikiService.DeleteWikiPage:input_type -> hivemind.wiki.DeleteWikiPageRequest
-	9,  // 19: hivemind.wiki.WikiService.ListWikiPages:input_type -> hivemind.wiki.ListWikiPagesRequest
-	16, // 20: hivemind.wiki.WikiService.AddWikiMessageReference:input_type -> hivemind.wiki.AddWikiMessageReferenceRequest
-	17, // 21: hivemind.wiki.WikiService.ListWikiMessageReferences:input_type -> hivemind.wiki.ListWikiMessageReferencesRequest
-	0,  // 22: hivemind.wiki.WikiService.CreateWikiPage:output_type -> hivemind.wiki.WikiPage
-	0,  // 23: hivemind.wiki.WikiService.GetWikiPage:output_type -> hivemind.wiki.WikiPage
-	4,  // 24: hivemind.wiki.WikiService.SearchWikiPages:output_type -> hivemind.wiki.SearchWikiPagesResponse
-	12, // 25: hivemind.wiki.WikiService.AutocompleteWikiTitles:output_type -> hivemind.wiki.AutocompleteWikiTitlesResponse
-	0,  // 26: hivemind.wiki.WikiService.UpdateWikiPage:output_type -> hivemind.wiki.WikiPage
-	7,  // 27: hivemind.wiki.WikiService.UpsertWikiPage:output_type -> hivemind.wiki.UpsertWikiPageResponse
-	20, // 28: hivemind.wiki.WikiService.DeleteWikiPage:output_type -> hivemind.common.v1.SuccessResponse
-	10, // 29: hivemind.wiki.WikiService.ListWikiPages:output_type -> hivemind.wiki.ListWikiPagesResponse
-	14, // 30: hivemind.wiki.WikiService.AddWikiMessageReference:output_type -> hivemind.wiki.WikiMessageReference
-	18, // 31: hivemind.wiki.WikiService.ListWikiMessageReferences:output_type -> hivemind.wiki.ListWikiMessageReferencesResponse
-	22, // [22:32] is the sub-list for method output_type
-	12, // [12:22] is the sub-list for method input_type
+	3,  // 14: hivemind.wiki.WikiService.GetWikiPageByTitle:input_type -> hivemind.wiki.GetWikiPageByTitleRequest
+	4,  // 15: hivemind.wiki.WikiService.SearchWikiPages:input_type -> hivemind.wiki.SearchWikiPagesRequest
+	12, // 16: hivemind.wiki.WikiService.AutocompleteWikiTitles:input_type -> hivemind.wiki.AutocompleteWikiTitlesRequest
+	6,  // 17: hivemind.wiki.WikiService.UpdateWikiPage:input_type -> hivemind.wiki.UpdateWikiPageRequest
+	7,  // 18: hivemind.wiki.WikiService.UpsertWikiPage:input_type -> hivemind.wiki.UpsertWikiPageRequest
+	9,  // 19: hivemind.wiki.WikiService.DeleteWikiPage:input_type -> hivemind.wiki.DeleteWikiPageRequest
+	10, // 20: hivemind.wiki.WikiService.ListWikiPages:input_type -> hivemind.wiki.ListWikiPagesRequest
+	17, // 21: hivemind.wiki.WikiService.AddWikiMessageReference:input_type -> hivemind.wiki.AddWikiMessageReferenceRequest
+	18, // 22: hivemind.wiki.WikiService.ListWikiMessageReferences:input_type -> hivemind.wiki.ListWikiMessageReferencesRequest
+	0,  // 23: hivemind.wiki.WikiService.CreateWikiPage:output_type -> hivemind.wiki.WikiPage
+	0,  // 24: hivemind.wiki.WikiService.GetWikiPage:output_type -> hivemind.wiki.WikiPage
+	0,  // 25: hivemind.wiki.WikiService.GetWikiPageByTitle:output_type -> hivemind.wiki.WikiPage
+	5,  // 26: hivemind.wiki.WikiService.SearchWikiPages:output_type -> hivemind.wiki.SearchWikiPagesResponse
+	13, // 27: hivemind.wiki.WikiService.AutocompleteWikiTitles:output_type -> hivemind.wiki.AutocompleteWikiTitlesResponse
+	0,  // 28: hivemind.wiki.WikiService.UpdateWikiPage:output_type -> hivemind.wiki.WikiPage
+	8,  // 29: hivemind.wiki.WikiService.UpsertWikiPage:output_type -> hivemind.wiki.UpsertWikiPageResponse
+	21, // 30: hivemind.wiki.WikiService.DeleteWikiPage:output_type -> hivemind.common.v1.SuccessResponse
+	11, // 31: hivemind.wiki.WikiService.ListWikiPages:output_type -> hivemind.wiki.ListWikiPagesResponse
+	15, // 32: hivemind.wiki.WikiService.AddWikiMessageReference:output_type -> hivemind.wiki.WikiMessageReference
+	19, // 33: hivemind.wiki.WikiService.ListWikiMessageReferences:output_type -> hivemind.wiki.ListWikiMessageReferencesResponse
+	23, // [23:34] is the sub-list for method output_type
+	12, // [12:23] is the sub-list for method input_type
 	12, // [12:12] is the sub-list for extension type_name
 	12, // [12:12] is the sub-list for extension extendee
 	0,  // [0:12] is the sub-list for field type_name
@@ -1621,7 +1680,7 @@ func file_wiki_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_wiki_proto_rawDesc), len(file_wiki_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

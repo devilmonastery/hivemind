@@ -64,26 +64,17 @@ func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer client.Close()
 
-	// Search for wiki page by exact title match in the guild
+	// Get wiki page by title (case-insensitive, efficient direct lookup)
 	wikiClient := wikipb.NewWikiServiceClient(client.Conn())
-	searchResp, err := wikiClient.SearchWikiPages(r.Context(), &wikipb.SearchWikiPagesRequest{
+	page, err := wikiClient.GetWikiPageByTitle(r.Context(), &wikipb.GetWikiPageByTitleRequest{
 		GuildId: guildID,
-		Query:   title,
-		Limit:   1,
+		Title:   title,
 	})
-	if err != nil || len(searchResp.Pages) == 0 {
+	if err != nil {
 		h.log.Error("Failed to find wiki page",
 			slog.String("title", title),
 			slog.String("guild_id", guildID),
 			slog.String("error", err.Error()))
-		http.Error(w, "Wiki page not found", http.StatusNotFound)
-		return
-	}
-
-	page := searchResp.Pages[0]
-
-	// Verify exact title match (search might return partial matches)
-	if page.Title != title {
 		http.Error(w, "Wiki page not found", http.StatusNotFound)
 		return
 	}
