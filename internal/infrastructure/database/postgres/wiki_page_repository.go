@@ -246,7 +246,8 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 	// Full-text search on title and body
 	if query != "" {
 		argCount++
-		conditions = append(conditions, fmt.Sprintf("(to_tsvector('english', wp.title || ' ' || wp.body) @@ plainto_tsquery('english', $%d))", argCount))
+		// Use hybrid search vector: searches both english and simple dictionaries
+		conditions = append(conditions, fmt.Sprintf("(wp.search_vector @@ websearch_to_tsquery('english', $%d) OR wp.search_vector @@ websearch_to_tsquery('simple', $%d))", argCount, argCount))
 		args = append(args, query)
 	}
 
@@ -273,7 +274,7 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		FROM wiki_pages wp
 		LEFT JOIN discord_guilds dg ON wp.guild_id = dg.guild_id
 		WHERE %s
-		ORDER BY ts_rank(to_tsvector('english', wp.title || ' ' || wp.body), plainto_tsquery('english', $%d)) DESC
+		ORDER BY ts_rank(wp.search_vector, websearch_to_tsquery('english', $%d)) DESC
 		LIMIT $%d OFFSET $%d
 	`, whereClause, argCount, argCount+1, argCount+2)
 
