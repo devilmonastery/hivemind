@@ -29,8 +29,8 @@
           
           <!-- Metadata -->
           <div class="flex flex-wrap items-center gap-3 text-sm text-gray-400">
-            {{if .AuthorUsername}}
-            <span class="text-cyan-400 font-medium">— {{.AuthorUsername}}</span>
+            {{if .SourceMsgAuthorUsername}}
+            <span class="text-cyan-400 font-medium">— {{.SourceMsgAuthorUsername}}</span>
             {{end}}
             
             <span>•</span>
@@ -39,6 +39,24 @@
             {{if .GuildName}}
             <span>•</span>
             <span class="text-purple-400">{{.GuildName}}</span>
+            {{end}}
+            
+            {{if .AuthorUsername}}
+            <span>•</span>
+            <span class="text-gray-500">added by {{.AuthorUsername}}</span>
+            {{end}}
+            
+            {{if and .SourceMsgId .SourceChannelId .GuildId}}
+            <span>•</span>
+            <a href="https://discord.com/channels/{{.GuildId}}/{{.SourceChannelId}}/{{.SourceMsgId}}" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               class="text-neon-cyan hover:text-neon-magenta transition-colors flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+              </svg>
+              original message
+            </a>
             {{end}}
           </div>
 

@@ -65,6 +65,7 @@ message CreateQuoteRequest {
   string source_msg_author_username = 6;
 
   repeated string tags = 7;
+  string source_channel_name = 8;
 }
 
 message GetQuoteRequest {

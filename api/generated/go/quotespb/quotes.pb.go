@@ -186,6 +186,7 @@ type CreateQuoteRequest struct {
 	SourceMsgAuthorDiscordId string   `protobuf:"bytes,5,opt,name=source_msg_author_discord_id,json=sourceMsgAuthorDiscordId,proto3" json:"source_msg_author_discord_id,omitempty"`
 	SourceMsgAuthorUsername  string   `protobuf:"bytes,6,opt,name=source_msg_author_username,json=sourceMsgAuthorUsername,proto3" json:"source_msg_author_username,omitempty"`
 	Tags                     []string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
+	SourceChannelName        string   `protobuf:"bytes,8,opt,name=source_channel_name,json=sourceChannelName,proto3" json:"source_channel_name,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -267,6 +268,13 @@ func (x *CreateQuoteRequest) GetTags() []string {
 		return x.Tags
 	}
 	return nil
+}
+
+func (x *CreateQuoteRequest) GetSourceChannelName() string {
+	if x != nil {
+		return x.SourceChannelName
+	}
+	return ""
 }
 
 type GetQuoteRequest struct {
@@ -703,7 +711,7 @@ const file_quotes_proto_rawDesc = "" +
 	"\x12mentioned_user_ids\x18\f \x03(\tR\x10mentionedUserIds\x12\x12\n" +
 	"\x04tags\x18\r \x03(\tR\x04tags\x129\n" +
 	"\n" +
-	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xa4\x02\n" +
+	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xd4\x02\n" +
 	"\x12CreateQuoteRequest\x12\x12\n" +
 	"\x04body\x18\x01 \x01(\tR\x04body\x12\x19\n" +
 	"\bguild_id\x18\x02 \x01(\tR\aguildId\x12\"\n" +
@@ -711,7 +719,8 @@ const file_quotes_proto_rawDesc = "" +
 	"\x11source_channel_id\x18\x04 \x01(\tR\x0fsourceChannelId\x12>\n" +
 	"\x1csource_msg_author_discord_id\x18\x05 \x01(\tR\x18sourceMsgAuthorDiscordId\x12;\n" +
 	"\x1asource_msg_author_username\x18\x06 \x01(\tR\x17sourceMsgAuthorUsername\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"!\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\x12.\n" +
+	"\x13source_channel_name\x18\b \x01(\tR\x11sourceChannelName\"!\n" +
 	"\x0fGetQuoteRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\xe9\x01\n" +
 	"\x11ListQuotesRequest\x12\x19\n" +

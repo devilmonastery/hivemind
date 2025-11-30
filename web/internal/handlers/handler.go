@@ -187,17 +187,19 @@ func (h *Handler) getDiscordInstallURLs(ctx context.Context) (guildURL, userURL 
 		return "", ""
 	}
 
+	log.Printf("Found %d OAuth providers during initialization", len(providers))
+
 	// Find Discord provider
 	var discordClientID string
 	for _, p := range providers {
+		log.Printf("  - OAuth provider: %s (client_id=%s)", p.Name, p.ClientId)
 		if p.Name == "discord" {
 			discordClientID = p.ClientId
-			break
 		}
 	}
 
 	if discordClientID == "" {
-		log.Printf("Discord provider not found in OAuth config - bot invite links will not be available")
+		log.Printf("WARNING: Discord provider not found in OAuth config - bot invite links will not be available. Check your server's auth.providers configuration.")
 		return "", ""
 	}
 

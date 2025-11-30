@@ -44,7 +44,7 @@ type WikiServiceClient interface {
 	GetWikiPage(ctx context.Context, in *GetWikiPageRequest, opts ...grpc.CallOption) (*WikiPage, error)
 	// SearchWikiPages searches for wiki pages in a guild
 	SearchWikiPages(ctx context.Context, in *SearchWikiPagesRequest, opts ...grpc.CallOption) (*SearchWikiPagesResponse, error)
-	// AutocompleteWikiTitles returns matching wiki page titles for autocomplete (lightweight)
+	// AutocompleteWikiTitles returns all wiki page titles for a guild (bot filters locally)
 	AutocompleteWikiTitles(ctx context.Context, in *AutocompleteWikiTitlesRequest, opts ...grpc.CallOption) (*AutocompleteWikiTitlesResponse, error)
 	// UpdateWikiPage updates an existing wiki page
 	UpdateWikiPage(ctx context.Context, in *UpdateWikiPageRequest, opts ...grpc.CallOption) (*WikiPage, error)
@@ -180,7 +180,7 @@ type WikiServiceServer interface {
 	GetWikiPage(context.Context, *GetWikiPageRequest) (*WikiPage, error)
 	// SearchWikiPages searches for wiki pages in a guild
 	SearchWikiPages(context.Context, *SearchWikiPagesRequest) (*SearchWikiPagesResponse, error)
-	// AutocompleteWikiTitles returns matching wiki page titles for autocomplete (lightweight)
+	// AutocompleteWikiTitles returns all wiki page titles for a guild (bot filters locally)
 	AutocompleteWikiTitles(context.Context, *AutocompleteWikiTitlesRequest) (*AutocompleteWikiTitlesResponse, error)
 	// UpdateWikiPage updates an existing wiki page
 	UpdateWikiPage(context.Context, *UpdateWikiPageRequest) (*WikiPage, error)

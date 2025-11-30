@@ -42,6 +42,7 @@ func (h *QuoteHandler) CreateQuote(ctx context.Context, req *quotespb.CreateQuot
 		AuthorID:                 user.UserID,
 		SourceMsgID:              req.SourceMsgId,
 		SourceChannelID:          req.SourceChannelId,
+		SourceChannelName:        req.SourceChannelName,
 		SourceMsgAuthorDiscordID: req.SourceMsgAuthorDiscordId,
 	}
 
@@ -184,11 +185,14 @@ func quoteToProto(quote *entities.Quote) *quotespb.Quote {
 		Body:                     quote.Body,
 		Tags:                     quote.Tags,
 		AuthorId:                 quote.AuthorID,
+		AuthorUsername:           quote.AuthorUsername,
 		GuildId:                  quote.GuildID,
 		GuildName:                quote.GuildName,
 		SourceMsgId:              quote.SourceMsgID,
 		SourceChannelId:          quote.SourceChannelID,
+		SourceChannelName:        quote.SourceChannelName,
 		SourceMsgAuthorDiscordId: quote.SourceMsgAuthorDiscordID,
+		SourceMsgAuthorUsername:  quote.SourceMsgAuthorUsername,
 		CreatedAt:                timestamppb.New(quote.CreatedAt),
 	}
 }
