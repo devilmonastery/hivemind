@@ -44,6 +44,7 @@ func (h *QuoteHandler) CreateQuote(ctx context.Context, req *quotespb.CreateQuot
 		SourceChannelID:          req.SourceChannelId,
 		SourceChannelName:        req.SourceChannelName,
 		SourceMsgAuthorDiscordID: req.SourceMsgAuthorDiscordId,
+		SourceMsgAuthorUsername:  req.SourceMsgAuthorUsername,
 	}
 
 	created, err := h.quoteService.CreateQuote(ctx, quote)

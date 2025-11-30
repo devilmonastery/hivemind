@@ -30,13 +30,13 @@ func (r *quoteRepository) Create(ctx context.Context, quote *entities.Quote) err
 	quote.CreatedAt = time.Now()
 
 	query := `
-		INSERT INTO quotes (id, body, author_id, guild_id, source_msg_id, source_channel_id, source_channel_name, source_msg_author_discord_id, tags, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO quotes (id, body, author_id, guild_id, source_msg_id, source_channel_id, source_channel_name, source_msg_author_discord_id, source_msg_author_username, tags, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`
 	_, err := r.db.ExecContext(ctx, query,
 		quote.ID, quote.Body, quote.AuthorID, quote.GuildID,
 		quote.SourceMsgID, quote.SourceChannelID, quote.SourceChannelName, quote.SourceMsgAuthorDiscordID,
-		pq.Array(quote.Tags), quote.CreatedAt,
+		quote.SourceMsgAuthorUsername, pq.Array(quote.Tags), quote.CreatedAt,
 	)
 	return err
 }
@@ -45,7 +45,7 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string) (*entities.Quo
 	query := `
 		SELECT q.id, q.body, q.author_id, u.name, q.guild_id, dg.guild_name,
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-		       q.source_msg_author_discord_id, du.discord_username, q.tags, q.created_at, q.deleted_at
+		       q.source_msg_author_discord_id, COALESCE(q.source_msg_author_username, du.discord_username), q.tags, q.created_at, q.deleted_at
 		FROM quotes q
 		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
 		LEFT JOIN users u ON q.author_id = u.id
@@ -165,7 +165,7 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, authorDiscor
 	query := fmt.Sprintf(`
 		SELECT q.id, q.body, q.author_id, u.name, q.guild_id, dg.guild_name, 
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-		       q.source_msg_author_discord_id, du.discord_username, q.tags, q.created_at
+		       q.source_msg_author_discord_id, COALESCE(q.source_msg_author_username, du.discord_username), q.tags, q.created_at
 		FROM quotes q
 		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
 		LEFT JOIN users u ON q.author_id = u.id
@@ -251,7 +251,7 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 		searchQuery = fmt.Sprintf(`
 			SELECT q.id, q.body, q.author_id, u.name, q.guild_id, dg.guild_name,
 			       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-			       q.source_msg_author_discord_id, du.discord_username, q.tags, q.created_at
+			       q.source_msg_author_discord_id, COALESCE(q.source_msg_author_username, du.discord_username), q.tags, q.created_at
 			FROM quotes q
 			LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
 			LEFT JOIN users u ON q.author_id = u.id
@@ -264,7 +264,7 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 		searchQuery = fmt.Sprintf(`
 			SELECT q.id, q.body, q.author_id, u.name, q.guild_id, dg.guild_name,
 			       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-			       q.source_msg_author_discord_id, du.discord_username, q.tags, q.created_at
+			       q.source_msg_author_discord_id, COALESCE(q.source_msg_author_username, du.discord_username), q.tags, q.created_at
 			FROM quotes q
 			LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
 			LEFT JOIN users u ON q.author_id = u.id
@@ -327,7 +327,7 @@ func (r *quoteRepository) GetRandom(ctx context.Context, guildID string, tags []
 	query := fmt.Sprintf(`
 		SELECT q.id, q.body, q.author_id, u.name, q.guild_id, dg.guild_name,
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-		       q.source_msg_author_discord_id, du.discord_username, q.tags, q.created_at
+		       q.source_msg_author_discord_id, COALESCE(q.source_msg_author_username, du.discord_username), q.tags, q.created_at
 		FROM quotes q
 		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
 		LEFT JOIN users u ON q.author_id = u.id
