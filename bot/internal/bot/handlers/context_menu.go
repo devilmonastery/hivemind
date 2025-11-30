@@ -730,7 +730,7 @@ func formatTags(tags []string) string {
 }
 
 // handleContextMenuAddNoteForUser handles "Add Note for User" context menu command
-func handleContextMenuAddNoteForUser(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleContextMenuAddNoteForUser(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
 	// Get the target user
 	targetID := i.ApplicationCommandData().TargetID
 	user := i.ApplicationCommandData().Resolved.Users[targetID]
@@ -894,7 +894,7 @@ func handleContextMenuViewNotesForUser(s *discordgo.Session, i *discordgo.Intera
 }
 
 // handleUserNoteModal handles submission of the user note modal
-func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
 	// Extract user ID and note ID from custom ID (format: user_note_modal:{userID}:{noteID})
 	parts := strings.SplitN(i.ModalSubmitData().CustomID, ":", 3)
 	if len(parts) != 3 {
@@ -1028,17 +1028,20 @@ func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, l
 		actionText = "created"
 	}
 
-	// Success response
-	displayTitle := title
-	if displayTitle == "" {
-		displayTitle = "(untitled)"
+	// Success response - show standard note embed
+	embed, components := createNoteEmbed(resultNote, cfg)
+
+	// Add action text to title
+	if actionText == "updated" {
+		embed.Title = "✅ Note Updated\n\n" + embed.Title
+	} else {
+		embed.Title = "✅ Note Created\n\n" + embed.Title
 	}
 
-	content := fmt.Sprintf("✅ Note %s successfully!\n\n**Title:** %s\n**About:** <@%s>\n\n_Use `/note view` to see the full note_", actionText, displayTitle, targetUserID)
-
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: content,
-		Flags:   discordgo.MessageFlagsEphemeral,
+		Embeds:     []*discordgo.MessageEmbed{embed},
+		Components: components,
+		Flags:      discordgo.MessageFlagsEphemeral,
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)

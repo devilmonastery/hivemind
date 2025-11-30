@@ -51,7 +51,7 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *co
 		handleContextMenuWiki(s, i, log, grpcClient)
 	// User context menu commands
 	case "Edit Note for User":
-		handleContextMenuAddNoteForUser(s, i, log, grpcClient)
+		handleContextMenuAddNoteForUser(s, i, cfg, log, grpcClient)
 	case "View Note for User":
 		handleContextMenuViewNotesForUser(s, i, cfg, log, grpcClient)
 	default:
@@ -146,7 +146,7 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 	case "context_wiki_modal":
 		handleContextWikiModal(s, i, log, grpcClient)
 	case "user_note_modal":
-		handleUserNoteModal(s, i, log, grpcClient)
+		handleUserNoteModal(s, i, cfg, log, grpcClient)
 	default:
 		log.Warn("no handler found for modal", slog.String("custom_id", customID))
 		respondError(s, i, "Unknown modal", log)
