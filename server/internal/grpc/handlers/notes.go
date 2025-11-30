@@ -10,6 +10,7 @@ import (
 	"github.com/devilmonastery/hivemind/api/generated/go/notespb"
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/services"
+	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 	"github.com/devilmonastery/hivemind/server/internal/grpc/interceptors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -364,7 +365,7 @@ func noteMessageReferenceToProto(ref *entities.NoteMessageReference) *notespb.No
 	// Compute Discord link if we have the required IDs
 	discordLink := ""
 	if ref.GuildID != "" && ref.ChannelID != "" && ref.MessageID != "" {
-		discordLink = "https://discord.com/channels/" + ref.GuildID + "/" + ref.ChannelID + "/" + ref.MessageID
+		discordLink = urlutil.DiscordMessageURL(ref.GuildID, ref.ChannelID, ref.MessageID)
 	}
 
 	return &notespb.NoteMessageReference{

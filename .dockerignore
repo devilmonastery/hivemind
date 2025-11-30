@@ -1,0 +1,40 @@
+# Git files
+.git
+.gitignore
+
+# Build artifacts
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+testdata/
+
+# Development files
+.env
+.vscode/
+.idea/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# CI/CD
+.github/
+
+# Dev environment
+dev/
+docker-compose.yaml
+
+# Config files (except examples)
+configs/*.yaml
+!configs/example_*.yaml
+
+# Temp files
+*.tmp
+*.log
+.DS_Store

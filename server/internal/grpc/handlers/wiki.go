@@ -13,6 +13,7 @@ import (
 	wikipb "github.com/devilmonastery/hivemind/api/generated/go/wikipb"
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/services"
+	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 	"github.com/devilmonastery/hivemind/server/internal/grpc/interceptors"
 )
 
@@ -309,7 +310,7 @@ func (h *wikiHandler) AutocompleteWikiTitles(ctx context.Context, req *wikipb.Au
 }
 
 func toProtoWikiMessageReference(ref *entities.WikiMessageReference) *wikipb.WikiMessageReference {
-	discordLink := "https://discord.com/channels/" + ref.GuildID + "/" + ref.ChannelID + "/" + ref.MessageID
+	discordLink := urlutil.DiscordMessageURL(ref.GuildID, ref.ChannelID, ref.MessageID)
 
 	// Convert entity attachments to proto attachments
 	protoAttachments := make([]*wikipb.AttachmentMetadata, len(ref.Attachments))

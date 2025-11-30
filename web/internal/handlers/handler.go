@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/devilmonastery/hivemind/internal/client"
+	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 	"github.com/devilmonastery/hivemind/web/internal/render"
 	"github.com/devilmonastery/hivemind/web/internal/session"
 )
@@ -207,8 +207,8 @@ func (h *Handler) getDiscordInstallURLs(ctx context.Context) (guildURL, userURL 
 	// This includes: Send Messages, Embed Links, Read Message History, etc.
 	// TODO: move to config
 	permissions := "277025507392"
-	guildURL = fmt.Sprintf("https://discord.com/oauth2/authorize?client_id=%s&permissions=%s&integration_type=0&scope=bot+applications.commands", discordClientID, permissions)
-	userURL = fmt.Sprintf("https://discord.com/oauth2/authorize?client_id=%s&permissions=%s&integration_type=1&scope=bot+applications.commands", discordClientID, permissions)
+	guildURL = urlutil.DiscordOAuthURL(discordClientID, permissions, 0)
+	userURL = urlutil.DiscordOAuthURL(discordClientID, permissions, 1)
 	return guildURL, userURL
 }
 
