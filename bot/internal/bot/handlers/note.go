@@ -326,7 +326,7 @@ func handleNoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 
 	var query, guildID string
 	var tags []string
-	limit := int32(10)
+	limit := int32(25) // Increased to match Discord's dropdown limit
 
 	for _, opt := range subcommand.Options {
 		switch opt.Name {
@@ -347,6 +347,9 @@ func handleNoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 			}
 		case "limit":
 			limit = int32(opt.IntValue())
+			if limit > 25 {
+				limit = 25 // Cap at Discord's dropdown limit
+			}
 		}
 	}
 
@@ -383,40 +386,152 @@ func handleNoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 
 	if len(resp.Notes) == 0 {
 		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: "No notes found matching your query",
+			Content: fmt.Sprintf("No notes found matching \"%s\"", query),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		})
 		return
 	}
 
+	// Show search results with a dropdown to select and post a note
+	// Limit to 25 results (Discord's max for select menus)
+	displayLimit := len(resp.Notes)
+	if displayLimit > 25 {
+		displayLimit = 25
+	}
+
 	var content strings.Builder
-	content.WriteString(fmt.Sprintf("🔍 Found %d note(s) matching \"%s\":\n\n", resp.Total, query))
-	for idx, note := range resp.Notes {
-		title := note.Title
-		if title == "" {
-			title = "(untitled)"
-		}
-		content.WriteString(fmt.Sprintf("%d. **%s** (ID: %s)\n", idx+1, title, note.Id))
+	content.WriteString(fmt.Sprintf("🔍 Found %d note(s) matching \"%s\"\n", resp.Total, query))
+	content.WriteString("Select a note from the dropdown to view:")
 
-		// Show snippet of body
-		body := note.Body
-		if len(body) > 100 {
-			body = body[:100] + "..."
-		}
-		content.WriteString(fmt.Sprintf("   %s\n", body))
+	// Build select menu options
+	options := []discordgo.SelectMenuOption{}
+	for idx := 0; idx < displayLimit; idx++ {
+		note := resp.Notes[idx]
 
-		if len(note.Tags) > 0 {
-			content.WriteString(fmt.Sprintf("   Tags: %s\n", strings.Join(note.Tags, ", ")))
+		// Create a label from title or body snippet (truncate if too long - Discord max is 100 chars)
+		label := note.Title
+		if label == "" {
+			// Use body snippet if no title
+			label = note.Body
+			if len(label) > 100 {
+				label = label[:97] + "..."
+			}
+		} else if len(label) > 100 {
+			label = label[:97] + "..."
 		}
-		content.WriteString("\n")
+
+		// Create a description with body snippet or tags
+		description := ""
+		if note.Title != "" && note.Body != "" {
+			// If we have a title, show body snippet in description
+			description = note.Body
+			if len(description) > 100 {
+				description = description[:97] + "..."
+			}
+		} else if len(note.Tags) > 0 {
+			// Otherwise show tags
+			description = "Tags: " + strings.Join(note.Tags, ", ")
+			if len(description) > 100 {
+				description = description[:97] + "..."
+			}
+		}
+
+		options = append(options, discordgo.SelectMenuOption{
+			Label:       label,
+			Description: description,
+			Value:       note.Id,
+			Emoji: &discordgo.ComponentEmoji{
+				Name: "📝",
+			},
+		})
+	}
+
+	components := []discordgo.MessageComponent{
+		discordgo.ActionsRow{
+			Components: []discordgo.MessageComponent{
+				discordgo.SelectMenu{
+					CustomID:    "view_note_select",
+					Placeholder: "Choose a note to view...",
+					Options:     options,
+				},
+			},
+		},
+	}
+
+	if resp.Total > int32(displayLimit) {
+		content.WriteString(fmt.Sprintf("\n\n_Showing first %d of %d results. Refine your search for more specific results._", displayLimit, resp.Total))
 	}
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: content.String(),
-		Flags:   discordgo.MessageFlagsEphemeral,
+		Content:    content.String(),
+		Components: components,
+		Flags:      discordgo.MessageFlagsEphemeral,
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)
+	}
+}
+
+// handleViewNoteSelect handles dropdown selection to view a note ephemerally
+func handleViewNoteSelect(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+	// Get the selected note ID from the dropdown
+	data := i.MessageComponentData()
+	if len(data.Values) == 0 {
+		log.Warn("No value selected in dropdown")
+		return
+	}
+
+	noteID := data.Values[0]
+
+	// Fetch the note by ID
+	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
+	ctx := discordContextFor(i)
+
+	note, err := noteClient.GetNote(ctx, &notespb.GetNoteRequest{
+		Id: noteID,
+	})
+	if err != nil {
+		log.Error("Failed to fetch note", "note_id", noteID, "error", err)
+		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "❌ Failed to fetch note",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Build note embed
+	title := note.Title
+	if title == "" {
+		title = "(untitled)"
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       title,
+		Description: note.Body,
+		Color:       0x5865F2,
+		Timestamp:   note.CreatedAt.AsTime().Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	if len(note.Tags) > 0 {
+		embed.Footer = &discordgo.MessageEmbedFooter{
+			Text: "Tags: " + strings.Join(note.Tags, ", "),
+		}
+	}
+
+	// Display the note ephemerally (only visible to the user)
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseUpdateMessage,
+		Data: &discordgo.InteractionResponseData{
+			Embeds:     []*discordgo.MessageEmbed{embed},
+			Components: []discordgo.MessageComponent{}, // Remove dropdown
+			Flags:      discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		log.Error("Failed to display note", "error", err)
 	}
 }
 
