@@ -132,11 +132,11 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 		return
 	}
 
-	// Show modal with title input (with autocomplete option)
+	// Show modal with title and body inputs for creating a new wiki page
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
-			CustomID: fmt.Sprintf("context_wiki_unified_modal:%s", targetID),
+			CustomID: fmt.Sprintf("context_wiki_modal:%s", targetID),
 			Title:    "Add to Wiki Page",
 			Components: []discordgo.MessageComponent{
 				discordgo.ActionsRow{
@@ -147,7 +147,20 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 							Style:       discordgo.TextInputShort,
 							Required:    true,
 							MaxLength:   200,
-							Placeholder: "Enter page title (create new or add to existing)",
+							Placeholder: "Enter page title",
+						},
+					},
+				},
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.TextInput{
+							CustomID:    "wiki_body",
+							Label:       "Wiki Content",
+							Style:       discordgo.TextInputParagraph,
+							Required:    true,
+							Value:       message.Content,
+							MaxLength:   4000,
+							Placeholder: "Edit content. Use #hashtags for tags",
 						},
 					},
 				},
@@ -389,7 +402,7 @@ func handleContextNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate
 }
 
 // handleContextWikiModal handles the modal submission for context menu wiki
-func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
 	data := i.ModalSubmitData()
 
 	var title, body string
@@ -406,6 +419,13 @@ func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate
 				}
 			}
 		}
+	}
+
+	// Extract message ID from CustomID (format: "context_wiki_modal:MESSAGE_ID")
+	parts := strings.Split(data.CustomID, ":")
+	var messageID string
+	if len(parts) == 2 {
+		messageID = parts[1]
 	}
 
 	// Extract hashtags from body (but keep original text)
@@ -426,7 +446,44 @@ func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate
 	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
 	ctx := discordContextFor(i)
 
-	page, err := wikiClient.CreateWikiPage(ctx, &wikipb.CreateWikiPageRequest{
+	// Check if a page with this title already exists
+	searchResp, err := wikiClient.SearchWikiPages(ctx, &wikipb.SearchWikiPagesRequest{
+		GuildId: i.GuildID,
+		Query:   title,
+		Limit:   25,
+	})
+
+	// If page exists, append to body instead of replacing
+	var existingPage *wikipb.WikiPage
+	if err == nil && searchResp.Total > 0 {
+		// Find exact title match (case-insensitive)
+		for _, p := range searchResp.Pages {
+			if strings.EqualFold(p.Title, title) {
+				existingPage = p
+				break
+			}
+		}
+	}
+
+	if existingPage != nil {
+		// Append new content to existing body
+		body = existingPage.Body + "\n\n" + body
+		// Merge tags
+		tagSet := make(map[string]bool)
+		for _, t := range existingPage.Tags {
+			tagSet[t] = true
+		}
+		for _, t := range tags {
+			tagSet[t] = true
+		}
+		tags = make([]string, 0, len(tagSet))
+		for t := range tagSet {
+			tags = append(tags, t)
+		}
+	}
+
+	// Use upsert to create or update the page
+	resp, err := wikiClient.UpsertWikiPage(ctx, &wikipb.UpsertWikiPageRequest{
 		Title:     title,
 		Body:      body,
 		Tags:      tags,
@@ -434,22 +491,79 @@ func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate
 		ChannelId: i.ChannelID,
 	})
 	if err != nil {
-		log.Error("Failed to create wiki page", "error", err)
+		log.Error("Failed to upsert wiki page", "error", err)
 		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: fmt.Sprintf("❌ Failed to create wiki page: %v", err),
+			Content: fmt.Sprintf("❌ Failed to save wiki page: %v", err),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		})
 		return
 	}
 
-	content := fmt.Sprintf("✅ Wiki page created: **%s**", page.Title)
-	if len(tags) > 0 {
-		content += fmt.Sprintf("\nTags: %s", formatTags(tags))
+	page := resp.Page
+
+	// If we have a message ID, add it as a reference to the wiki page
+	if messageID != "" {
+		// Fetch the original message to get its details
+		message, fetchErr := s.ChannelMessage(i.ChannelID, messageID)
+		if fetchErr == nil {
+			// Extract attachment metadata
+			attachments := make([]*wikipb.AttachmentMetadata, 0, len(message.Attachments))
+			for _, attachment := range message.Attachments {
+				attachments = append(attachments, &wikipb.AttachmentMetadata{
+					Url:         attachment.URL,
+					ContentType: attachment.ContentType,
+					Filename:    attachment.Filename,
+					Width:       int32(attachment.Width),
+					Height:      int32(attachment.Height),
+					Size:        int64(attachment.Size),
+				})
+			}
+
+			// Get author display name
+			authorDisplayName := message.Author.Username
+			if message.Member != nil && message.Member.Nick != "" {
+				authorDisplayName = message.Member.Nick
+			}
+
+			// Add message reference
+			_, err = wikiClient.AddWikiMessageReference(ctx, &wikipb.AddWikiMessageReferenceRequest{
+				WikiPageId:        page.Id,
+				MessageId:         message.ID,
+				ChannelId:         message.ChannelID,
+				GuildId:           i.GuildID,
+				Content:           message.Content,
+				AuthorId:          message.Author.ID,
+				AuthorUsername:    message.Author.Username,
+				AuthorDisplayName: authorDisplayName,
+				MessageTimestamp:  timestamppb.New(message.Timestamp),
+				Attachments:       attachments,
+			})
+			if err != nil {
+				log.Warn("Failed to add message reference to wiki page", "error", err)
+				// Don't fail the whole operation if reference addition fails
+			}
+		} else {
+			log.Warn("Failed to fetch message for wiki reference", "error", fetchErr, "message_id", messageID)
+		}
+	}
+
+	// Fetch message references for the wiki page
+	refs := fetchWikiMessageReferences(ctx, wikiClient, page.Id, log)
+
+	// Show standard wiki embed
+	embed, components := showWikiDetailEmbed(s, page, refs, cfg, "", false)
+
+	// Set title based on whether page was created or updated
+	if resp.Created {
+		embed.Title = "✅ Wiki Page Created\n\n" + embed.Title
+	} else {
+		embed.Title = "✅ Wiki Page Updated\n\n" + embed.Title
 	}
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: content,
-		Flags:   discordgo.MessageFlagsEphemeral,
+		Embeds:     []*discordgo.MessageEmbed{embed},
+		Components: components,
+		Flags:      discordgo.MessageFlagsEphemeral,
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)
