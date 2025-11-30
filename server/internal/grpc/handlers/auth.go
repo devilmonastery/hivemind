@@ -86,24 +86,15 @@ func (s *AuthHandler) GetOAuthConfig(
 
 		// Build authorization URL with placeholders for dynamic values
 		// The web UI and CLI will substitute {redirect_uri}, {state}, {code_challenge}
-		u, err := url.Parse(discovery.AuthorizationEndpoint)
-		if err != nil {
-			s.log.Warn("failed to parse authorization endpoint",
-				slog.String("provider", providerConfig.Name),
-				slog.String("error", err.Error()))
-			continue
-		}
-		q := url.Values{}
-		q.Set("client_id", providerConfig.ClientID)
-		q.Set("redirect_uri", "{redirect_uri}")
-		q.Set("response_type", "code")
-		q.Set("scope", strings.Join(providerConfig.Scopes, " "))
-		q.Set("state", "{state}")
-		q.Set("code_challenge", "{code_challenge}")
-		q.Set("code_challenge_method", "S256")
-		q.Set("prompt", "consent")
-		u.RawQuery = q.Encode()
-		authURL := u.String()
+		// We manually construct the query string to avoid encoding the placeholder braces
+
+		// Manually build query string with proper encoding for static values only
+		authURL := fmt.Sprintf(
+			"%s?client_id=%s&redirect_uri={redirect_uri}&response_type=code&scope=%s&state={state}&code_challenge={code_challenge}&code_challenge_method=S256&prompt=consent",
+			discovery.AuthorizationEndpoint,
+			url.QueryEscape(providerConfig.ClientID),
+			url.QueryEscape(strings.Join(providerConfig.Scopes, " ")),
+		)
 
 		providers = append(providers, &authpb.OAuthProvider{
 			Name:             providerConfig.Name,
