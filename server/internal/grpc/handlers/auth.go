@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/url"
 	"strings"
 	"time"
@@ -38,6 +38,7 @@ type AuthHandler struct {
 	discordUserRepo repositories.DiscordUserRepository
 	jwtManager      *auth.JWTManager
 	config          *config.Config
+	log             *slog.Logger
 }
 
 // NewAuthHandler creates a new authentication handler
@@ -48,6 +49,7 @@ func NewAuthHandler(
 	discordUserRepo repositories.DiscordUserRepository,
 	jwtManager *auth.JWTManager,
 	cfg *config.Config,
+	logger *slog.Logger,
 ) *AuthHandler {
 	return &AuthHandler{
 		userRepo:        userRepo,
@@ -56,6 +58,7 @@ func NewAuthHandler(
 		discordUserRepo: discordUserRepo,
 		jwtManager:      jwtManager,
 		config:          cfg,
+		log:             logger.With(slog.String("handler", "auth")),
 	}
 }
 
@@ -64,16 +67,20 @@ func (s *AuthHandler) GetOAuthConfig(
 	ctx context.Context,
 	req *authpb.GetOAuthConfigRequest,
 ) (*authpb.GetOAuthConfigResponse, error) {
-	log.Printf("[DEBUG] GetOAuthConfig called. Config providers: %d", len(s.config.Auth.Providers))
+	s.log.Debug("GetOAuthConfig called", slog.Int("provider_count", len(s.config.Auth.Providers)))
 	providers := make([]*authpb.OAuthProvider, 0, len(s.config.Auth.Providers))
 
 	for _, providerConfig := range s.config.Auth.Providers {
-		log.Printf("[DEBUG] Adding provider: %s (client_id: %s)", providerConfig.Name, providerConfig.ClientID)
+		s.log.Debug("adding provider",
+			slog.String("name", providerConfig.Name),
+			slog.String("client_id", providerConfig.ClientID))
 
 		// Get OIDC discovery document
 		discovery, err := oidc.GetDiscoveryForProvider(ctx, providerConfig.Issuer)
 		if err != nil {
-			log.Printf("[WARN] Failed to get discovery for provider %s: %v", providerConfig.Name, err)
+			s.log.Warn("failed to get discovery for provider",
+				slog.String("provider", providerConfig.Name),
+				slog.String("error", err.Error()))
 			continue
 		}
 
@@ -81,7 +88,9 @@ func (s *AuthHandler) GetOAuthConfig(
 		// The web UI and CLI will substitute {redirect_uri}, {state}, {code_challenge}
 		u, err := url.Parse(discovery.AuthorizationEndpoint)
 		if err != nil {
-			log.Printf("[WARN] Failed to parse authorization endpoint for provider %s: %v", providerConfig.Name, err)
+			s.log.Warn("failed to parse authorization endpoint",
+				slog.String("provider", providerConfig.Name),
+				slog.String("error", err.Error()))
 			continue
 		}
 		q := url.Values{}
@@ -168,7 +177,10 @@ func (s *AuthHandler) ExchangeAuthCode(
 	}
 
 	// Debug: Log claims
-	log.Printf("[DEBUG] Claims - Email: %s, EmailVerified: %t, Subject: %s", claims.Email, claims.EmailVerified, claims.Subject)
+	s.log.Debug("validating claims",
+		slog.String("email", claims.Email),
+		slog.Bool("email_verified", claims.EmailVerified),
+		slog.String("subject", claims.Subject))
 
 	// Verify email is verified (skip for Okta admin users for now)
 	if !claims.EmailVerified && req.Provider != "okta" {
@@ -186,12 +198,13 @@ func (s *AuthHandler) ExchangeAuthCode(
 	var user *entities.User
 	var isNewUser bool
 
-	log.Printf("[OAuth] Discord OAuth: checking if discord_users record exists for discord_id=%s", claims.Subject)
+	log := s.log.With(slog.String("flow", "oauth"), slog.String("provider", req.Provider))
+	log.Info("checking if discord_users record exists", slog.String("discord_id", claims.Subject))
 	discordUser, err := s.discordUserRepo.GetByDiscordID(ctx, claims.Subject)
 
 	if err == nil && discordUser != nil {
 		// User exists - get and potentially update email
-		log.Printf("[OAuth] Found existing discord_users record, reusing user_id=%s", discordUser.UserID)
+		log.Info("found existing discord_users record", slog.String("user_id", discordUser.UserID))
 		user, err = s.userRepo.GetByID(ctx, discordUser.UserID)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
@@ -199,10 +212,10 @@ func (s *AuthHandler) ExchangeAuthCode(
 
 		// Update user's email if it's currently empty and we have a verified email
 		if user.Email == "" && claims.EmailVerified && claims.Email != "" {
-			log.Printf("[OAuth] Updating user email from NULL to %s", claims.Email)
+			log.Info("updating user email", slog.String("email", claims.Email))
 			user.Email = claims.Email
 			if err := s.userRepo.Update(ctx, user); err != nil {
-				log.Printf("[OAuth] Warning: Failed to update user email: %v", err)
+				log.Warn("failed to update user email", slog.String("error", err.Error()))
 			}
 		}
 
@@ -210,12 +223,14 @@ func (s *AuthHandler) ExchangeAuthCode(
 		_ = s.discordUserRepo.UpdateLastSeen(ctx, claims.Subject)
 	} else {
 		// New user - create user and discord_users record
-		log.Printf("[OAuth] No existing Discord user, checking auto-provision")
+		log.Info("no existing Discord user, checking auto-provision")
 		if !providerConfig.AutoProvision {
 			return nil, status.Error(codes.PermissionDenied, "auto-provisioning not enabled")
 		}
 
-		log.Printf("[OAuth] Creating new user: email=%s, name=%s", claims.Email, claims.Name)
+		log.Info("creating new user",
+			slog.String("email", claims.Email),
+			slog.String("name", claims.Name))
 		user = &entities.User{
 			Email:       claims.Email,
 			DisplayName: claims.Name,
@@ -226,7 +241,7 @@ func (s *AuthHandler) ExchangeAuthCode(
 		if err := s.userRepo.Create(ctx, user); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
 		}
-		log.Printf("[OAuth] User created successfully: user_id=%s", user.ID)
+		log.Info("user created successfully", slog.String("user_id", user.ID))
 
 		// Create discord_users record
 		newDiscordUser := &entities.DiscordUser{
@@ -239,9 +254,9 @@ func (s *AuthHandler) ExchangeAuthCode(
 		}
 
 		if err := s.discordUserRepo.Upsert(ctx, newDiscordUser); err != nil {
-			log.Printf("[OAuth] Warning: Failed to upsert discord_users record: %v", err)
+			log.Warn("failed to upsert discord_users record", slog.String("error", err.Error()))
 		} else {
-			log.Printf("[OAuth] discord_users record created successfully")
+			log.Info("discord_users record created successfully")
 		}
 
 		isNewUser = true
@@ -291,20 +306,24 @@ func (s *AuthHandler) ExchangeAuthCode(
 	// Update avatar URL if changed
 	if picture != "" && (user.AvatarURL == nil || (user.AvatarURL != nil && *user.AvatarURL != picture)) {
 		user.AvatarURL = &picture
-		log.Printf("[OAuth] Updating user avatar URL: user_id=%s, avatar_url=%s", user.ID, picture)
+		log.Info("updating user avatar URL",
+			slog.String("user_id", user.ID),
+			slog.String("avatar_url", picture))
 		needsUpdate = true
 	}
 
 	// Update timezone if provided and different
 	if req.Timezone != "" && (user.Timezone == nil || (user.Timezone != nil && *user.Timezone != req.Timezone)) {
 		user.Timezone = &req.Timezone
-		log.Printf("[OAuth] Updating user timezone: user_id=%s, timezone=%s", user.ID, req.Timezone)
+		log.Info("updating user timezone",
+			slog.String("user_id", user.ID),
+			slog.String("timezone", req.Timezone))
 		needsUpdate = true
 	}
 
 	if needsUpdate {
 		if err := s.userRepo.Update(ctx, user); err != nil {
-			log.Printf("Warning: failed to update user profile: %v", err)
+			log.Warn("failed to update user profile", slog.String("error", err.Error()))
 			// Don't fail the login if profile update fails
 		}
 	}
@@ -411,7 +430,7 @@ func (s *AuthHandler) RefreshOAuthToken(
 	tokenSource := oauth2Config.TokenSource(ctx, token)
 	newToken, err := tokenSource.Token()
 	if err != nil {
-		log.Printf("Failed to refresh OAuth token: %v", err)
+		s.log.Error("failed to refresh OAuth token", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Unauthenticated, "failed to refresh OAuth token")
 	}
 
@@ -429,25 +448,29 @@ func (s *AuthHandler) RefreshOAuthToken(
 
 	claims, err := provider.ValidateIDToken(ctx, idToken, newToken.AccessToken, *providerConfig)
 	if err != nil {
-		log.Printf("Failed to validate refreshed ID token: %v", err)
+		s.log.Error("failed to validate refreshed ID token", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Unauthenticated, "invalid ID token")
 	}
 
 	// Get user by Discord ID (Discord-only app)
 	discordUser, err := s.discordUserRepo.GetByDiscordID(ctx, claims.Subject)
 	if err != nil {
-		log.Printf("Discord user not found for %s: %v", claims.Subject, err)
+		s.log.Error("discord user not found",
+			slog.String("subject", claims.Subject),
+			slog.String("error", err.Error()))
 		return nil, status.Error(codes.Unauthenticated, "user not found")
 	}
 
 	// Get user
 	user, err := s.userRepo.GetByID(ctx, discordUser.UserID)
 	if err != nil {
-		log.Printf("User not found for discord user %s: %v", discordUser.UserID, err)
+		s.log.Error("user not found for discord user",
+			slog.String("discord_user_id", discordUser.UserID),
+			slog.String("error", err.Error()))
 		return nil, status.Error(codes.Unauthenticated, "user not found")
 	}
 	if user == nil {
-		log.Printf("User is nil for discord user %s", discordUser.UserID)
+		s.log.Error("user is nil", slog.String("discord_user_id", discordUser.UserID))
 		return nil, status.Error(codes.Unauthenticated, "user not found")
 	}
 
@@ -501,7 +524,7 @@ func (s *AuthHandler) RefreshOAuthToken(
 		LastUsed:   &[]time.Time{time.Now()}[0],
 	}
 	if err := s.tokenRepo.Create(ctx, apiToken); err != nil {
-		log.Printf("Failed to store API token: %v", err)
+		s.log.Warn("failed to store API token", slog.String("error", err.Error()))
 		// Non-fatal, token is still valid
 	}
 
@@ -619,23 +642,27 @@ func (s *AuthHandler) RefreshToken(
 	ctx context.Context,
 	req *authpb.RefreshTokenRequest,
 ) (*authpb.RefreshTokenResponse, error) {
-	log.Printf("[DEBUG] RefreshToken called with TokenID: %s", req.TokenId)
+	s.log.Debug("RefreshToken called", slog.String("token_id", req.TokenId))
 
 	// Get existing token
-	log.Printf("[DEBUG] Calling tokenRepo.GetByID for token: %s", req.TokenId)
+	s.log.Debug("getting token from repository", slog.String("token_id", req.TokenId))
 	existingToken, err := s.tokenRepo.GetByID(ctx, req.TokenId)
-	log.Printf("[DEBUG] tokenRepo.GetByID returned: existingToken=%v, err=%v", existingToken != nil, err)
+	s.log.Debug("token repository result",
+		slog.Bool("found", existingToken != nil),
+		slog.Bool("has_error", err != nil))
 
 	if err != nil {
-		log.Printf("[ERROR] Failed to get token: %v", err)
+		s.log.Error("failed to get token", slog.String("error", err.Error()))
 		return nil, status.Error(codes.NotFound, "token not found")
 	}
 	if existingToken == nil {
-		log.Printf("[ERROR] Token is nil (not found in database)")
+		s.log.Error("token is nil (not found in database)")
 		return nil, status.Error(codes.NotFound, "token not found")
 	}
 
-	log.Printf("[DEBUG] Token found for user: %s, revoked: %v", existingToken.UserID, existingToken.RevokedAt != nil)
+	s.log.Debug("token found",
+		slog.String("user_id", existingToken.UserID),
+		slog.Bool("revoked", existingToken.RevokedAt != nil))
 
 	// Check if token is revoked
 	if existingToken.RevokedAt != nil {
@@ -692,15 +719,22 @@ func (s *AuthHandler) RefreshToken(
 			},
 		}
 
-		log.Printf("[DEBUG] OAuth2 config for refresh - ClientID: %s, Endpoint: %v", oauth2Config.ClientID, oauth2Config.Endpoint)
-		log.Printf("[DEBUG] Refresh token length: %d, starts with: %s", len(*oidcSession.RefreshToken), (*oidcSession.RefreshToken)[:min(20, len(*oidcSession.RefreshToken))])
+		s.log.Debug("OAuth2 config for refresh",
+			slog.String("client_id", oauth2Config.ClientID),
+			slog.String("token_url", oauth2Config.Endpoint.TokenURL))
+		s.log.Debug("refresh token info",
+			slog.Int("length", len(*oidcSession.RefreshToken)),
+			slog.String("prefix", (*oidcSession.RefreshToken)[:min(20, len(*oidcSession.RefreshToken))]))
 
 		// Exchange refresh token for new access token
 		token, err := oauth2Config.TokenSource(ctx, &oauth2.Token{
 			RefreshToken: *oidcSession.RefreshToken,
 		}).Token()
 		if err != nil {
-			log.Printf("[ERROR] Failed to refresh OAuth token for user %s provider %s: %v", user.ID, provider, err)
+			s.log.Error("failed to refresh OAuth token",
+				slog.String("user_id", user.ID),
+				slog.String("provider", provider),
+				slog.String("error", err.Error()))
 			return nil, status.Error(codes.Unauthenticated, "failed to refresh OAuth token - please login again")
 		}
 
@@ -710,7 +744,7 @@ func (s *AuthHandler) RefreshToken(
 			now := time.Now()
 			oidcSession.LastRefreshed = &now
 			if err := s.sessionRepo.UpdateOIDCSession(ctx, oidcSession); err != nil {
-				fmt.Printf("warning: failed to update OIDC session: %v\n", err)
+				s.log.Warn("failed to update OIDC session", slog.String("error", err.Error()))
 			}
 		}
 
@@ -719,7 +753,9 @@ func (s *AuthHandler) RefreshToken(
 	}
 
 	// Generate new JWT with user profile information (including avatar)
-	log.Printf("[DEBUG] Generating new JWT for user %s with tokenID %s", user.ID, existingToken.ID)
+	s.log.Debug("generating new JWT",
+		slog.String("user_id", user.ID),
+		slog.String("token_id", existingToken.ID))
 	displayName := user.DisplayName
 	if displayName == "" {
 		displayName = user.Email // fallback to email if no display name
@@ -744,7 +780,9 @@ func (s *AuthHandler) RefreshToken(
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
-	log.Printf("[DEBUG] Generated new JWT (preview): %s..., expires at %v", tokenString[:min(30, len(tokenString))], expiresAt)
+	s.log.Debug("generated new JWT",
+		slog.String("token_prefix", tokenString[:min(30, len(tokenString))]),
+		slog.Time("expires_at", expiresAt))
 
 	// Update token in database
 	existingToken.TokenHash = tokenString // TODO: hash this in production
@@ -902,7 +940,7 @@ func (s *AuthHandler) LoginWithOIDC(
 	if picture != "" && (user.AvatarURL == nil || (user.AvatarURL != nil && *user.AvatarURL != picture)) {
 		user.AvatarURL = &picture
 		if err := s.userRepo.Update(ctx, user); err != nil {
-			log.Printf("Warning: failed to update user avatar URL: %v", err)
+			s.log.Warn("failed to update user avatar URL", slog.String("error", err.Error()))
 			// Don't fail the login if avatar update fails
 		}
 	}
@@ -950,7 +988,7 @@ func (s *AuthHandler) LoginWithOIDC(
 		existingSession, err := s.sessionRepo.GetOIDCSessionByUserAndProvider(ctx, user.ID, req.Provider)
 		if err != nil {
 			// Log error but continue - this is not critical
-			fmt.Printf("warning: failed to get existing OIDC session: %v\n", err)
+			s.log.Warn("failed to get existing OIDC session", slog.String("error", err.Error()))
 		}
 
 		if existingSession != nil {
@@ -965,7 +1003,7 @@ func (s *AuthHandler) LoginWithOIDC(
 
 			if err := s.sessionRepo.UpdateOIDCSession(ctx, existingSession); err != nil {
 				// Log error but don't fail the login
-				fmt.Printf("warning: failed to update OIDC session: %v\n", err)
+				s.log.Warn("failed to update OIDC session", slog.String("error", err.Error()))
 			}
 		} else {
 			// Create new OIDC session with refresh token
@@ -983,7 +1021,7 @@ func (s *AuthHandler) LoginWithOIDC(
 
 			if err := s.sessionRepo.CreateOIDCSession(ctx, oidcSession); err != nil {
 				// Log error but don't fail the login
-				fmt.Printf("warning: failed to create OIDC session: %v\n", err)
+				s.log.Warn("failed to create OIDC session", slog.String("error", err.Error()))
 			}
 		}
 	}

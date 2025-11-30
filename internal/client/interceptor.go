@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"crypto/tls"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -56,12 +56,12 @@ func (a *AuthInterceptor) Unary() grpc.UnaryClientInterceptor {
 
 		// If unauthenticated, try to refresh and retry
 		if status.Code(err) == codes.Unauthenticated {
-			log.Printf("Token expired, attempting refresh...")
-			log.Printf("[DEBUG] Old token preview: %s...", token[:min(30, len(token))])
+			slog.Info("token expired, attempting refresh")
+			slog.Debug("old token info", slog.String("token_prefix", token[:min(30, len(token))]))
 
 			refreshErr := a.refreshToken(ctx)
 			if refreshErr != nil {
-				log.Printf("Token refresh failed: %v", refreshErr)
+				slog.Error("token refresh failed", slog.String("error", refreshErr.Error()))
 				return err // Return original error
 			}
 
@@ -70,14 +70,14 @@ func (a *AuthInterceptor) Unary() grpc.UnaryClientInterceptor {
 			if tokenErr != nil {
 				return tokenErr
 			}
-			log.Printf("[DEBUG] New token preview: %s...", newToken[:min(30, len(newToken))])
+			slog.Debug("new token info", slog.String("token_prefix", newToken[:min(30, len(newToken))]))
 
 			// Retry with new token (use NewOutgoingContext to replace the old auth header)
 			md := metadata.Pairs("authorization", "Bearer "+newToken)
 			retryCtx := metadata.NewOutgoingContext(context.Background(), md)
-			log.Printf("[DEBUG] Retrying request with refreshed token...")
+			slog.Debug("retrying request with refreshed token")
 			err = invoker(retryCtx, method, req, reply, cc, opts...)
-			log.Printf("[DEBUG] Retry result: %v", err)
+			slog.Debug("retry result", slog.Any("error", err))
 		}
 
 		return err
@@ -166,6 +166,6 @@ func (a *AuthInterceptor) refreshToken(ctx context.Context) error {
 		return err
 	}
 
-	log.Printf("Successfully refreshed token")
+	slog.Info("successfully refreshed token")
 	return nil
 }

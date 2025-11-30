@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -25,21 +26,23 @@ type Handler struct {
 	redirectURI     string
 	discordGuildURL string // Cached Discord guild install URL
 	discordUserURL  string // Cached Discord user install URL
+	log             *slog.Logger
 }
 
 // New creates a new handler with dependencies
-func New(serverAddress string, sessionManager *session.Manager, templates *render.TemplateSet, redirectURI string) *Handler {
+func New(serverAddress string, sessionManager *session.Manager, templates *render.TemplateSet, redirectURI string, logger *slog.Logger) *Handler {
 	h := &Handler{
 		serverAddress:  serverAddress,
 		sessionManager: sessionManager,
 		templates:      templates,
 		redirectURI:    redirectURI,
+		log:            logger.With(slog.String("component", "web_handler")),
 	}
 
 	// Fetch Discord install URLs at startup (cached for lifetime of handler)
 	// Retry for up to 60 seconds to allow the gRPC server to start up
 	// This blocks the web server from becoming "ready" until backend is available
-	log.Printf("Waiting for gRPC backend to be ready...")
+	h.log.Info("waiting for gRPC backend to be ready")
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -47,12 +50,14 @@ func New(serverAddress string, sessionManager *session.Manager, templates *rende
 	for i := 0; i < maxRetries; i++ {
 		h.discordGuildURL, h.discordUserURL = h.getDiscordInstallURLs(ctx)
 		if h.discordGuildURL != "" {
-			log.Printf("✓ Backend ready - Discord install URLs initialized successfully")
+			h.log.Info("backend ready - Discord install URLs initialized successfully")
 			break
 		}
 
 		if i < maxRetries-1 {
-			log.Printf("Backend not ready yet (attempt %d/%d), retrying in 5s...", i+1, maxRetries)
+			h.log.Info("backend not ready yet, retrying",
+				slog.Int("attempt", i+1),
+				slog.Int("max_retries", maxRetries))
 			time.Sleep(5 * time.Second)
 		} else {
 			log.Fatalf("FATAL: Failed to connect to gRPC backend after %d attempts - check that the server is running and accessible", maxRetries)
@@ -91,13 +96,15 @@ func (h *Handler) renderTemplate(w http.ResponseWriter, name string, data interf
 		http.Error(w, "Templates not loaded", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Rendering template: %s", name)
+	h.log.Debug("rendering template", slog.String("template", name))
 
 	// Execute the named page template using the TemplateSet's Execute method
 	// This will render the "base" template with the page's specific content
 	err := h.templates.Execute(w, name, data)
 	if err != nil {
-		log.Printf("Error rendering template %s: %v", name, err)
+		h.log.Error("template rendering failed",
+			slog.String("template", name),
+			slog.String("error", err.Error()))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
@@ -116,9 +123,9 @@ func isAuthError(err error) bool {
 
 // clearSessionAndRedirect clears the session and redirects to login
 func (h *Handler) clearSessionAndRedirect(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Clearing invalid session and redirecting to login")
+	h.log.Info("clearing invalid session and redirecting to login")
 	if err := h.sessionManager.ClearToken(r, w); err != nil {
-		log.Printf("Error clearing session: %v", err)
+		h.log.Error("error clearing session", slog.String("error", err.Error()))
 	}
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
@@ -135,13 +142,13 @@ func (h *Handler) getCurrentUser(r *http.Request) map[string]interface{} {
 	// We just need to extract the claims
 	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
 	if err != nil {
-		log.Printf("Failed to parse JWT: %v", err)
+		h.log.Warn("failed to parse JWT", slog.String("error", err.Error()))
 		return nil
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		log.Printf("Failed to get claims from JWT")
+		h.log.Warn("failed to get claims from JWT")
 		return nil
 	}
 
@@ -183,23 +190,25 @@ func (h *Handler) getCurrentUser(r *http.Request) map[string]interface{} {
 func (h *Handler) getDiscordInstallURLs(ctx context.Context) (guildURL, userURL string) {
 	providers, err := h.getAvailableProviders(ctx)
 	if err != nil {
-		log.Printf("Failed to get OAuth providers for Discord install URLs: %v", err)
+		h.log.Error("failed to get OAuth providers for Discord install URLs", slog.String("error", err.Error()))
 		return "", ""
 	}
 
-	log.Printf("Found %d OAuth providers during initialization", len(providers))
+	h.log.Info("found OAuth providers during initialization", slog.Int("count", len(providers)))
 
 	// Find Discord provider
 	var discordClientID string
 	for _, p := range providers {
-		log.Printf("  - OAuth provider: %s (client_id=%s)", p.Name, p.ClientId)
+		h.log.Debug("OAuth provider",
+			slog.String("name", p.Name),
+			slog.String("client_id", p.ClientId))
 		if p.Name == "discord" {
 			discordClientID = p.ClientId
 		}
 	}
 
 	if discordClientID == "" {
-		log.Printf("WARNING: Discord provider not found in OAuth config - bot invite links will not be available. Check your server's auth.providers configuration.")
+		h.log.Warn("Discord provider not found in OAuth config - bot invite links will not be available")
 		return "", ""
 	}
 
@@ -260,7 +269,7 @@ func (h *Handler) SetTimezone(w http.ResponseWriter, r *http.Request) {
 	session, _ := h.sessionManager.GetSession(r)
 	session.Values["client_timezone"] = req.Timezone
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Failed to save timezone to session: %v", err)
+		h.log.Error("failed to save timezone to session", slog.String("error", err.Error()))
 		http.Error(w, "Failed to save timezone", http.StatusInternalServerError)
 		return
 	}

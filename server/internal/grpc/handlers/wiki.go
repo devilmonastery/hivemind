@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"strings"
 
 	"google.golang.org/grpc/codes"
@@ -21,13 +21,15 @@ type wikiHandler struct {
 	wikipb.UnimplementedWikiServiceServer
 	wikiService    *services.WikiService
 	discordService *services.DiscordService
+	log            *slog.Logger
 }
 
 // NewWikiHandler creates a new wiki gRPC handler
-func NewWikiHandler(wikiService *services.WikiService, discordService *services.DiscordService) wikipb.WikiServiceServer {
+func NewWikiHandler(wikiService *services.WikiService, discordService *services.DiscordService, logger *slog.Logger) wikipb.WikiServiceServer {
 	return &wikiHandler{
 		wikiService:    wikiService,
 		discordService: discordService,
+		log:            logger.With(slog.String("handler", "wiki")),
 	}
 }
 
@@ -235,7 +237,10 @@ func (h *wikiHandler) AddWikiMessageReference(ctx context.Context, req *wikipb.A
 	}
 
 	// Debug logging
-	log.Printf("AddWikiMessageReference request: GuildId=%q, Content=%q (len=%d)", req.GuildId, req.Content, len(req.Content))
+	h.log.Debug("AddWikiMessageReference request",
+		slog.String("guild_id", req.GuildId),
+		slog.String("content", req.Content),
+		slog.Int("content_length", len(req.Content)))
 
 	// Convert proto attachments to entity attachments
 	attachments := make([]entities.AttachmentMetadata, len(req.Attachments))
@@ -267,7 +272,7 @@ func (h *wikiHandler) AddWikiMessageReference(ctx context.Context, req *wikipb.A
 
 	err = h.wikiService.AddWikiMessageReference(ctx, ref)
 	if err != nil {
-		log.Printf("error adding message reference: %v", err)
+		h.log.Error("error adding message reference", slog.String("error", err.Error()))
 		return nil, err
 	}
 

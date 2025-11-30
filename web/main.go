@@ -38,7 +38,7 @@ func main() {
 	}
 
 	// Log loaded template names for debugging
-	render.LogTemplateNames(templates)
+	render.LogTemplateNames(templates, slog.Default())
 
 	// Get session secret - priority: env var > config file > random
 	var sessionSecret []byte
@@ -86,7 +86,7 @@ func main() {
 
 	// Initialize handlers with server address and redirect URI from config
 	slog.Info("Initializing handlers and waiting for backend...")
-	h := handlers.New(cfg.GRPC.Address, sessionMgr, templates, cfg.OAuth.RedirectURI)
+	h := handlers.New(cfg.GRPC.Address, sessionMgr, templates, cfg.OAuth.RedirectURI, slog.Default())
 
 	// Create HTTP router
 	router := createRouter(h, authMw)

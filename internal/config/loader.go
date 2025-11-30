@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -32,7 +33,7 @@ func Load(configPath string) (*Config, error) {
 			Postgres: PostgresConfig{
 				Host:     "localhost",
 				Port:     5432,
-					Database: "hivemind",
+				Database: "hivemind",
 				User:     "postgres",
 				SSLMode:  "disable",
 			},
@@ -50,7 +51,7 @@ func Load(configPath string) (*Config, error) {
 
 	// Load configuration from file if it exists
 	if configPath != "" && fileExists(configPath) {
-		fmt.Printf("[CONFIG] Loading config from: %s\n", configPath)
+		slog.Debug("loading config from file", slog.String("path", configPath))
 		data, err := os.ReadFile(configPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -63,7 +64,7 @@ func Load(configPath string) (*Config, error) {
 			return nil, fmt.Errorf("failed to parse config file: %w", err)
 		}
 	} else {
-		fmt.Printf("[CONFIG] No config file found, using defaults\n")
+		slog.Debug("no config file found, using defaults")
 	}
 
 	// Validate configuration

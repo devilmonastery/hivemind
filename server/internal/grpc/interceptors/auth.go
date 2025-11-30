@@ -3,7 +3,7 @@ package interceptors
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -50,6 +50,7 @@ type AuthInterceptor struct {
 	tokenRepo      repositories.TokenRepository
 	discordService *services.DiscordService
 	devBotToken    string // Optional dev-only bot token (not for production)
+	log            *slog.Logger
 	// Methods that don't require authentication
 	publicMethods map[string]bool
 	// Method prefixes that don't require authentication (e.g., "/grpc." for infrastructure)
@@ -62,12 +63,14 @@ func NewAuthInterceptor(
 	tokenRepo repositories.TokenRepository,
 	discordService *services.DiscordService,
 	devBotToken string, // Optional: dev-only bot token
+	logger *slog.Logger,
 ) *AuthInterceptor {
 	return &AuthInterceptor{
 		jwtManager:     jwtManager,
 		tokenRepo:      tokenRepo,
 		discordService: discordService,
 		devBotToken:    devBotToken,
+		log:            logger.With(slog.String("component", "auth_interceptor")),
 		publicMethods: map[string]bool{
 			"/hivemind.auth.v1.AuthService/AuthenticateLocal": true,
 			"/hivemind.auth.v1.AuthService/GetOAuthConfig":    true,
@@ -201,14 +204,15 @@ func (i *AuthInterceptor) authenticateDiscordUser(ctx context.Context, md metada
 	// Only authenticated bots can act on behalf of Discord users
 	botContext, err := i.authenticateJWT(ctx, md)
 	if err != nil {
-		log.Printf("[AUTH] Bot authentication failed: %v", err)
+		i.log.Error("bot authentication failed", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Unauthenticated, "bot must authenticate with service token")
 	}
 
 	// Verify the authenticated entity is actually a bot (has role "bot" or "service_account")
 	if botContext.Role != RoleBot && botContext.Role != "service_account" {
-		log.Printf("[AUTH] Non-bot user attempted to use Discord context: user_id=%s, role=%s",
-			botContext.UserID, botContext.Role)
+		i.log.Warn("non-bot user attempted to use Discord context",
+			slog.String("user_id", botContext.UserID),
+			slog.String("role", botContext.Role))
 		return nil, status.Error(codes.PermissionDenied, "only bots can act on behalf of Discord users")
 	}
 
@@ -237,12 +241,16 @@ func (i *AuthInterceptor) authenticateDiscordUser(ctx context.Context, md metada
 		nil, // TODO: Get avatar_url from metadata if available
 	)
 	if err != nil {
-		log.Printf("[AUTH] Failed to get/create user from Discord: %v", err)
+		i.log.Error("failed to get/create user from Discord", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to provision user")
 	}
 
-	log.Printf("[AUTH] Bot %s acting on behalf of Discord user: discord_id=%s, user_id=%s, username=%s, guild_id=%s",
-		botContext.UserID, discordUserID, user.ID, username, guildID)
+	i.log.Info("bot acting on behalf of Discord user",
+		slog.String("bot_id", botContext.UserID),
+		slog.String("discord_id", discordUserID),
+		slog.String("user_id", user.ID),
+		slog.String("username", username),
+		slog.String("guild_id", guildID))
 
 	// Return UserContext with mapped Hivemind user
 	return &UserContext{
@@ -274,7 +282,7 @@ func (i *AuthInterceptor) authenticateJWT(ctx context.Context, md metadata.MD) (
 	// Check dev bot token FIRST (before JWT validation)
 	// This allows simple string tokens for development without JWT complexity
 	if i.devBotToken != "" && token == i.devBotToken {
-		log.Printf("[AUTH] ⚠️  DEV MODE: Using config-based bot token (DO NOT USE IN PRODUCTION)")
+		i.log.Warn("using config-based bot token (DO NOT USE IN PRODUCTION)")
 		return &UserContext{
 			UserID:      "bot-dev",
 			Username:    "dev-bot",
@@ -289,7 +297,9 @@ func (i *AuthInterceptor) authenticateJWT(ctx context.Context, md metadata.MD) (
 	// Validate JWT (production path)
 	claims, err := i.jwtManager.ValidateToken(token)
 	if err != nil {
-		log.Printf("[AUTH] Token validation failed: %v (token preview: %s...)", err, token[:min(30, len(token))])
+		i.log.Error("token validation failed",
+			slog.String("error", err.Error()),
+			slog.String("token_prefix", token[:min(30, len(token))]))
 		if errors.Is(err, auth.ErrExpiredToken) {
 			return nil, status.Error(codes.Unauthenticated, "token expired")
 		}
