@@ -97,7 +97,7 @@ func handleNoteCreate(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 }
 
 // handleNoteCreateModal handles the modal submission for note creation
-func handleNoteCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleNoteCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
 	data := i.ModalSubmitData()
 
 	var title, body string
@@ -170,14 +170,17 @@ func handleNoteCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate,
 		return
 	}
 
-	displayTitle := title
-	if displayTitle == "" {
-		displayTitle = "(untitled)"
-	}
+	// Fetch message references
+	refs := fetchNoteMessageReferences(ctx, noteClient, resp.Id, log)
+
+	// Show standard note embed
+	embed, components := createNoteEmbed(resp, refs, cfg)
+	embed.Title = "✅ Note Created\n\n" + embed.Title
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: fmt.Sprintf("✅ Note created: **%s** (ID: %s)", displayTitle, resp.Id),
-		Flags:   discordgo.MessageFlagsEphemeral,
+		Embeds:     []*discordgo.MessageEmbed{embed},
+		Components: components,
+		Flags:      discordgo.MessageFlagsEphemeral,
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)
@@ -254,14 +257,6 @@ func createNoteEmbed(note *notespb.Note, references []*notespb.NoteMessageRefere
 					CustomID: fmt.Sprintf("note_edit_btn:%s", note.Id),
 					Emoji: &discordgo.ComponentEmoji{
 						Name: "✏️",
-					},
-				},
-				discordgo.Button{
-					Label:    "Delete",
-					Style:    discordgo.DangerButton,
-					CustomID: fmt.Sprintf("note_delete_btn:%s", note.Id),
-					Emoji: &discordgo.ComponentEmoji{
-						Name: "🗑️",
 					},
 				},
 				discordgo.Button{

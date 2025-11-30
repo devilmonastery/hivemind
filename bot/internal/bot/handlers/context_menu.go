@@ -77,9 +77,9 @@ func handleContextMenuNote(s *discordgo.Session, i *discordgo.InteractionCreate,
 		return
 	}
 
-	// Create a reference to the original message
-	messageRef := fmt.Sprintf("Referenced from: %s in <#%s>\n\n%s",
-		message.Author.Username, message.ChannelID, message.Content)
+	// Use the message content directly without the "Referenced from:" prefix
+	// since message references will be shown in the embed
+	messageContent := message.Content
 
 	// Show modal with pre-filled data
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -107,7 +107,7 @@ func handleContextMenuNote(s *discordgo.Session, i *discordgo.InteractionCreate,
 							Label:       "Note Content",
 							Style:       discordgo.TextInputParagraph,
 							Required:    true,
-							Value:       messageRef,
+							Value:       messageContent,
 							MaxLength:   4000,
 							Placeholder: "Add your notes. Use #hashtags for tags",
 						},
@@ -259,7 +259,7 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 }
 
 // handleContextNoteModal handles the modal submission for context menu note
-func handleContextNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleContextNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
 	data := i.ModalSubmitData()
 
 	var title, body string
@@ -371,19 +371,17 @@ func handleContextNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate
 		}
 	}
 
-	displayTitle := title
-	if displayTitle == "" {
-		displayTitle = "(untitled)"
-	}
+	// Fetch message references for the created note
+	refs := fetchNoteMessageReferences(ctx, noteClient, resp.Id, log)
 
-	content := fmt.Sprintf("✅ Note created: **%s** (ID: %s)", displayTitle, resp.Id)
-	if len(tags) > 0 {
-		content += fmt.Sprintf("\nTags: %s", formatTags(tags))
-	}
+	// Show standard note embed
+	embed, components := createNoteEmbed(resp, refs, cfg)
+	embed.Title = "✅ Note Created\n\n" + embed.Title
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: content,
-		Flags:   discordgo.MessageFlagsEphemeral,
+		Embeds:     []*discordgo.MessageEmbed{embed},
+		Components: components,
+		Flags:      discordgo.MessageFlagsEphemeral,
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)
