@@ -10,7 +10,7 @@ backend:
   web_base_url: "http://localhost:8080"  # Web interface URL for links
 
 logging:
-  level: "info"
+  level: "debug"
   format: "json"
   output: "stdout"
 

@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -133,58 +132,16 @@ func (h *Handler) clearSessionAndRedirect(w http.ResponseWriter, r *http.Request
 }
 
 // getCurrentUser gets the current user info from the session token
-// Returns nil if not authenticated
+// Returns nil if not authenticated, expired, or invalid
 func (h *Handler) getCurrentUser(r *http.Request) map[string]interface{} {
-	tokenString, err := h.sessionManager.GetToken(r)
-	if err != nil || tokenString == "" {
-		return nil
-	}
-
-	// Parse JWT without verification (since it's already verified by the backend)
-	// We just need to extract the claims
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
+	user, err := h.sessionManager.GetValidatedUser(r)
 	if err != nil {
-		h.log.Warn("failed to parse JWT", slog.String("error", err.Error()))
+		if err != session.ErrNoToken {
+			h.log.Debug("failed to get validated user",
+				slog.String("error", err.Error()))
+		}
 		return nil
 	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		h.log.Warn("failed to get claims from JWT")
-		return nil
-	}
-
-	// Extract user info from claims
-	user := make(map[string]interface{})
-
-	// Email can be in either "email" or "username" claim
-	// (our JWT uses "username" for the email address)
-	if email, ok := claims["email"].(string); ok {
-		user["Email"] = email
-	} else if username, ok := claims["username"].(string); ok {
-		user["Email"] = username
-	}
-
-	if userID, ok := claims["user_id"].(string); ok {
-		user["UserID"] = userID
-	}
-
-	if displayName, ok := claims["display_name"].(string); ok {
-		user["DisplayName"] = displayName
-	}
-
-	if role, ok := claims["role"].(string); ok {
-		user["Role"] = role
-	}
-
-	if picture, ok := claims["picture"].(string); ok {
-		user["Picture"] = picture
-	}
-
-	if timezone, ok := claims["timezone"].(string); ok {
-		user["Timezone"] = timezone
-	}
-
 	return user
 }
 
@@ -221,26 +178,6 @@ func (h *Handler) getDiscordInstallURLs(ctx context.Context) (guildURL, userURL 
 	guildURL = urlutil.DiscordOAuthURL(discordClientID, permissions, 0)
 	userURL = urlutil.DiscordOAuthURL(discordClientID, permissions, 1)
 	return guildURL, userURL
-}
-
-// isAuthError checks if an error is an authentication error
-// Returns true if the error indicates authentication/authorization failure
-func (h *Handler) isAuthError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	// Check for gRPC status codes
-	if st, ok := status.FromError(err); ok {
-		code := st.Code()
-		return code == codes.Unauthenticated || code == codes.PermissionDenied
-	}
-
-	// Check for common auth error strings
-	errStr := err.Error()
-	return errStr == "invalid token" ||
-		errStr == "token expired" ||
-		errStr == "no refresh token available - please login again"
 }
 
 // SetTimezone stores the client's timezone in the session for use during OAuth flow
