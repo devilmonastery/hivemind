@@ -274,11 +274,14 @@ func LoadTemplates(path string) (*TemplateSet, error) {
 		"thumbnailURL": func(urlStr string) string {
 			// Discord CDN supports width/height parameters for resizing
 			if strings.Contains(urlStr, "cdn.discordapp.com") || strings.Contains(urlStr, "media.discordapp.net") {
-				sep := "?"
-				if strings.Contains(urlStr, "?") {
-					sep = "&"
+				u, err := url.Parse(urlStr)
+				if err != nil {
+					return urlStr // fallback to original
 				}
-				return urlStr + sep + "width=128"
+				q := u.Query()
+				q.Set("width", "128")
+				u.RawQuery = q.Encode()
+				return u.String()
 			}
 			return urlStr
 		},

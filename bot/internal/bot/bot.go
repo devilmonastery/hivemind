@@ -13,6 +13,7 @@ import (
 	"github.com/devilmonastery/hivemind/bot/internal/config"
 	botgrpc "github.com/devilmonastery/hivemind/bot/internal/grpc"
 	"github.com/devilmonastery/hivemind/internal/client"
+	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 )
 
 // Bot represents the Discord bot instance
@@ -133,7 +134,7 @@ func (b *Bot) onGuildCreate(s *discordgo.Session, event *discordgo.GuildCreate) 
 
 	iconURL := ""
 	if event.Icon != "" {
-		iconURL = fmt.Sprintf("https://cdn.discordapp.com/icons/%s/%s.png", event.ID, event.Icon)
+		iconURL = urlutil.DiscordCDNIconURL(event.ID, event.Icon)
 	}
 
 	_, err := discordClient.UpsertGuild(ctx, &discordpb.UpsertGuildRequest{

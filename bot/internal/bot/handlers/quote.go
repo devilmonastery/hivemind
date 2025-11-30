@@ -8,6 +8,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	quotespb "github.com/devilmonastery/hivemind/api/generated/go/quotespb"
 	"github.com/devilmonastery/hivemind/internal/client"
+	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 )
 
 // buildQuoteEmbed creates a standardized embed for displaying a quote
@@ -33,8 +34,7 @@ func buildQuoteEmbed(quote *quotespb.Quote) *discordgo.MessageEmbed {
 	}
 
 	if quote.SourceMsgId != "" && quote.SourceChannelId != "" && quote.GuildId != "" {
-		messageURL := fmt.Sprintf("https://discord.com/channels/%s/%s/%s",
-			quote.GuildId, quote.SourceChannelId, quote.SourceMsgId)
+		messageURL := urlutil.DiscordMessageURL(quote.GuildId, quote.SourceChannelId, quote.SourceMsgId)
 		footer = append(footer, fmt.Sprintf("_[original message](%s)_", messageURL))
 	}
 

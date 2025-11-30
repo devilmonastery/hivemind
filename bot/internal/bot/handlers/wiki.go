@@ -12,6 +12,7 @@ import (
 	wikipb "github.com/devilmonastery/hivemind/api/generated/go/wikipb"
 	"github.com/devilmonastery/hivemind/bot/internal/config"
 	"github.com/devilmonastery/hivemind/internal/client"
+	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 )
 
 // getWebBaseURL returns the web base URL from config or a default
@@ -20,6 +21,16 @@ func getWebBaseURL(cfg *config.Config) string {
 		return cfg.Backend.WebBaseURL
 	}
 	return "http://localhost:8080" // Default for development
+}
+
+// mustBuildWikiURL builds a wiki URL and returns a fallback on error (should never happen with valid baseURL)
+func mustBuildWikiURL(baseURL, guildID, title string) string {
+	url, err := urlutil.BuildWikiViewURL(baseURL, guildID, title)
+	if err != nil {
+		// Fallback to simple concatenation if URL parsing fails (should never happen)
+		return baseURL + "/wiki?guild_id=" + guildID + "&title=" + title
+	}
+	return url
 }
 
 // fetchWikiMessageReferences fetches message references for a wiki page
@@ -97,7 +108,7 @@ func showWikiDetailEmbed(s *discordgo.Session, page *wikipb.WikiPage, references
 		displayCount := min(5, len(references)) // Show up to 5
 		for idx := 0; idx < displayCount; idx++ {
 			ref := references[idx]
-			messageLink := fmt.Sprintf("https://discord.com/channels/%s/%s/%s", ref.GuildId, ref.ChannelId, ref.MessageId)
+			messageLink := urlutil.DiscordMessageURL(ref.GuildId, ref.ChannelId, ref.MessageId)
 
 			// Format timestamp
 			timestamp := ref.MessageTimestamp.AsTime().Format("2006-01-02 15:04")
@@ -165,7 +176,7 @@ func showWikiDetailEmbed(s *discordgo.Session, page *wikipb.WikiPage, references
 			discordgo.Button{
 				Label: "🌐 View on Web",
 				Style: discordgo.LinkButton,
-				URL:   fmt.Sprintf("%s/wiki?guild_id=%s&title=%s", getWebBaseURL(cfg), page.GuildId, page.Title),
+				URL:   mustBuildWikiURL(getWebBaseURL(cfg), page.GuildId, page.Title),
 			},
 		},
 	})
@@ -654,7 +665,7 @@ func handleWikiAddToChat(s *discordgo.Session, i *discordgo.InteractionCreate, t
 	page := resp.Pages[0]
 
 	// Format as embed with web link
-	webURL := fmt.Sprintf("%s/wiki?guild_id=%s&title=%s", getWebBaseURL(cfg), page.GuildId, page.Title)
+	webURL := mustBuildWikiURL(getWebBaseURL(cfg), page.GuildId, page.Title)
 	embed := &discordgo.MessageEmbed{
 		Title:       page.Title,
 		URL:         webURL,

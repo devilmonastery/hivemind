@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 )
 
 // OIDCDiscoveryDocument represents the OIDC discovery document
@@ -62,7 +64,7 @@ func (c *OIDCDiscoveryCache) GetDiscovery(ctx context.Context, issuer string) (*
 	}
 
 	// Fetch discovery document
-	discoveryURL := fmt.Sprintf("%s/.well-known/openid-configuration", issuer)
+	discoveryURL := urlutil.OIDCDiscoveryURL(issuer)
 	req, err := http.NewRequestWithContext(ctx, "GET", discoveryURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

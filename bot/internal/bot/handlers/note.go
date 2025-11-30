@@ -10,7 +10,18 @@ import (
 	notespb "github.com/devilmonastery/hivemind/api/generated/go/notespb"
 	"github.com/devilmonastery/hivemind/bot/internal/config"
 	"github.com/devilmonastery/hivemind/internal/client"
+	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 )
+
+// mustBuildNoteURL builds a note URL and panics on error (should never happen with valid baseURL)
+func mustBuildNoteURL(baseURL, noteID string) string {
+	url, err := urlutil.BuildNoteViewURL(baseURL, noteID)
+	if err != nil {
+		// Fallback to simple concatenation if URL parsing fails
+		return baseURL + "/note?id=" + noteID
+	}
+	return url
+}
 
 // fetchNoteMessageReferences fetches message references for a note
 func fetchNoteMessageReferences(ctx context.Context, noteClient notespb.NoteServiceClient, noteID string, log *slog.Logger) []*notespb.NoteMessageReference {
@@ -209,7 +220,7 @@ func createNoteEmbed(note *notespb.Note, references []*notespb.NoteMessageRefere
 		displayCount := min(5, len(references)) // Show up to 5
 		for idx := 0; idx < displayCount; idx++ {
 			ref := references[idx]
-			messageLink := fmt.Sprintf("https://discord.com/channels/%s/%s/%s", ref.GuildId, ref.ChannelId, ref.MessageId)
+			messageLink := urlutil.DiscordMessageURL(ref.GuildId, ref.ChannelId, ref.MessageId)
 
 			// Format timestamp
 			timestamp := ref.MessageTimestamp.AsTime().Format("2006-01-02 15:04")
@@ -262,7 +273,7 @@ func createNoteEmbed(note *notespb.Note, references []*notespb.NoteMessageRefere
 				discordgo.Button{
 					Label: "View on Web",
 					Style: discordgo.LinkButton,
-					URL:   fmt.Sprintf("%s/note?id=%s", getWebBaseURL(cfg), note.Id),
+					URL:   mustBuildNoteURL(getWebBaseURL(cfg), note.Id),
 					Emoji: &discordgo.ComponentEmoji{
 						Name: "🌐",
 					},
