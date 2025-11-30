@@ -55,6 +55,46 @@ func TestExtractHashtags(t *testing.T) {
 			input:    "Test #Important #URGENT #important",
 			wantTags: []string{"important", "urgent"}, // deduplicated and lowercase
 		},
+		{
+			name:     "hashtags with hyphens",
+			input:    "Test #my-tag #multi-word-tag #single",
+			wantTags: []string{"multi-word-tag", "my-tag", "single"}, // sorted
+		},
+		{
+			name:     "hashtags with underscores and hyphens",
+			input:    "Mix #snake_case #kebab-case #camelCase",
+			wantTags: []string{"camelcase", "kebab-case", "snake_case"}, // sorted, lowercase
+		},
+		{
+			name:     "hashtags ending with punctuation",
+			input:    "Sentence ends with #tag. Another #tag2, and #tag3!",
+			wantTags: []string{"tag", "tag2", "tag3"}, // punctuation not included
+		},
+		{
+			name:     "hashtag at start and end",
+			input:    "#start middle text #end",
+			wantTags: []string{"end", "start"},
+		},
+		{
+			name:     "multiple hyphens in tag",
+			input:    "Test #my-multi-word-tag-here",
+			wantTags: []string{"my-multi-word-tag-here"},
+		},
+		{
+			name:     "hashtag with leading hyphen (edge case)",
+			input:    "Test #-tag",
+			wantTags: []string{"-tag"}, // regex allows leading hyphen
+		},
+		{
+			name:     "hashtag with trailing hyphen (edge case)",
+			input:    "Test #tag-",
+			wantTags: []string{"tag-"}, // regex allows trailing hyphen
+		},
+		{
+			name:     "complex hashtags",
+			input:    "Notes #project-alpha #v2_0 #Q4-2024 #follow-up",
+			wantTags: []string{"follow-up", "project-alpha", "q4-2024", "v2_0"}, // sorted
+		},
 	}
 
 	for _, tt := range tests {
