@@ -26,18 +26,19 @@ func NewAuthMiddleware(sessionManager *session.Manager, logger *slog.Logger) *Au
 // Token refresh is handled automatically by the gRPC interceptor in handlers
 func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check if user has a token
-		token, err := m.sessionManager.GetToken(r)
-		if err != nil || token == "" {
-			m.log.Info("no token found in session, redirecting to login",
+		// Check if user has a valid, non-expired token
+		_, err := m.sessionManager.GetValidatedUser(r)
+		if err != nil {
+			m.log.Info("no valid token found in session, redirecting to login",
 				slog.String("path", r.URL.Path),
-				slog.String("method", r.Method))
+				slog.String("method", r.Method),
+				slog.String("reason", err.Error()))
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
-		// Token exists, pass through to handler
-		// The handler's gRPC client will automatically refresh if expired
+		// Token is valid, pass through to handler
+		// The handler's gRPC client will automatically refresh if it expires during the request
 		next.ServeHTTP(w, r)
 	})
 }

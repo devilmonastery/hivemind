@@ -41,7 +41,9 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 	data["CurrentPage"] = "home"
 
 	// If not logged in, get available OAuth providers
-	if data["User"] == nil {
+	// Check both nil and empty map (in case of typed nil)
+	user, hasUser := data["User"].(map[string]interface{})
+	if !hasUser || user == nil || len(user) == 0 {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 

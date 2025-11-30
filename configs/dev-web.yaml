@@ -41,7 +41,7 @@ session:
 # Logging configuration
 logging:
   # Log level: debug, info, warn, error
-  level: "info"
+  level: "debug"
   # Log format: json, text
   # json is recommended for production (structured logging)
   # text is more readable for local development
