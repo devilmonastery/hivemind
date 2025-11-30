@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,14 +46,19 @@ type FileCredentials struct{}
 func (f *FileCredentials) GetToken() (string, error) {
 	creds, err := LoadCredentials()
 	if err != nil {
-		log.Printf("[CLI-TOKEN] Failed to load credentials: %v", err)
+		slog.Debug("failed to load credentials",
+			slog.String("component", "cli-token"),
+			slog.String("error", err.Error()))
 		return "", err
 	}
 	preview := creds.AccessToken
 	if len(preview) > 30 {
 		preview = preview[:30] + "..."
 	}
-	log.Printf("[CLI-TOKEN] GetToken returning: %s (TokenID: %s)", preview, creds.TokenID)
+	slog.Debug("GetToken returning",
+		slog.String("component", "cli-token"),
+		slog.String("preview", preview),
+		slog.String("token_id", creds.TokenID))
 	return creds.AccessToken, nil
 }
 
@@ -72,12 +77,17 @@ func (f *FileCredentials) SaveToken(token, tokenID string) error {
 	if len(preview) > 30 {
 		preview = preview[:30] + "..."
 	}
-	log.Printf("[CLI-TOKEN] SaveToken called: %s (TokenID: %s)", preview, tokenID)
+	slog.Debug("SaveToken called",
+		slog.String("component", "cli-token"),
+		slog.String("preview", preview),
+		slog.String("token_id", tokenID))
 
 	creds, err := LoadCredentials()
 	if err != nil {
 		// If load fails, create new credentials
-		log.Printf("[CLI-TOKEN] Creating new credentials (load failed: %v)", err)
+		slog.Debug("creating new credentials",
+			slog.String("component", "cli-token"),
+			slog.String("load_error", err.Error()))
 		creds = &Credentials{}
 	}
 
@@ -87,18 +97,24 @@ func (f *FileCredentials) SaveToken(token, tokenID string) error {
 	// Decode JWT to extract expiry
 	expiresAt, decodeErr := extractJWTExpiry(token)
 	if decodeErr != nil {
-		log.Printf("[CLI-TOKEN] Warning: Failed to decode JWT expiry: %v", decodeErr)
+		slog.Warn("failed to decode JWT expiry",
+			slog.String("component", "cli-token"),
+			slog.String("error", decodeErr.Error()))
 	} else {
 		creds.ExpiresAt = expiresAt
-		log.Printf("[CLI-TOKEN] Extracted expiry from JWT: %v", expiresAt)
+		slog.Debug("extracted expiry from JWT",
+			slog.String("component", "cli-token"),
+			slog.Time("expires_at", expiresAt))
 	}
 
 	err = SaveCredentials(creds)
 	if err != nil {
-		log.Printf("[CLI-TOKEN] Failed to save credentials: %v", err)
+		slog.Error("failed to save credentials",
+			slog.String("component", "cli-token"),
+			slog.String("error", err.Error()))
 		return err
 	}
-	log.Printf("[CLI-TOKEN] Credentials saved successfully")
+	slog.Debug("credentials saved successfully", slog.String("component", "cli-token"))
 	return nil
 }
 
@@ -163,7 +179,7 @@ func SaveCredentials(creds *Credentials) error {
 
 	// Ensure directory exists
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -174,7 +190,7 @@ func SaveCredentials(creds *Credentials) error {
 	}
 
 	// Write with restricted permissions (read/write for owner only)
-	if err := os.WriteFile(path, data, 0600); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write credentials: %w", err)
 	}
 
@@ -187,7 +203,9 @@ func LoadCredentials() (*Credentials, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("[CLI-CREDS] Loading credentials from: %s", path)
+	slog.Debug("loading credentials from file",
+		slog.String("component", "cli-creds"),
+		slog.String("path", path))
 
 	data, err := os.ReadFile(path)
 	if err != nil {

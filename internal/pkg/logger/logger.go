@@ -100,6 +100,32 @@ func WithDuration(logger *slog.Logger, duration time.Duration) *slog.Logger {
 	return logger.With("duration_ms", duration.Milliseconds())
 }
 
+// Web-specific convenience functions
+func WithHandler(logger *slog.Logger, handler string) *slog.Logger {
+	return logger.With("handler", handler)
+}
+
+func WithTemplate(logger *slog.Logger, template string) *slog.Logger {
+	return logger.With("template", template)
+}
+
+// gRPC-specific convenience functions
+func WithProvider(logger *slog.Logger, provider string) *slog.Logger {
+	return logger.With("provider", provider)
+}
+
+func WithTokenID(logger *slog.Logger, tokenID string) *slog.Logger {
+	return logger.With("token_id", tokenID)
+}
+
+func WithFlow(logger *slog.Logger, flow string) *slog.Logger {
+	return logger.With("flow", flow)
+}
+
+func WithComponent(logger *slog.Logger, component string) *slog.Logger {
+	return logger.With("component", component)
+}
+
 // GetDefaultLogFile returns the default log file path for a component
 func GetDefaultLogFile(component string) string {
 	configDir, _ := os.UserConfigDir()

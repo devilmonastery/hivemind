@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -158,7 +159,9 @@ func (p *GenericOIDCProvider) ValidateIDToken(ctx context.Context, idToken strin
 	}
 
 	// Debug: Log all claims to see what Discord is sending
-	fmt.Printf("[DEBUG] ID Token claims for provider %s: %+v\n", p.name, mapClaims)
+	slog.Debug("ID token claims",
+		slog.String("provider", p.name),
+		slog.Any("claims", mapClaims))
 
 	// Extract required claims
 	sub, _ := mapClaims["sub"].(string)
@@ -177,13 +180,13 @@ func (p *GenericOIDCProvider) ValidateIDToken(ctx context.Context, idToken strin
 
 	// If email is missing from ID token, fetch it from userinfo endpoint
 	if email == "" && accessToken != "" && discovery.UserinfoEndpoint != "" {
-		fmt.Printf("[DEBUG] Email not in ID token, fetching from userinfo endpoint for %s\n", p.name)
+		slog.Debug("email not in ID token, fetching from userinfo endpoint", slog.String("provider", p.name))
 		userinfo, err := p.fetchUserinfo(ctx, discovery, accessToken)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch userinfo: %w", err)
 		}
 
-		fmt.Printf("[DEBUG] Userinfo response: %+v\n", userinfo)
+		slog.Debug("userinfo response", slog.Any("userinfo", userinfo))
 
 		// Extract email from userinfo
 		if userinfoEmail, ok := userinfo["email"].(string); ok {

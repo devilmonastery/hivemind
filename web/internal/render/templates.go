@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"log"
+	"log/slog"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -345,10 +345,10 @@ func LoadTemplates(path string) (*TemplateSet, error) {
 }
 
 // LogTemplateNames logs all available template names
-func LogTemplateNames(ts *TemplateSet) {
-	log.Println("Loaded templates:")
+func LogTemplateNames(ts *TemplateSet, logger *slog.Logger) {
+	logger.Info("loaded templates", slog.Int("count", len(ts.Names())))
 	for _, name := range ts.Names() {
-		log.Printf("  - %s", name)
+		logger.Debug("template", slog.String("name", name))
 	}
 }
 

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	quotespb "github.com/devilmonastery/hivemind/api/generated/go/quotespb"
@@ -12,7 +12,7 @@ func (h *Handler) QuotesListPage(w http.ResponseWriter, r *http.Request) {
 	// Get authenticated client
 	client, err := h.getClient(r, w)
 	if err != nil {
-		log.Printf("Failed to create client: %v", err)
+		h.log.Error("failed to create client", slog.String("error", err.Error()))
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -26,13 +26,13 @@ func (h *Handler) QuotesListPage(w http.ResponseWriter, r *http.Request) {
 		Ascending: false,
 	})
 	if err != nil {
-		log.Printf("Failed to fetch quotes: %v", err)
+		h.log.Error("failed to fetch quotes", slog.String("error", err.Error()))
 		http.Error(w, "Failed to fetch quotes", http.StatusInternalServerError)
 		return
 	}
 
 	for _, quote := range resp.Quotes {
-		log.Printf("quote: %#v", quote)
+		h.log.Debug("quote", slog.Any("data", quote))
 	}
 
 	// Prepare template data
