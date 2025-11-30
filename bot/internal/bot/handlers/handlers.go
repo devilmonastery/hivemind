@@ -104,6 +104,8 @@ func handleComponent(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *
 		handleNoteDeleteCancel(s, i, log)
 	case "note_close_btn":
 		handleNoteCloseButton(s, i, log)
+	case "post_quote_select":
+		handlePostQuoteSelect(s, i, log, grpcClient)
 	default:
 		log.Warn("no handler found for custom_id", slog.String("custom_id", customID))
 	}
