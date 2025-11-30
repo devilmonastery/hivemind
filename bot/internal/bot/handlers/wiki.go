@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -18,11 +19,33 @@ func getWebBaseURL(cfg *config.Config) string {
 	if cfg != nil && cfg.Backend.WebBaseURL != "" {
 		return cfg.Backend.WebBaseURL
 	}
-	return "http://localhost:8081" // Default for development
+	return "http://localhost:8080" // Default for development
+}
+
+// fetchWikiMessageReferences fetches message references for a wiki page
+func fetchWikiMessageReferences(ctx context.Context, wikiClient wikipb.WikiServiceClient, pageID string, log *slog.Logger) []*wikipb.WikiMessageReference {
+	log.Info("fetching wiki message references",
+		slog.String("page_id", pageID))
+
+	resp, err := wikiClient.ListWikiMessageReferences(ctx, &wikipb.ListWikiMessageReferencesRequest{
+		WikiPageId: pageID,
+	})
+	if err != nil {
+		log.Warn("failed to fetch wiki message references",
+			slog.String("page_id", pageID),
+			slog.String("error", err.Error()))
+		return nil
+	}
+
+	log.Info("fetched wiki message references",
+		slog.String("page_id", pageID),
+		slog.Int("count", len(resp.References)))
+
+	return resp.References
 }
 
 // showWikiDetailEmbed creates the detailed embed and action buttons for a wiki page
-func showWikiDetailEmbed(s *discordgo.Session, page *wikipb.WikiPage, cfg *config.Config, query string, showBackButton bool) (*discordgo.MessageEmbed, []discordgo.MessageComponent) {
+func showWikiDetailEmbed(s *discordgo.Session, page *wikipb.WikiPage, references []*wikipb.WikiMessageReference, cfg *config.Config, query string, showBackButton bool) (*discordgo.MessageEmbed, []discordgo.MessageComponent) {
 	// Get channel name
 	channel, _ := s.Channel(page.ChannelId)
 	channelName := page.ChannelId
@@ -65,6 +88,43 @@ func showWikiDetailEmbed(s *discordgo.Session, page *wikipb.WikiPage, cfg *confi
 			},
 		},
 		Timestamp: page.CreatedAt.AsTime().Format("2006-01-02T15:04:05Z"),
+	}
+
+	// Add message references field if any exist
+	if len(references) > 0 {
+		// Build reference list with datetime and content preview
+		refsList := ""
+		displayCount := min(5, len(references)) // Show up to 5
+		for idx := 0; idx < displayCount; idx++ {
+			ref := references[idx]
+			messageLink := fmt.Sprintf("https://discord.com/channels/%s/%s/%s", ref.GuildId, ref.ChannelId, ref.MessageId)
+
+			// Format timestamp
+			timestamp := ref.MessageTimestamp.AsTime().Format("2006-01-02 15:04")
+
+			// Truncate content preview
+			contentPreview := ref.Content
+			if len(contentPreview) > 60 {
+				contentPreview = contentPreview[:57] + "..."
+			}
+
+			refsList += fmt.Sprintf("• [%s](%s) - %s\n  _%s_\n", ref.AuthorUsername, messageLink, timestamp, contentPreview)
+		}
+		if len(references) > displayCount {
+			refsList += fmt.Sprintf("_...and %d more_", len(references)-displayCount)
+		}
+
+		slog.Default().Info("adding message references field to embed",
+			slog.Int("ref_count", len(references)),
+			slog.Int("displayed", displayCount))
+
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:   fmt.Sprintf("📌 Referenced Messages (%d)", len(references)),
+			Value:  refsList,
+			Inline: false,
+		})
+	} else {
+		slog.Default().Info("no message references to display for wiki page")
 	}
 
 	// Build action buttons
@@ -202,7 +262,13 @@ func handleWikiSearch(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 	// If only one result, show it directly
 	if len(resp.Pages) == 1 {
 		page := resp.Pages[0]
-		embed, components := showWikiDetailEmbed(s, page, cfg, query, false)
+		// Fetch message references
+		refs := fetchWikiMessageReferences(ctx, wikiClient, page.Id, log)
+		log.Info("wiki search single result - displaying with references",
+			slog.String("page_id", page.Id),
+			slog.String("page_title", page.Title),
+			slog.Int("ref_count", len(refs)))
+		embed, components := showWikiDetailEmbed(s, page, refs, cfg, query, false)
 
 		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -325,54 +391,15 @@ func handleWikiGet(s *discordgo.Session, i *discordgo.InteractionCreate, subcomm
 
 	page := resp.Pages[0]
 
-	// Format as Discord embed
-	embed := &discordgo.MessageEmbed{
-		Title:       page.Title,
-		Description: page.Body,
-		Color:       0x5865F2, // Discord blurple
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: fmt.Sprintf("Created by %s", page.AuthorUsername),
-		},
-		Timestamp: page.CreatedAt.AsTime().Format("2006-01-02T15:04:05Z"),
-	}
+	// Fetch message references
+	refs := fetchWikiMessageReferences(ctx, wikiClient, page.Id, log)
+	log.Info("wiki view - displaying with references",
+		slog.String("page_id", page.Id),
+		slog.String("page_title", page.Title),
+		slog.Int("ref_count", len(refs)))
 
-	if len(page.Tags) > 0 {
-		embed.Fields = []*discordgo.MessageEmbedField{
-			{
-				Name:   "Tags",
-				Value:  fmt.Sprintf("`%s`", page.Tags[0]),
-				Inline: true,
-			},
-		}
-	}
-
-	// Add action buttons
-	components := []discordgo.MessageComponent{
-		discordgo.ActionsRow{
-			Components: []discordgo.MessageComponent{
-				discordgo.Button{
-					Label:    "Edit",
-					Style:    discordgo.PrimaryButton,
-					CustomID: fmt.Sprintf("wiki_edit_btn:%s", page.Title),
-				},
-				discordgo.Button{
-					Label:    "Add to Chat",
-					Style:    discordgo.SuccessButton,
-					CustomID: fmt.Sprintf("wiki_add_to_chat:%s", page.Title),
-				},
-				discordgo.Button{
-					Label: "View on Web",
-					Style: discordgo.LinkButton,
-					URL:   fmt.Sprintf("%s/wiki?guild_id=%s&title=%s", getWebBaseURL(cfg), page.GuildId, page.Title),
-				},
-				discordgo.Button{
-					Label:    "Close",
-					Style:    discordgo.SecondaryButton,
-					CustomID: "wiki_close",
-				},
-			},
-		},
-	}
+	// Use the standard embed function to include references
+	embed, components := showWikiDetailEmbed(s, page, refs, cfg, "", false)
 
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -727,8 +754,11 @@ func handleWikiSelectMenu(s *discordgo.Session, i *discordgo.InteractionCreate, 
 		return
 	}
 
+	// Fetch message references
+	refs := fetchWikiMessageReferences(ctx, wikiClient, selectedPage.Id, log)
+
 	// Create detailed embed and components
-	embed, components := showWikiDetailEmbed(s, selectedPage, cfg, query, true)
+	embed, components := showWikiDetailEmbed(s, selectedPage, refs, cfg, query, true)
 
 	// Update the message with the detailed view
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -876,10 +906,11 @@ func handleWikiActionButton(s *discordgo.Session, i *discordgo.InteractionCreate
 			return
 		}
 
-		// Create embed for posting (reuse the embed function, discard components)
-		embed, _ := showWikiDetailEmbed(s, page, cfg, "", false)
+		// Fetch message references
+		refs := fetchWikiMessageReferences(ctx, wikiClient, page.Id, log)
 
-		// Send as new message in channel
+		// Create embed for posting (reuse the embed function, discard components)
+		embed, _ := showWikiDetailEmbed(s, page, refs, cfg, "", false) // Send as new message in channel
 		_, err = s.ChannelMessageSendEmbed(i.ChannelID, embed)
 		if err != nil {
 			log.Error("failed to post wiki to channel", slog.String("error", err.Error()))
