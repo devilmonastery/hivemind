@@ -163,7 +163,7 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
 	data := i.ModalSubmitData()
 
-	var quoteText, author string
+	var quoteText string
 	for _, comp := range data.Components {
 		if actionRow, ok := comp.(*discordgo.ActionsRow); ok {
 			for _, innerComp := range actionRow.Components {
@@ -172,7 +172,8 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 					case "quote_text":
 						quoteText = textInput.Value
 					case "quote_author":
-						author = textInput.Value
+						// Author info is captured from the source message, not from modal input
+						// This field is just for display in the modal
 					}
 				}
 			}
@@ -244,17 +245,13 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 		return
 	}
 
-	content := fmt.Sprintf("✅ Quote saved (ID: %s)", resp.Id)
-	if len(tags) > 0 {
-		content += fmt.Sprintf("\nTags: %s", formatTags(tags))
-	}
-	if author != "" {
-		content += fmt.Sprintf("\nAuthor: %s", author)
-	}
+	// Show the created quote with standard embed
+	embed := buildQuoteEmbed(resp)
+	embed.Title = "✅ Quote Saved"
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: content,
-		Flags:   discordgo.MessageFlagsEphemeral,
+		Embeds: []*discordgo.MessageEmbed{embed},
+		Flags:  discordgo.MessageFlagsEphemeral,
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)
