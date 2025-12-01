@@ -104,6 +104,12 @@ func handleComponent(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *
 		handleNoteDeleteCancel(s, i, log)
 	case "note_close_btn":
 		handleNoteCloseButton(s, i, log)
+	case "quote_add_to_chat":
+		handleQuoteAddToChat(s, i, remainder, log, grpcClient)
+	case "quote_edit_btn":
+		handleQuoteEditButton(s, i, remainder, log, grpcClient)
+	case "quote_dismiss":
+		handleQuoteDismiss(s, i, log)
 	case "post_quote_select":
 		handlePostQuoteSelect(s, i, log, grpcClient)
 	case "view_note_select":
@@ -141,6 +147,8 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 		handleNoteCreateModal(s, i, cfg, log, grpcClient)
 	case "note_edit_modal":
 		handleNoteEditModal(s, i, cfg, log, grpcClient)
+	case "quote_edit_modal":
+		handleQuoteEditModal(s, i, log, grpcClient)
 	case "context_quote_modal":
 		handleContextQuoteModal(s, i, log, grpcClient)
 	case "context_note_modal":

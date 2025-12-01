@@ -61,6 +61,46 @@ func buildQuoteEmbed(quote *quotespb.Quote) *discordgo.MessageEmbed {
 	return embed
 }
 
+// buildQuoteActionButtons creates the standard action buttons for quote interactions
+// Only shows the Edit button if currentUserDiscordID matches the quote's author_discord_id
+func buildQuoteActionButtons(quote *quotespb.Quote, currentUserDiscordID string, log *slog.Logger) []discordgo.MessageComponent {
+	buttons := []discordgo.MessageComponent{
+		discordgo.Button{
+			Label:    "📢 Add to Chat",
+			Style:    discordgo.SuccessButton,
+			CustomID: fmt.Sprintf("quote_add_to_chat:%s", quote.Id),
+		},
+	}
+
+	// Debug logging
+	log.Info("Checking quote edit permission",
+		"quote_id", quote.Id,
+		"quote_author_discord_id", quote.AuthorDiscordId,
+		"current_user_discord_id", currentUserDiscordID,
+		"match", quote.AuthorDiscordId == currentUserDiscordID)
+
+	// Only show Edit button if the current user is the author (by Discord ID)
+	if quote.AuthorDiscordId == currentUserDiscordID {
+		buttons = append(buttons, discordgo.Button{
+			Label:    "✏️ Edit",
+			Style:    discordgo.PrimaryButton,
+			CustomID: fmt.Sprintf("quote_edit_btn:%s", quote.Id),
+		})
+	}
+
+	buttons = append(buttons, discordgo.Button{
+		Label:    "❌ Dismiss",
+		Style:    discordgo.SecondaryButton,
+		CustomID: fmt.Sprintf("quote_dismiss:%s", quote.Id),
+	})
+
+	return []discordgo.MessageComponent{
+		discordgo.ActionsRow{
+			Components: buttons,
+		},
+	}
+}
+
 // handleQuote routes /quote subcommands to the appropriate handler
 func handleQuote(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
 	options := i.ApplicationCommandData().Options
@@ -145,7 +185,7 @@ func handleQuoteAdd(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 	}
 }
 
-// handleQuoteRandom gets a random quote
+// handleQuoteRandom gets a random quote and shows it ephemerally with action buttons
 func handleQuoteRandom(s *discordgo.Session, i *discordgo.InteractionCreate, subcommand *discordgo.ApplicationCommandInteractionDataOption, log *slog.Logger, grpcClient *client.Client) {
 	var tags []string
 	for _, opt := range subcommand.Options {
@@ -163,6 +203,9 @@ func handleQuoteRandom(s *discordgo.Session, i *discordgo.InteractionCreate, sub
 
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
 	})
 	if err != nil {
 		log.Error("Failed to defer response", "error", err)
@@ -180,6 +223,7 @@ func handleQuoteRandom(s *discordgo.Session, i *discordgo.InteractionCreate, sub
 		log.Error("Failed to get random quote", "error", err)
 		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: fmt.Sprintf("❌ Failed to get random quote: %v", err),
+			Flags:   discordgo.MessageFlagsEphemeral,
 		})
 		return
 	}
@@ -187,8 +231,21 @@ func handleQuoteRandom(s *discordgo.Session, i *discordgo.InteractionCreate, sub
 	// Use standard quote embed
 	embed := buildQuoteEmbed(resp)
 
+	// Get current user Discord ID
+	var discordID string
+	if i.Member != nil && i.Member.User != nil {
+		discordID = i.Member.User.ID
+	} else if i.User != nil {
+		discordID = i.User.ID
+	}
+
+	// Build action buttons (ephemeral - user decides whether to share)
+	components := buildQuoteActionButtons(resp, discordID, log)
+
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Embeds: []*discordgo.MessageEmbed{embed},
+		Embeds:     []*discordgo.MessageEmbed{embed},
+		Components: components,
+		Flags:      discordgo.MessageFlagsEphemeral,
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)
@@ -357,12 +414,59 @@ func handlePostQuoteSelect(s *discordgo.Session, i *discordgo.InteractionCreate,
 		return
 	}
 
-	// First, acknowledge the interaction with an ephemeral update
+	// Show the quote ephemerally with action buttons
+	embed := buildQuoteEmbed(quote)
+
+	// Get current user Discord ID
+	var discordID string
+	if i.Member != nil && i.Member.User != nil {
+		discordID = i.Member.User.ID
+	} else if i.User != nil {
+		discordID = i.User.ID
+	}
+
+	components := buildQuoteActionButtons(quote, discordID, log)
+
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,
 		Data: &discordgo.InteractionResponseData{
-			Content:    "✅ Posted!",
-			Components: []discordgo.MessageComponent{}, // Remove dropdown
+			Embeds:     []*discordgo.MessageEmbed{embed},
+			Components: components,
+			Flags:      discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		log.Error("Failed to update interaction with quote", "error", err)
+	}
+}
+
+// handleQuoteAddToChat posts the quote to the channel when "Add to Chat" is clicked
+func handleQuoteAddToChat(s *discordgo.Session, i *discordgo.InteractionCreate, quoteID string, log *slog.Logger, grpcClient *client.Client) {
+	quoteClient := quotespb.NewQuoteServiceClient(grpcClient.Conn())
+	ctx := discordContextFor(i)
+
+	// Fetch the quote
+	quote, err := quoteClient.GetQuote(ctx, &quotespb.GetQuoteRequest{
+		Id: quoteID,
+	})
+	if err != nil {
+		log.Error("Failed to fetch quote for add to chat", "quote_id", quoteID, "error", err)
+		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "❌ Failed to fetch quote",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Update the ephemeral message to show success
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseUpdateMessage,
+		Data: &discordgo.InteractionResponseData{
+			Content:    "✅ Posted to chat!",
+			Components: []discordgo.MessageComponent{}, // Remove buttons
 			Flags:      discordgo.MessageFlagsEphemeral,
 		},
 	})
@@ -371,31 +475,189 @@ func handlePostQuoteSelect(s *discordgo.Session, i *discordgo.InteractionCreate,
 		return
 	}
 
-	// Post the quote to the channel as a standalone message (not a reply)
+	// Post the quote to the channel
 	embed := buildQuoteEmbed(quote)
-
-	// Get the requester's username
-	var requesterUsername string
-	if i.Member != nil && i.Member.User != nil {
-		requesterUsername = i.Member.User.Username
-	}
-
-	// Add footer to show who posted it
-	var content string
-	if requesterUsername != "" {
-		content = fmt.Sprintf("_on behalf of %s_", requesterUsername)
-	}
-
 	_, err = s.ChannelMessageSendComplex(i.ChannelID, &discordgo.MessageSend{
-		Content: content,
-		Embeds:  []*discordgo.MessageEmbed{embed},
+		Embeds: []*discordgo.MessageEmbed{embed},
 	})
 	if err != nil {
 		log.Error("Failed to post quote to channel", "error", err)
 	}
 }
 
-// strPtr returns a pointer to a string
-func strPtr(s string) *string {
-	return &s
+// handleQuoteEditButton opens a modal for editing the quote
+func handleQuoteEditButton(s *discordgo.Session, i *discordgo.InteractionCreate, quoteID string, log *slog.Logger, grpcClient *client.Client) {
+	quoteClient := quotespb.NewQuoteServiceClient(grpcClient.Conn())
+	ctx := discordContextFor(i)
+
+	// Fetch the quote
+	quote, err := quoteClient.GetQuote(ctx, &quotespb.GetQuoteRequest{
+		Id: quoteID,
+	})
+	if err != nil {
+		log.Error("Failed to fetch quote for editing", "quote_id", quoteID, "error", err)
+		_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "❌ Failed to fetch quote",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// Show edit modal
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseModal,
+		Data: &discordgo.InteractionResponseData{
+			CustomID: fmt.Sprintf("quote_edit_modal:%s", quoteID),
+			Title:    "Edit Quote",
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.TextInput{
+							CustomID:    "quote_body",
+							Label:       "Quote Text",
+							Style:       discordgo.TextInputParagraph,
+							Placeholder: "Enter the quote text...",
+							Required:    true,
+							Value:       quote.Body,
+							MaxLength:   2000,
+						},
+					},
+				},
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.TextInput{
+							CustomID:    "quote_tags",
+							Label:       "Tags (comma-separated)",
+							Style:       discordgo.TextInputShort,
+							Placeholder: "funny, memorable, etc.",
+							Required:    false,
+							Value:       strings.Join(quote.Tags, ", "),
+							MaxLength:   200,
+						},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		log.Error("Failed to show edit modal", "error", err)
+	}
+}
+
+// handleQuoteDismiss dismisses the ephemeral quote message
+func handleQuoteDismiss(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger) {
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseUpdateMessage,
+		Data: &discordgo.InteractionResponseData{
+			Content:    "Quote dismissed.",
+			Embeds:     []*discordgo.MessageEmbed{},
+			Components: []discordgo.MessageComponent{},
+			Flags:      discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		log.Error("Failed to dismiss quote", "error", err)
+	}
+}
+
+// handleQuoteEditModal processes the quote edit modal submission
+func handleQuoteEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+	data := i.ModalSubmitData()
+
+	// Extract quote ID from custom_id
+	parts := strings.SplitN(data.CustomID, ":", 2)
+	if len(parts) < 2 {
+		log.Error("Invalid modal custom_id", "custom_id", data.CustomID)
+		respondError(s, i, "Invalid modal submission", log)
+		return
+	}
+	quoteID := parts[1]
+
+	// Extract form values
+	var body, tagsStr string
+	for _, component := range data.Components {
+		if actionRow, ok := component.(*discordgo.ActionsRow); ok {
+			for _, comp := range actionRow.Components {
+				if textInput, ok := comp.(*discordgo.TextInput); ok {
+					switch textInput.CustomID {
+					case "quote_body":
+						body = textInput.Value
+					case "quote_tags":
+						tagsStr = textInput.Value
+					}
+				}
+			}
+		}
+	}
+
+	if body == "" {
+		respondError(s, i, "Quote text cannot be empty", log)
+		return
+	}
+
+	// Parse tags
+	var tags []string
+	if tagsStr != "" {
+		tagParts := strings.Split(tagsStr, ",")
+		for _, tag := range tagParts {
+			tag = strings.TrimSpace(tag)
+			if tag != "" {
+				tags = append(tags, tag)
+			}
+		}
+	}
+
+	// Update the quote
+	quoteClient := quotespb.NewQuoteServiceClient(grpcClient.Conn())
+	ctx := discordContextFor(i)
+
+	_, err := quoteClient.UpdateQuote(ctx, &quotespb.UpdateQuoteRequest{
+		Id:   quoteID,
+		Body: body,
+		Tags: tags,
+	})
+	if err != nil {
+		log.Error("Failed to update quote", "quote_id", quoteID, "error", err)
+		respondError(s, i, fmt.Sprintf("Failed to update quote: %v", err), log)
+		return
+	}
+
+	// Fetch the updated quote
+	updatedQuote, err := quoteClient.GetQuote(ctx, &quotespb.GetQuoteRequest{
+		Id: quoteID,
+	})
+	if err != nil {
+		log.Error("Failed to fetch updated quote", "quote_id", quoteID, "error", err)
+		respondError(s, i, "Quote updated but failed to fetch updated version", log)
+		return
+	}
+
+	// Show the updated quote with action buttons
+	embed := buildQuoteEmbed(updatedQuote)
+
+	// Get current user Discord ID
+	var discordID string
+	if i.Member != nil && i.Member.User != nil {
+		discordID = i.Member.User.ID
+	} else if i.User != nil {
+		discordID = i.User.ID
+	}
+
+	components := buildQuoteActionButtons(updatedQuote, discordID, log)
+
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content:    "✅ Quote updated!",
+			Embeds:     []*discordgo.MessageEmbed{embed},
+			Components: components,
+			Flags:      discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		log.Error("Failed to respond to modal", "error", err)
+	}
 }

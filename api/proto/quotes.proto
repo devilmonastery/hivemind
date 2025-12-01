@@ -37,7 +37,8 @@ message Quote {
   string body = 2;
 
   // Ownership
-  string author_id = 3; // Who saved the quote
+  string author_id = 3; // Who saved the quote (internal user ID)
+  string author_discord_id = 15; // Discord ID of who saved the quote
   string author_username = 4;
   string guild_id = 5;
   string guild_name = 6; // Guild display name
