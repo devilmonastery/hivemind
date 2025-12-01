@@ -50,6 +50,9 @@ func newRunCommand() *cobra.Command {
 				}))
 			}
 
+			// Set as global default logger so slog.Default() returns this configured logger
+			slog.SetDefault(log)
+
 			// Validate required configuration
 			if cfg.Backend.ServiceToken == "" {
 				return fmt.Errorf("backend.service_token is required - the bot cannot authenticate with the server without it. See example_bot.yaml for instructions on generating a service token")
