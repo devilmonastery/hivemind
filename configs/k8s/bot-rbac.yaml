@@ -1,0 +1,36 @@
+# Service Account for Hivemind Bot
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hivemind-bot
+  namespace: default  # Change to your namespace
+---
+# Role for leader election
+# This grants the bot permission to manage Lease resources for coordinating
+# which replica runs background sync jobs
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: hivemind-bot-leader-election
+  namespace: default  # Change to your namespace
+rules:
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "create", "update"]
+  # Optional: Restrict to specific lease name for tighter security
+  # resourceNames: ["hivemind-bot-sync-leader"]
+---
+# RoleBinding to attach the role to the service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hivemind-bot-leader-election
+  namespace: default  # Change to your namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: hivemind-bot-leader-election
+subjects:
+- kind: ServiceAccount
+  name: hivemind-bot
+  namespace: default  # Change to your namespace

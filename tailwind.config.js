@@ -61,6 +61,21 @@ module.exports = {
             '--tw-prose-pre-bg': theme('colors.hive.surface'),
             '--tw-prose-th-borders': theme('colors.hive.metal'),
             '--tw-prose-td-borders': theme('colors.hive.metal'),
+            // Prevent long URLs and words from breaking layout
+            'word-wrap': 'break-word',
+            'overflow-wrap': 'break-word',
+            'word-break': 'break-word',
+            // Links should break to prevent overflow
+            'a': {
+              'word-break': 'break-all',
+              'overflow-wrap': 'anywhere',
+            },
+            // Code blocks should scroll horizontally instead of breaking layout
+            'pre': {
+              'overflow-x': 'auto',
+              'word-wrap': 'normal',
+              'word-break': 'normal',
+            },
             // Make headings smaller and less prominent
             'h1': {
               fontSize: '1.25rem',

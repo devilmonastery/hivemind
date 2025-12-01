@@ -106,6 +106,64 @@ bot/
 2. Add handler to `internal/bot/handlers/handlers.go`
 3. Register commands with Discord using `./bin/hivemind-bot register`
 
+## Running Multiple Replicas
+
+The bot supports running multiple replicas for high availability and load distribution. Discord automatically load-balances slash command interactions across all connected bot instances.
+
+### Local Development / Docker
+
+In standalone mode (local dev or Docker Compose), each bot instance runs its own background sync jobs. This results in duplicate work but is safe - all operations are idempotent.
+
+### Kubernetes Deployment
+
+When running in Kubernetes, the bot automatically detects the environment and uses **leader election** for background sync jobs:
+
+- Only one replica (the "leader") runs the periodic guild member sync
+- If the leader fails, another replica automatically takes over
+- All replicas handle Discord interactions normally
+- This prevents duplicate Discord API calls and database writes
+
+**Required Kubernetes Setup:**
+
+1. **Service Account with RBAC permissions** for leader election
+2. **Environment variable**: `POD_NAMESPACE` (set via Downward API)
+3. **Lease resource access** in the namespace
+
+Example deployment snippet:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivemind-bot
+spec:
+  replicas: 3  # Multiple replicas for HA
+  template:
+    spec:
+      serviceAccountName: hivemind-bot  # Service account with RBAC
+      containers:
+      - name: bot
+        image: your-registry/hivemind-bot:latest
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: DISCORD_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-bot-secrets
+              key: discord-token
+```
+
+See `configs/k8s/` for complete RBAC and deployment examples.
+
+**How it works:**
+- Bot detects Kubernetes by checking for `/var/run/secrets/kubernetes.io/serviceaccount/token`
+- Uses a Lease resource named `hivemind-bot-sync-leader` for coordination
+- Leader holds lease for 15s, renews every 10s
+- Failed leaders are detected within 2-5 seconds
+
 ## Commands
 
 ### Wiki Commands

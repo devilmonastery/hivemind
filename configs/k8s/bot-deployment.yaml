@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivemind-bot
+  namespace: default  # Change to your namespace
+  labels:
+    app: hivemind-bot
+    component: discord-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hivemind-bot
+  template:
+    metadata:
+      labels:
+        app: hivemind-bot
+        component: discord-bot
+    spec:
+      serviceAccountName: hivemind-bot  # Required for leader election
+      containers:
+      - name: bot
+        image: ghcr.io/example/hivemind-bot:latest  # Update with your registry
+        imagePullPolicy: Always
+        
+        env:
+        # Kubernetes-specific: Required for leader election
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        
+        # Bot configuration
+        - name: DISCORD_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-bot-secrets
+              key: discord-token
+        
+        - name: DISCORD_APPLICATION_ID
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-bot-secrets
+              key: application-id
+        
+        - name: BACKEND_SERVICE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-bot-secrets
+              key: service-token
+        
+        - name: BACKEND_GRPC_HOST
+          value: "hivemind-server"  # Service name of your backend
+        
+        - name: BACKEND_GRPC_PORT
+          value: "50051"
+        
+        - name: WEB_BASE_URL
+          value: "https://hivemind.example.com"  # Your web interface URL
+        
+        - name: LOG_LEVEL
+          value: "info"
+        
+        - name: LOG_FORMAT
+          value: "json"
+        
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        
+        # Liveness probe - bot should always be responsive
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "pgrep -f hivemind-bot"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Readiness probe - ensure bot is connected to Discord
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "pgrep -f hivemind-bot"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      
+      # Graceful shutdown - give bot time to close Discord connection
+      terminationGracePeriodSeconds: 30
+      
+      # Anti-affinity to spread replicas across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - hivemind-bot
+              topologyKey: kubernetes.io/hostname

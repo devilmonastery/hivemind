@@ -4,10 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
 	discordpb "github.com/devilmonastery/hivemind/api/generated/go/discordpb"
 	"github.com/devilmonastery/hivemind/bot/internal/bot/handlers"
@@ -103,7 +109,14 @@ func (b *Bot) Start() error {
 	}
 
 	// Start background member sync job
-	go b.StartMemberSync(b.syncCtx)
+	// Use leader election if running in Kubernetes, otherwise run directly
+	if b.isKubernetes() {
+		b.log.Info("detected Kubernetes environment, using leader election for syncs")
+		go b.startWithLeaderElection(b.syncCtx)
+	} else {
+		b.log.Info("detected standalone environment, running syncs directly")
+		go b.StartMemberSync(b.syncCtx)
+	}
 
 	return nil
 }
@@ -288,4 +301,82 @@ func (b *Bot) onGuildMemberRemove(s *discordgo.Session, event *discordgo.GuildMe
 			slog.String("discord_id", event.User.ID),
 			slog.String("error", err.Error()))
 	}
+}
+
+// isKubernetes checks if the bot is running inside a Kubernetes cluster
+// by checking for the service account token that Kubernetes automatically mounts
+func (b *Bot) isKubernetes() bool {
+	_, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	return err == nil
+}
+
+// startWithLeaderElection starts the sync job using Kubernetes leader election
+// Only one replica will run syncs at a time, preventing duplicate work
+func (b *Bot) startWithLeaderElection(ctx context.Context) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		b.log.Error("failed to get k8s config, falling back to direct sync",
+			slog.String("error", err.Error()))
+		b.StartMemberSync(ctx)
+		return
+	}
+
+	client := kubernetes.NewForConfigOrDie(config)
+
+	id := os.Getenv("HOSTNAME")
+	if id == "" {
+		b.log.Warn("HOSTNAME not set, falling back to direct sync")
+		b.StartMemberSync(ctx)
+		return
+	}
+
+	namespace := os.Getenv("POD_NAMESPACE")
+	if namespace == "" {
+		namespace = "default"
+		b.log.Info("POD_NAMESPACE not set, using default namespace",
+			slog.String("namespace", namespace))
+	}
+
+	lock := &resourcelock.LeaseLock{
+		LeaseMeta: metav1.ObjectMeta{
+			Name:      "hivemind-bot-sync-leader",
+			Namespace: namespace,
+		},
+		Client: client.CoordinationV1(),
+		LockConfig: resourcelock.ResourceLockConfig{
+			Identity: id,
+		},
+	}
+
+	b.log.Info("starting leader election for sync job",
+		slog.String("identity", id),
+		slog.String("namespace", namespace))
+
+	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
+		Lock:            lock,
+		ReleaseOnCancel: true,
+		LeaseDuration:   15 * time.Second,
+		RenewDeadline:   10 * time.Second,
+		RetryPeriod:     2 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) {
+				b.log.Info("elected as sync leader, starting member sync job",
+					slog.String("identity", id))
+				b.StartMemberSync(ctx)
+			},
+			OnStoppedLeading: func() {
+				b.log.Warn("lost sync leadership, stopping sync job",
+					slog.String("identity", id))
+				// Don't exit - keep handling Discord interactions
+				// Just stop the sync job by letting the context cancel
+			},
+			OnNewLeader: func(identity string) {
+				if identity != id {
+					b.log.Info("new sync leader elected",
+						slog.String("leader", identity),
+						slog.String("self", id))
+				}
+			},
+		},
+	})
 }
