@@ -83,7 +83,8 @@ kubectl logs -l app=hivemind-bot | grep -i "leader\|election"
 Expected log messages:
 ```
 detected Kubernetes environment, using leader election for syncs
-starting leader election for sync job identity=hivemind-bot-xxx namespace=default
+detected namespace from service account namespace=hivemind
+starting leader election for sync job identity=hivemind-bot-xxx namespace=hivemind
 elected as sync leader, starting member sync job identity=hivemind-bot-xxx
 ```
 
@@ -95,7 +96,7 @@ Required in `bot-deployment.yaml`:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `POD_NAMESPACE` | K8s namespace (auto-injected via Downward API) | `default` |
+| `POD_NAMESPACE` | K8s namespace (optional - auto-detected from service account if not set) | `hivemind` |
 | `DISCORD_BOT_TOKEN` | Discord bot token (from Secret) | `Bot MTk...` |
 | `DISCORD_APPLICATION_ID` | Discord application ID (from Secret) | `123456789...` |
 | `BACKEND_SERVICE_TOKEN` | Backend auth token (from Secret) | `service_...` |
@@ -144,15 +145,21 @@ Common issues:
 ### Leader election not working
 
 ```bash
-# Check lease status
-kubectl get lease hivemind-bot-sync-leader -o yaml
+# Check lease status (adjust namespace if not using default)
+kubectl get lease hivemind-bot-sync-leader -n hivemind -o yaml
 
-# Verify RBAC
-kubectl auth can-i create leases --as=system:serviceaccount:default:hivemind-bot
-kubectl auth can-i update leases --as=system:serviceaccount:default:hivemind-bot
+# Verify RBAC (adjust namespace to match your deployment)
+kubectl auth can-i create leases --as=system:serviceaccount:hivemind:hivemind-bot -n hivemind
+kubectl auth can-i update leases --as=system:serviceaccount:hivemind:hivemind-bot -n hivemind
 ```
 
 If RBAC is wrong, reapply `bot-rbac.yaml`.
+
+**Namespace Detection:**
+- The bot automatically detects its namespace from `/var/run/secrets/kubernetes.io/serviceaccount/namespace`
+- If `POD_NAMESPACE` env var is set, it takes precedence
+- Falls back to `default` only if both methods fail
+- Check logs for: `detected namespace from service account namespace=hivemind`
 
 ### Multiple replicas syncing
 

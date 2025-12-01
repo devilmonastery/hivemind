@@ -330,10 +330,22 @@ func (b *Bot) startWithLeaderElection(ctx context.Context) {
 		return
 	}
 
+	// Get namespace from environment variable or service account mount
 	namespace := os.Getenv("POD_NAMESPACE")
 	if namespace == "" {
-		namespace = "default"
-		b.log.Info("POD_NAMESPACE not set, using default namespace",
+		// Try reading from service account namespace file
+		nsBytes, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+		if err == nil && len(nsBytes) > 0 {
+			namespace = string(nsBytes)
+			b.log.Info("detected namespace from service account",
+				slog.String("namespace", namespace))
+		} else {
+			namespace = "default"
+			b.log.Warn("could not detect namespace, falling back to default",
+				slog.String("namespace", namespace))
+		}
+	} else {
+		b.log.Info("using namespace from POD_NAMESPACE env var",
 			slog.String("namespace", namespace))
 	}
 
