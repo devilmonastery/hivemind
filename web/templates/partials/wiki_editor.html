@@ -1,29 +1,15 @@
-{{define "note_editor"}}
-{{template "base" .}}
-{{end}}
-
-{{define "title"}}
-{{- if .Note.Title -}}
-Edit {{.Note.Title}} - Hivemind
-{{- else -}}
-Edit Note - Hivemind
-{{- end -}}
-{{end}}
+{{define "title"}}Edit {{.Page.Title}} - Hivemind{{end}}
 
 {{define "content"}}
-<div id="note-content" class="max-w-6xl mx-auto">
+<div id="wiki-content" class="max-w-6xl mx-auto">
   <!-- Editor Header -->
   <div class="mb-6">
-    <h1 class="text-2xl font-bold text-cyan-400 mb-2">Edit Note</h1>
+    <h1 class="text-2xl font-bold text-cyan-400 mb-2">Edit Wiki Page</h1>
     <div class="text-sm text-gray-400">
-      {{if .Note.Title}}
-      <span>{{.Note.Title}}</span>
-      {{else}}
-      <span class="italic">(untitled)</span>
-      {{end}}
-      {{if .Note.GuildName}}
+      <span>{{.Page.Title}}</span>
+      {{if .Page.GuildName}}
       <span class="mx-2">•</span>
-      <span>{{.Note.GuildName}}</span>
+      <span>{{.Page.GuildName}}</span>
       {{end}}
     </div>
   </div>
@@ -52,40 +38,18 @@ Edit Note - Hivemind
 
     <form 
       id="editor-form"
-      hx-post="/note/save?id={{.Note.Id}}"
-      hx-target="#note-content"
+      hx-post="/wiki/save?slug={{.Page.Slug}}&guild_id={{.Page.GuildId}}"
+      hx-target="#wiki-content"
       hx-swap="innerHTML"
     >
       <!-- Edit Tab -->
       <div x-show="activeTab === 'edit'" class="editor-content">
-        <!-- Title Field (optional) -->
-        <div class="mb-4">
-          <label for="editor-title" class="block text-sm font-mono text-cyan-400 mb-2">
-            Title (optional)
-          </label>
-          <input 
-            type="text"
-            name="title"
-            id="editor-title"
-            value="{{.Note.Title}}"
-            class="w-full px-4 py-2 bg-gray-900 text-gray-100 border border-cyan-500/30 font-mono text-base focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 rounded"
-            placeholder="Note title..."
-            style="font-size: 16px;"
-          />
-        </div>
-
-        <!-- Body Field -->
-        <div>
-          <label for="editor-body" class="block text-sm font-mono text-cyan-400 mb-2">
-            Body
-          </label>
-          <textarea 
-            name="body" 
-            id="editor-body"
-            class="editor-textarea"
-            placeholder="Write your note here using Markdown. Use #hashtags to add tags."
-          >{{.Note.Body}}</textarea>
-        </div>
+        <textarea 
+          name="body" 
+          id="editor-body"
+          class="editor-textarea"
+          placeholder="Write your wiki content here using Markdown. Use #hashtags to add tags."
+        >{{.Page.Body}}</textarea>
         
         <div class="mt-4 text-xs text-gray-500 font-mono">
           <p>Markdown supported: **bold**, *italic*, `code`, [links](url), # headings, - lists</p>
@@ -107,7 +71,7 @@ Edit Note - Hivemind
         id="preview-trigger"
         type="button"
         class="hidden"
-        hx-post="/note/preview"
+        hx-post="/wiki/preview"
         hx-include="[name='body']"
         hx-target="#preview-content"
         hx-swap="innerHTML"
@@ -124,8 +88,8 @@ Edit Note - Hivemind
         <button 
           type="button"
           class="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold rounded transition-colors"
-          hx-get="/note?id={{.Note.Id}}"
-          hx-target="#note-content"
+          hx-get="/wiki?slug={{.Page.Slug}}&guild_id={{.Page.GuildId}}"
+          hx-target="#wiki-content"
           hx-swap="innerHTML"
         >
           Cancel
