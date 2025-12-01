@@ -299,7 +299,15 @@ func (s *WikiService) MergeWikiPages(ctx context.Context, sourcePageID, targetPa
 	}
 	_ = transferred // Track for logging if needed
 
-	// 5. Flatten aliases: Update all non-canonical titles pointing to source → point to target
+	// 5. Convert source canonical title to alias pointing to target
+	// This makes the old page name redirect to the merged page
+	convertedCount, err := s.wikiTitleRepo.ConvertToAlias(ctx, sourcePageID, targetPageID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert source title to alias: %w", err)
+	}
+	_ = convertedCount // Track for logging if needed
+
+	// 6. Flatten other aliases: Update all non-canonical titles pointing to source → point to target
 	// This ensures no title chains: aliases always point directly to canonical page
 	flattened, err := s.wikiTitleRepo.UpdatePageID(ctx, sourcePageID, targetPageID)
 	if err != nil {
@@ -307,12 +315,12 @@ func (s *WikiService) MergeWikiPages(ctx context.Context, sourcePageID, targetPa
 	}
 	_ = flattened // Track for logging if needed
 
-	// 6. Soft-delete source page
+	// 7. Soft-delete source page
 	if err := s.wikiRepo.Delete(ctx, sourcePageID); err != nil {
 		return nil, fmt.Errorf("failed to delete source page: %w", err)
 	}
 
-	// 7. Invalidate title cache for guild
+	// 8. Invalidate title cache for guild
 	s.titlesCache.Delete(sourcePage.GuildID)
 
 	// Return merged target page

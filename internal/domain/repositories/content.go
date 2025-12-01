@@ -51,6 +51,9 @@ type WikiTitleRepository interface {
 	// ListByPageID retrieves all titles (canonical + aliases) for a page
 	ListByPageID(ctx context.Context, pageID string) ([]*entities.WikiTitle, error)
 
+	// ConvertToAlias converts the canonical title of a page to an alias pointing to a new page
+	ConvertToAlias(ctx context.Context, oldPageID, newPageID string) (int, error)
+
 	// UpdatePageID updates the page ID for all non-canonical titles pointing to oldPageID
 	UpdatePageID(ctx context.Context, oldPageID, newPageID string) (int, error)
 }
