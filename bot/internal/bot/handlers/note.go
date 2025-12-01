@@ -185,7 +185,7 @@ func handleNoteCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate,
 	refs := fetchNoteMessageReferences(ctx, noteClient, resp.Id, log)
 
 	// Show standard note embed
-	embed, components := createNoteEmbed(resp, refs, cfg)
+	embed, components := createNoteEmbed(resp, refs, cfg, log)
 	embed.Title = "✅ Note Created\n\n" + embed.Title
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
@@ -200,7 +200,7 @@ func handleNoteCreateModal(s *discordgo.Session, i *discordgo.InteractionCreate,
 
 // handleNoteList lists user's notes
 // createNoteEmbed creates an embed for displaying a note with action buttons
-func createNoteEmbed(note *notespb.Note, references []*notespb.NoteMessageReference, cfg *config.Config) (*discordgo.MessageEmbed, []discordgo.MessageComponent) {
+func createNoteEmbed(note *notespb.Note, references []*notespb.NoteMessageReference, cfg *config.Config, log *slog.Logger) (*discordgo.MessageEmbed, []discordgo.MessageComponent) {
 	title := note.Title
 	if title == "" {
 		title = "(untitled)"
@@ -237,7 +237,7 @@ func createNoteEmbed(note *notespb.Note, references []*notespb.NoteMessageRefere
 			refsList += fmt.Sprintf("_...and %d more_", len(references)-displayCount)
 		}
 
-		slog.Default().Info("adding message references field to note embed",
+		log.Info("adding message references field to note embed",
 			slog.Int("ref_count", len(references)),
 			slog.Int("displayed", displayCount))
 
@@ -249,7 +249,7 @@ func createNoteEmbed(note *notespb.Note, references []*notespb.NoteMessageRefere
 			},
 		}
 	} else {
-		slog.Default().Info("no message references to display for note")
+		log.Info("no message references to display for note")
 	}
 
 	if len(note.Tags) > 0 {
@@ -379,7 +379,7 @@ func handleNoteView(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 			slog.String("note_title", note.Title),
 			slog.Int("ref_count", len(refs)))
 
-		embed, components := createNoteEmbed(note, refs, cfg)
+		embed, components := createNoteEmbed(note, refs, cfg, log)
 
 		_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Embeds:     []*discordgo.MessageEmbed{embed},
@@ -619,15 +619,16 @@ func handleViewNoteSelect(s *discordgo.Session, i *discordgo.InteractionCreate, 
 		slog.String("note_title", note.Title),
 		slog.Int("ref_count", len(refs)))
 
-	// Use standard embed function
-	embed, _ := createNoteEmbed(note, refs, cfg)
+	// Use standard embed function with action buttons
+	embed, components := createNoteEmbed(note, refs, cfg, log)
 
-	// Display the note ephemerally (only visible to the user)
+	// Display the note ephemerally with action buttons
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,
 		Data: &discordgo.InteractionResponseData{
+			Content:    "", // Clear the search results message
 			Embeds:     []*discordgo.MessageEmbed{embed},
-			Components: []discordgo.MessageComponent{}, // Remove dropdown
+			Components: components,
 			Flags:      discordgo.MessageFlagsEphemeral,
 		},
 	})
@@ -821,7 +822,7 @@ func handleNoteEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, c
 	// Success response - show standard note embed
 	// Fetch message references
 	refs := fetchNoteMessageReferences(ctx, noteClient, resultNote.Id, log)
-	embed, components := createNoteEmbed(resultNote, refs, cfg)
+	embed, components := createNoteEmbed(resultNote, refs, cfg, log)
 
 	// Add success message to title
 	embed.Title = "✅ Note Updated\n\n" + embed.Title
