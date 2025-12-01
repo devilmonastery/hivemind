@@ -40,6 +40,9 @@ func TestParseUserClaims_ValidToken(t *testing.T) {
 }
 
 func TestParseUserClaims_ExpiredToken(t *testing.T) {
+	// NOTE: ParseUserClaims no longer checks expiration
+	// It's the backend's job to reject expired tokens
+	// The AutoRefreshInterceptor will handle refresh automatically
 	claims := jwt.MapClaims{
 		"user_id": "123",
 		"email":   "test@example.com",
@@ -47,10 +50,14 @@ func TestParseUserClaims_ExpiredToken(t *testing.T) {
 	}
 
 	tokenString := createTestToken(claims)
-	_, err := ParseUserClaims(tokenString)
+	user, err := ParseUserClaims(tokenString)
+	// Should succeed even with expired token - backend will handle rejection
+	if err != nil {
+		t.Errorf("ParseUserClaims should not check expiration, got error: %v", err)
+	}
 
-	if err != ErrTokenExpired {
-		t.Errorf("expected ErrTokenExpired, got %v", err)
+	if user["UserID"] != "123" {
+		t.Errorf("expected user_id=123, got %v", user["UserID"])
 	}
 }
 

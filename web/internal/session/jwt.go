@@ -23,7 +23,9 @@ var (
 )
 
 // ParseUserClaims parses a JWT token and extracts user information
-// Returns a map with user fields or an error if the token is invalid or expired
+// Returns a map with user fields or an error if the token is invalid
+// NOTE: Does NOT check expiration - let the backend handle that via gRPC calls
+// The AutoRefreshInterceptor will automatically refresh expired tokens
 func ParseUserClaims(tokenString string) (map[string]interface{}, error) {
 	if tokenString == "" {
 		return nil, ErrNoToken
@@ -41,14 +43,10 @@ func ParseUserClaims(tokenString string) (map[string]interface{}, error) {
 		return nil, ErrInvalidToken
 	}
 
-	// Check if token is expired first
-	// exp claim is a NumericDate (Unix timestamp)
-	if exp, ok := claims["exp"].(float64); ok {
-		expTime := time.Unix(int64(exp), 0)
-		if time.Now().After(expTime) {
-			return nil, ErrTokenExpired
-		}
-	}
+	// NOTE: We deliberately DO NOT check expiration here
+	// The backend will reject expired tokens, and the AutoRefreshInterceptor
+	// will automatically call RefreshToken RPC to get a new JWT
+	// This allows transparent token refresh without redirecting to login
 
 	// Extract user info from claims
 	user := make(map[string]interface{})
