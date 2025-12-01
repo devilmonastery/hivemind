@@ -17,6 +17,7 @@ type ActivityItem struct {
 	Type           string // "note", "quote", "wiki"
 	ID             string
 	Title          string
+	Slug           string // URL-friendly slug (for wiki pages)
 	Body           string
 	Preview        string // First 200 chars of body
 	GuildID        string
@@ -185,6 +186,7 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 				Type:           "wiki",
 				ID:             page.Id,
 				Title:          page.Title,
+				Slug:           page.Slug,
 				Body:           page.Body,
 				Preview:        truncateText(page.Body, 200),
 				GuildID:        page.GuildId,

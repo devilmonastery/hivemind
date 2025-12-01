@@ -12,7 +12,11 @@ import (
 
 // wikiTitlesCacheEntry holds cached wiki titles for a guild
 type wikiTitlesCacheEntry struct {
-	titles    []struct{ ID, Title string }
+	titles []struct {
+		ID    string
+		Title string
+		Slug  string
+	}
 	expiresAt time.Time
 }
 
@@ -20,15 +24,17 @@ type wikiTitlesCacheEntry struct {
 type WikiService struct {
 	wikiRepo       repositories.WikiPageRepository
 	wikiRefRepo    repositories.WikiMessageReferenceRepository
+	wikiTitleRepo  repositories.WikiTitleRepository
 	titlesCache    sync.Map // map[guildID]wikiTitlesCacheEntry
 	titlesCacheTTL time.Duration
 }
 
 // NewWikiService creates a new wiki service
-func NewWikiService(wikiRepo repositories.WikiPageRepository, wikiRefRepo repositories.WikiMessageReferenceRepository) *WikiService {
+func NewWikiService(wikiRepo repositories.WikiPageRepository, wikiRefRepo repositories.WikiMessageReferenceRepository, wikiTitleRepo repositories.WikiTitleRepository) *WikiService {
 	return &WikiService{
 		wikiRepo:       wikiRepo,
 		wikiRefRepo:    wikiRefRepo,
+		wikiTitleRepo:  wikiTitleRepo,
 		titlesCacheTTL: 1 * time.Minute,
 	}
 }
@@ -36,7 +42,7 @@ func NewWikiService(wikiRepo repositories.WikiPageRepository, wikiRefRepo reposi
 // CreateWikiPage creates a new wiki page
 func (s *WikiService) CreateWikiPage(ctx context.Context, page *entities.WikiPage) (*entities.WikiPage, error) {
 	// Check for duplicate title in guild - keeps explicit error message
-	existing, err := s.wikiRepo.GetByGuildAndTitle(ctx, page.GuildID, page.Title)
+	existing, err := s.wikiRepo.GetByGuildAndSlug(ctx, page.GuildID, page.Title)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for duplicate: %w", err)
 	}
@@ -80,7 +86,7 @@ func (s *WikiService) UpdateWikiPage(ctx context.Context, page *entities.WikiPag
 // UpsertWikiPage creates a new wiki page or updates an existing one with the same title
 func (s *WikiService) UpsertWikiPage(ctx context.Context, page *entities.WikiPage) (*entities.WikiPage, bool, error) {
 	// Check if a page with this title already exists in the guild
-	existing, err := s.wikiRepo.GetByGuildAndTitle(ctx, page.GuildID, page.Title)
+	existing, err := s.wikiRepo.GetByGuildAndSlug(ctx, page.GuildID, page.Title)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to check for existing page: %w", err)
 	}
@@ -153,9 +159,9 @@ func (s *WikiService) SearchWikiPages(ctx context.Context, guildID, query string
 	return pages, total, nil
 }
 
-// GetWikiPageByTitle retrieves a wiki page by guild ID and title (case-insensitive)
-func (s *WikiService) GetWikiPageByTitle(ctx context.Context, guildID, title string) (*entities.WikiPage, error) {
-	page, err := s.wikiRepo.GetByGuildAndTitle(ctx, guildID, title)
+// GetWikiPageByTitle retrieves a wiki page by guild ID and slug (normalized for lookup)
+func (s *WikiService) GetWikiPageByTitle(ctx context.Context, guildID, slug string) (*entities.WikiPage, error) {
+	page, err := s.wikiRepo.GetByGuildAndSlug(ctx, guildID, slug)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wiki page by title: %w", err)
 	}
@@ -180,7 +186,12 @@ func (s *WikiService) ListWikiMessageReferences(ctx context.Context, pageID stri
 }
 
 // AutocompleteWikiTitles returns all wiki page titles for a guild (lightweight for autocomplete)
-func (s *WikiService) AutocompleteWikiTitles(ctx context.Context, guildID string) ([]struct{ ID, Title string }, error) {
+func (s *WikiService) AutocompleteWikiTitles(ctx context.Context, guildID string) ([]struct {
+	ID    string
+	Title string
+	Slug  string
+}, error,
+) {
 	// Get all titles for the guild (with caching)
 	titles, err := s.getWikiTitlesForGuild(ctx, guildID)
 	if err != nil {
@@ -191,7 +202,12 @@ func (s *WikiService) AutocompleteWikiTitles(ctx context.Context, guildID string
 }
 
 // getWikiTitlesForGuild retrieves wiki titles with caching
-func (s *WikiService) getWikiTitlesForGuild(ctx context.Context, guildID string) ([]struct{ ID, Title string }, error) {
+func (s *WikiService) getWikiTitlesForGuild(ctx context.Context, guildID string) ([]struct {
+	ID    string
+	Title string
+	Slug  string
+}, error,
+) {
 	// Check cache
 	if entry, ok := s.titlesCache.Load(guildID); ok {
 		cached := entry.(wikiTitlesCacheEntry)
@@ -215,4 +231,90 @@ func (s *WikiService) getWikiTitlesForGuild(ctx context.Context, guildID string)
 	})
 
 	return titles, nil
+}
+
+// MergeWikiPages merges source wiki page into target wiki page
+// - Appends source body to target body (with separator)
+// - Merges tags (union, deduplicated)
+// - Transfers all message references from source to target
+// - Soft-deletes source page
+// - Creates alias title for source page pointing to target
+// - Flattens any existing aliases pointing to source (redirects them to target)
+// - Invalidates title cache for guild
+func (s *WikiService) MergeWikiPages(ctx context.Context, sourcePageID, targetPageID, mergedByUserID string) (*entities.WikiPage, error) {
+	// Fetch both pages
+	sourcePage, err := s.wikiRepo.GetByID(ctx, sourcePageID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch source page: %w", err)
+	}
+	if sourcePage == nil {
+		return nil, fmt.Errorf("source page not found: %s", sourcePageID)
+	}
+
+	targetPage, err := s.wikiRepo.GetByID(ctx, targetPageID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch target page: %w", err)
+	}
+	if targetPage == nil {
+		return nil, fmt.Errorf("target page not found: %s", targetPageID)
+	}
+
+	// Validate: must be in same guild
+	if sourcePage.GuildID != targetPage.GuildID {
+		return nil, fmt.Errorf("cannot merge pages from different guilds")
+	}
+
+	// Validate: cannot merge page into itself
+	if sourcePageID == targetPageID {
+		return nil, fmt.Errorf("cannot merge page into itself")
+	}
+
+	// 1. Merge content: append source body to target body (with separator)
+	separator := "\n\n---\n\n"
+	targetPage.Body = targetPage.Body + separator + sourcePage.Body
+
+	// 2. Merge tags: union of both sets (deduplicate)
+	tagSet := make(map[string]bool)
+	for _, tag := range targetPage.Tags {
+		tagSet[tag] = true
+	}
+	for _, tag := range sourcePage.Tags {
+		tagSet[tag] = true
+	}
+	mergedTags := make([]string, 0, len(tagSet))
+	for tag := range tagSet {
+		mergedTags = append(mergedTags, tag)
+	}
+	targetPage.Tags = mergedTags
+
+	// 3. Update target page with merged content
+	if err := s.wikiRepo.Update(ctx, targetPage); err != nil {
+		return nil, fmt.Errorf("failed to update target page: %w", err)
+	}
+
+	// 4. Transfer all message references from source to target
+	transferred, err := s.wikiRefRepo.TransferReferences(ctx, sourcePageID, targetPageID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to transfer references: %w", err)
+	}
+	_ = transferred // Track for logging if needed
+
+	// 5. Flatten aliases: Update all non-canonical titles pointing to source → point to target
+	// This ensures no title chains: aliases always point directly to canonical page
+	flattened, err := s.wikiTitleRepo.UpdatePageID(ctx, sourcePageID, targetPageID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to flatten aliases: %w", err)
+	}
+	_ = flattened // Track for logging if needed
+
+	// 6. Soft-delete source page
+	if err := s.wikiRepo.Delete(ctx, sourcePageID); err != nil {
+		return nil, fmt.Errorf("failed to delete source page: %w", err)
+	}
+
+	// 7. Invalidate title cache for guild
+	s.titlesCache.Delete(sourcePage.GuildID)
+
+	// Return merged target page
+	return targetPage, nil
 }

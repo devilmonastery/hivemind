@@ -24,11 +24,11 @@ func getWebBaseURL(cfg *config.Config) string {
 }
 
 // mustBuildWikiURL builds a wiki URL and returns a fallback on error (should never happen with valid baseURL)
-func mustBuildWikiURL(baseURL, guildID, title string) string {
-	url, err := urlutil.BuildWikiViewURL(baseURL, guildID, title)
+func mustBuildWikiURL(baseURL, guildID, slug string) string {
+	url, err := urlutil.BuildWikiViewURL(baseURL, guildID, slug)
 	if err != nil {
 		// Fallback to simple concatenation if URL parsing fails (should never happen)
-		return baseURL + "/wiki?guild_id=" + guildID + "&title=" + title
+		return baseURL + "/wiki?slug=" + slug + "&guild_id=" + guildID
 	}
 	return url
 }
@@ -176,7 +176,7 @@ func showWikiDetailEmbed(s *discordgo.Session, page *wikipb.WikiPage, references
 			discordgo.Button{
 				Label: "🌐 View on Web",
 				Style: discordgo.LinkButton,
-				URL:   mustBuildWikiURL(getWebBaseURL(cfg), page.GuildId, page.Title),
+				URL:   mustBuildWikiURL(getWebBaseURL(cfg), page.GuildId, page.Slug),
 			},
 		},
 	})
@@ -234,6 +234,8 @@ func handleWiki(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *confi
 		handleWikiGet(s, i, subcommand, cfg, log, grpcClient)
 	case "edit":
 		handleWikiEdit(s, i, subcommand, cfg, log, grpcClient)
+	case "merge":
+		handleWikiMerge(s, i, subcommand, cfg, log, grpcClient)
 	default:
 		respondError(s, i, "Unknown wiki subcommand", log)
 	}
@@ -365,42 +367,34 @@ func truncateString(s string, maxLen int) string {
 }
 
 func handleWikiGet(s *discordgo.Session, i *discordgo.InteractionCreate, subcommand *discordgo.ApplicationCommandInteractionDataOption, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
-	// Parse title parameter
-	var title string
+	// Parse slug parameter (autocomplete returns slugs, manual input is normalized to slug)
+	var slug string
 	for _, opt := range subcommand.Options {
 		if opt.Name == "title" {
-			title = opt.StringValue()
+			slug = opt.StringValue()
 		}
 	}
 
-	if title == "" {
+	if slug == "" {
 		respondError(s, i, "Title is required", log)
 		return
 	}
 
 	ctx := discordContextFor(i)
 
-	// Search by title to get ID (simplified approach)
+	// Lookup by slug (GetWikiPageByTitle normalizes input to slug for lookup)
 	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
-	resp, err := wikiClient.SearchWikiPages(ctx, &wikipb.SearchWikiPagesRequest{
+	page, err := wikiClient.GetWikiPageByTitle(ctx, &wikipb.GetWikiPageByTitleRequest{
 		GuildId: i.GuildID,
-		Query:   title,
-		Limit:   1,
+		Title:   slug, // Backend normalizes to slug for lookup
 	})
 	if err != nil {
 		log.Error("failed to get wiki page",
 			slog.String("error", err.Error()),
-			slog.String("title", title))
-		respondError(s, i, fmt.Sprintf("Failed to get page: %v", err), log)
+			slog.String("slug", slug))
+		respondError(s, i, fmt.Sprintf("Wiki page not found: **%s**", slug), log)
 		return
 	}
-
-	if len(resp.Pages) == 0 {
-		respondError(s, i, fmt.Sprintf("Wiki page not found: **%s**", title), log)
-		return
-	}
-
-	page := resp.Pages[0]
 
 	// Fetch message references
 	refs := fetchWikiMessageReferences(ctx, wikiClient, page.Id, log)
@@ -505,6 +499,106 @@ func handleWikiEdit(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 	})
 	if err != nil {
 		log.Error("failed to show wiki edit modal", slog.String("error", err.Error()))
+	}
+}
+
+func handleWikiMerge(s *discordgo.Session, i *discordgo.InteractionCreate, subcommand *discordgo.ApplicationCommandInteractionDataOption, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
+	// Parse source and target slug parameters
+	var sourceSlug, targetSlug string
+	for _, opt := range subcommand.Options {
+		switch opt.Name {
+		case "source":
+			sourceSlug = opt.StringValue()
+		case "target":
+			targetSlug = opt.StringValue()
+		}
+	}
+
+	// Validate inputs
+	if sourceSlug == "" || targetSlug == "" {
+		respondError(s, i, "Both source and target pages are required", log)
+		return
+	}
+
+	if sourceSlug == targetSlug {
+		respondError(s, i, "Cannot merge a page into itself", log)
+		return
+	}
+
+	// Defer the response since this might take a moment
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		log.Error("failed to defer interaction", slog.String("error", err.Error()))
+		return
+	}
+
+	ctx := discordContextFor(i)
+	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
+
+	// Fetch source page
+	sourceResp, err := wikiClient.GetWikiPageByTitle(ctx, &wikipb.GetWikiPageByTitleRequest{
+		GuildId: i.GuildID,
+		Title:   sourceSlug,
+	})
+	if err != nil {
+		log.Error("failed to fetch source page",
+			slog.String("slug", sourceSlug),
+			slog.String("error", err.Error()))
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: ptrString(fmt.Sprintf("❌ Failed to find source page: %s", sourceSlug)),
+		})
+		return
+	}
+
+	// Fetch target page
+	targetResp, err := wikiClient.GetWikiPageByTitle(ctx, &wikipb.GetWikiPageByTitleRequest{
+		GuildId: i.GuildID,
+		Title:   targetSlug,
+	})
+	if err != nil {
+		log.Error("failed to fetch target page",
+			slog.String("slug", targetSlug),
+			slog.String("error", err.Error()))
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: ptrString(fmt.Sprintf("❌ Failed to find target page: %s", targetSlug)),
+		})
+		return
+	}
+
+	// Perform merge
+	merged, err := wikiClient.MergeWikiPages(ctx, &wikipb.MergeWikiPagesRequest{
+		SourcePageId: sourceResp.Id,
+		TargetPageId: targetResp.Id,
+	})
+	if err != nil {
+		log.Error("failed to merge wiki pages",
+			slog.String("source_id", sourceResp.Id),
+			slog.String("target_id", targetResp.Id),
+			slog.String("error", err.Error()))
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: ptrString("❌ Failed to merge wiki pages"),
+		})
+		return
+	}
+
+	// Build web URL
+	webURL := mustBuildWikiURL(getWebBaseURL(cfg), i.GuildID, merged.Slug)
+
+	// Send success response
+	_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: ptrString(fmt.Sprintf("✅ Successfully merged **%s** into **%s**\n\nView merged page: %s",
+			sourceResp.Title,
+			merged.Title,
+			webURL,
+		)),
+	})
+	if err != nil {
+		log.Error("failed to send merge confirmation", slog.String("error", err.Error()))
 	}
 }
 
@@ -665,7 +759,7 @@ func handleWikiAddToChat(s *discordgo.Session, i *discordgo.InteractionCreate, t
 	page := resp.Pages[0]
 
 	// Format as embed with web link
-	webURL := mustBuildWikiURL(getWebBaseURL(cfg), page.GuildId, page.Title)
+	webURL := mustBuildWikiURL(getWebBaseURL(cfg), page.GuildId, page.Slug)
 	embed := &discordgo.MessageEmbed{
 		Title:       page.Title,
 		URL:         webURL,
@@ -1086,8 +1180,8 @@ func handleWikiAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate
 		return
 	}
 
-	// Only handle title autocomplete
-	if focusedOption.Name != "title" {
+	// Handle title, source, and target autocomplete (all use wiki titles)
+	if focusedOption.Name != "title" && focusedOption.Name != "source" && focusedOption.Name != "target" {
 		return
 	}
 
@@ -1115,6 +1209,7 @@ func handleWikiAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate
 			cachedTitles[idx] = TitleSuggestion{
 				ID:    suggestion.Id,
 				Title: suggestion.Title,
+				Slug:  suggestion.Slug,
 			}
 		}
 
@@ -1136,7 +1231,7 @@ func handleWikiAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate
 
 		choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
 			Name:  displayTitle,
-			Value: title.Title, // Return the full title
+			Value: title.Slug, // Return the slug for uniqueness
 		})
 	}
 

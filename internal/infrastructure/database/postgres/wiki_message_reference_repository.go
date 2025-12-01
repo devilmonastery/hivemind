@@ -192,3 +192,33 @@ func (r *wikiMessageReferenceRepository) DeleteByMessageID(ctx context.Context, 
 	_, err := r.db.ExecContext(ctx, query, messageID)
 	return err
 }
+
+func (r *wikiMessageReferenceRepository) TransferReferences(ctx context.Context, sourcePageID, targetPageID string) (int, error) {
+	// Transfer all references from source to target using INSERT ... ON CONFLICT DO NOTHING
+	// This handles duplicates gracefully (if a message is already referenced by target)
+	// New IDs are deterministic: original_id + '_xfer_' + target_page_id for traceability
+	query := `
+		INSERT INTO wiki_message_references (
+			id, wiki_page_id, message_id, channel_id, guild_id,
+			content, author_id, author_username, author_display_name, message_timestamp,
+			attachment_urls, attachment_metadata, added_at, added_by_user_id
+		)
+		SELECT 
+			id || '_xfer_' || $2, -- Deterministic ID for traceability
+			$2, -- New page ID (target)
+			message_id, channel_id, guild_id,
+			content, author_id, author_username, author_display_name, message_timestamp,
+			attachment_urls, attachment_metadata, added_at, added_by_user_id
+		FROM wiki_message_references
+		WHERE wiki_page_id = $1
+		ON CONFLICT (wiki_page_id, message_id) DO NOTHING
+	`
+
+	result, err := r.db.ExecContext(ctx, query, sourcePageID, targetPageID)
+	if err != nil {
+		return 0, err
+	}
+
+	transferred, err := result.RowsAffected()
+	return int(transferred), err
+}

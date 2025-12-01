@@ -875,11 +875,6 @@ func handleNoteDeleteCancel(s *discordgo.Session, i *discordgo.InteractionCreate
 	}
 }
 
-// ptrString returns a pointer to a string
-func ptrString(s string) *string {
-	return &s
-}
-
 // handleNoteAutocomplete handles autocomplete for note commands
 func handleNoteAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client, cache *TitlesCache) {
 	data := i.ApplicationCommandData()

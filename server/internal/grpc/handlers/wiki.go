@@ -216,6 +216,7 @@ func toProtoWikiPage(page *entities.WikiPage, authorUsername string) *wikipb.Wik
 	return &wikipb.WikiPage{
 		Id:             page.ID,
 		Title:          page.Title,
+		Slug:           page.Slug,
 		Body:           page.Body,
 		AuthorId:       page.AuthorID,
 		AuthorUsername: authorUsername,
@@ -320,12 +321,52 @@ func (h *wikiHandler) AutocompleteWikiTitles(ctx context.Context, req *wikipb.Au
 		suggestions[i] = &wikipb.WikiTitleSuggestion{
 			Id:    title.ID,
 			Title: title.Title,
+			Slug:  title.Slug,
 		}
 	}
 
 	return &wikipb.AutocompleteWikiTitlesResponse{
 		Suggestions: suggestions,
 	}, nil
+}
+
+func (h *wikiHandler) MergeWikiPages(ctx context.Context, req *wikipb.MergeWikiPagesRequest) (*wikipb.WikiPage, error) {
+	// Get user context from auth interceptor
+	userCtx, err := interceptors.GetUserFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate request
+	if req.SourcePageId == "" {
+		return nil, status.Error(codes.InvalidArgument, "source_page_id is required")
+	}
+	if req.TargetPageId == "" {
+		return nil, status.Error(codes.InvalidArgument, "target_page_id is required")
+	}
+	if req.SourcePageId == req.TargetPageId {
+		return nil, status.Error(codes.InvalidArgument, "source and target pages must be different")
+	}
+
+	// Perform merge
+	merged, err := h.wikiService.MergeWikiPages(ctx, req.SourcePageId, req.TargetPageId, userCtx.UserID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		if strings.Contains(err.Error(), "different guilds") {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		h.log.ErrorContext(ctx, "failed to merge wiki pages",
+			slog.String("source_page_id", req.SourcePageId),
+			slog.String("target_page_id", req.TargetPageId),
+			slog.String("error", err.Error()),
+		)
+		return nil, status.Error(codes.Internal, "failed to merge wiki pages")
+	}
+
+	authorUsername := h.getUsernameForAuthor(ctx, merged.AuthorID)
+	return toProtoWikiPage(merged, authorUsername), nil
 }
 
 func toProtoWikiMessageReference(ref *entities.WikiMessageReference) *wikipb.WikiMessageReference {

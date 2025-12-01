@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gosimple/slug"
 	"github.com/lib/pq"
 
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
@@ -15,12 +16,16 @@ import (
 )
 
 type wikiPageRepository struct {
-	db *sql.DB
+	db        *sql.DB
+	titleRepo repositories.WikiTitleRepository
 }
 
 // NewWikiPageRepository creates a new PostgreSQL wiki page repository
-func NewWikiPageRepository(db *sql.DB) repositories.WikiPageRepository {
-	return &wikiPageRepository{db: db}
+func NewWikiPageRepository(db *sql.DB, titleRepo repositories.WikiTitleRepository) repositories.WikiPageRepository {
+	return &wikiPageRepository{
+		db:        db,
+		titleRepo: titleRepo,
+	}
 }
 
 func (r *wikiPageRepository) Create(ctx context.Context, page *entities.WikiPage) error {
@@ -30,6 +35,10 @@ func (r *wikiPageRepository) Create(ctx context.Context, page *entities.WikiPage
 	page.CreatedAt = time.Now()
 	page.UpdatedAt = time.Now()
 
+	// Generate slug from title
+	page.Slug = slug.Make(page.Title)
+
+	// Create the page
 	query := `
 		INSERT INTO wiki_pages (id, title, body, author_id, guild_id, channel_id, channel_name, tags, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -39,7 +48,21 @@ func (r *wikiPageRepository) Create(ctx context.Context, page *entities.WikiPage
 		nullString(page.ChannelID), "", pq.Array(page.Tags),
 		page.CreatedAt, page.UpdatedAt,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Create canonical wiki_title entry
+	wikiTitle := &entities.WikiTitle{
+		GuildID:      page.GuildID,
+		DisplayTitle: page.Title,
+		PageSlug:     page.Slug,
+		PageID:       page.ID,
+		IsCanonical:  true,
+		CreatedAt:    page.CreatedAt,
+	}
+
+	return r.titleRepo.Create(ctx, wikiTitle)
 }
 
 func (r *wikiPageRepository) GetByID(ctx context.Context, id string) (*entities.WikiPage, error) {
@@ -66,6 +89,7 @@ func (r *wikiPageRepository) GetByID(ctx context.Context, id string) (*entities.
 
 	page.ChannelID = channelID.String
 	page.Tags = tags
+	page.Slug = slug.Make(page.Title)
 	if deletedAt.Valid {
 		page.DeletedAt = &deletedAt.Time
 	}
@@ -73,32 +97,29 @@ func (r *wikiPageRepository) GetByID(ctx context.Context, id string) (*entities.
 	return page, nil
 }
 
-func (r *wikiPageRepository) GetByGuildAndTitle(ctx context.Context, guildID, title string) (*entities.WikiPage, error) {
-	query := `
-		SELECT id, title, body, author_id, guild_id, channel_id, tags, created_at, updated_at, deleted_at
-		FROM wiki_pages
-		WHERE guild_id = $1 AND LOWER(title) = LOWER($2) AND deleted_at IS NULL
-	`
-	page := &entities.WikiPage{}
-	var tags pq.StringArray
-	var channelID sql.NullString
-	var deletedAt sql.NullTime
+func (r *wikiPageRepository) GetByGuildAndSlug(ctx context.Context, guildID, pageSlug string) (*entities.WikiPage, error) {
+	// Normalize slug for lookup
+	titleSlug := slug.Make(pageSlug)
 
-	err := r.db.QueryRowContext(ctx, query, guildID, title).Scan(
-		&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
-		&channelID, &tags, &page.CreatedAt, &page.UpdatedAt, &deletedAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, nil // Not found is not an error for this method
+	// Look up the title (canonical or alias) in wiki_titles
+	wikiTitle, err := r.titleRepo.GetByGuildAndSlug(ctx, guildID, titleSlug)
+	if err != nil {
+		return nil, err
 	}
+	if wikiTitle == nil {
+		return nil, nil // Title not found
+	}
+
+	// Get the page by ID
+	page, err := r.GetByID(ctx, wikiTitle.PageID)
 	if err != nil {
 		return nil, err
 	}
 
-	page.ChannelID = channelID.String
-	page.Tags = tags
-	if deletedAt.Valid {
-		page.DeletedAt = &deletedAt.Time
+	// Populate the Title field with the display_title for backward compatibility
+	if page != nil {
+		page.Title = wikiTitle.DisplayTitle
+		page.Slug = wikiTitle.PageSlug
 	}
 
 	return page, nil
@@ -193,11 +214,12 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 		return nil, 0, err
 	}
 
-	// Get pages
+	// Get pages with canonical slug from wiki_titles
 	query := fmt.Sprintf(`
-		SELECT wp.id, wp.title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at
+		SELECT wp.id, wt.display_title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wt.page_slug
 		FROM wiki_pages wp
 		LEFT JOIN discord_guilds dg ON wp.guild_id = dg.guild_id
+		LEFT JOIN wiki_titles wt ON wp.id = wt.page_id AND wt.is_canonical = TRUE
 		WHERE %s
 		ORDER BY wp.%s %s
 		LIMIT $%d OFFSET $%d
@@ -215,10 +237,11 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 		page := &entities.WikiPage{}
 		var tags pq.StringArray
 		var guildName, channelID sql.NullString
+		var pageSlug sql.NullString
 
 		err := rows.Scan(
 			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID, &guildName,
-			&channelID, &tags, &page.CreatedAt, &page.UpdatedAt,
+			&channelID, &tags, &page.CreatedAt, &page.UpdatedAt, &pageSlug,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -227,6 +250,12 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 		page.GuildName = guildName.String
 		page.ChannelID = channelID.String
 		page.Tags = tags
+		if pageSlug.Valid {
+			page.Slug = pageSlug.String
+		} else {
+			// Fallback if wiki_titles entry missing
+			page.Slug = slug.Make(page.Title)
+		}
 		pages = append(pages, page)
 	}
 
@@ -268,11 +297,12 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		return nil, 0, err
 	}
 
-	// Get pages with ranking
+	// Get pages with ranking and canonical slug from wiki_titles
 	searchQuery := fmt.Sprintf(`
-		SELECT wp.id, wp.title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at
+		SELECT wp.id, wt.display_title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wt.page_slug
 		FROM wiki_pages wp
 		LEFT JOIN discord_guilds dg ON wp.guild_id = dg.guild_id
+		LEFT JOIN wiki_titles wt ON wp.id = wt.page_id AND wt.is_canonical = TRUE
 		WHERE %s
 		ORDER BY ts_rank(wp.search_vector, websearch_to_tsquery('english', $%d)) DESC
 		LIMIT $%d OFFSET $%d
@@ -292,10 +322,11 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		var tagArray pq.StringArray
 		var channelID sql.NullString
 		var guildName sql.NullString
+		var pageSlug sql.NullString
 
 		err := rows.Scan(
 			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
-			&guildName, &channelID, &tagArray, &page.CreatedAt, &page.UpdatedAt,
+			&guildName, &channelID, &tagArray, &page.CreatedAt, &page.UpdatedAt, &pageSlug,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -304,19 +335,31 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		page.ChannelID = channelID.String
 		page.GuildName = guildName.String
 		page.Tags = tagArray
+		if pageSlug.Valid {
+			page.Slug = pageSlug.String
+		} else {
+			// Fallback if wiki_titles entry missing
+			page.Slug = slug.Make(page.Title)
+		}
 		pages = append(pages, page)
 	}
 
 	return pages, total, nil
 }
 
-// GetTitlesForGuild returns only ID and Title for all pages in a guild (lightweight for autocomplete)
-func (r *wikiPageRepository) GetTitlesForGuild(ctx context.Context, guildID string) ([]struct{ ID, Title string }, error) {
+// GetTitlesForGuild returns only ID, Title, and Slug for all pages in a guild (lightweight for autocomplete)
+func (r *wikiPageRepository) GetTitlesForGuild(ctx context.Context, guildID string) ([]struct {
+	ID    string
+	Title string
+	Slug  string
+}, error,
+) {
 	query := `
-		SELECT id, title
-		FROM wiki_pages
-		WHERE guild_id = $1 AND deleted_at IS NULL
-		ORDER BY updated_at DESC
+		SELECT wp.id, wt.display_title, wt.page_slug
+		FROM wiki_pages wp
+		LEFT JOIN wiki_titles wt ON wp.id = wt.page_id AND wt.is_canonical = TRUE
+		WHERE wp.guild_id = $1 AND wp.deleted_at IS NULL
+		ORDER BY wp.updated_at DESC
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, guildID)
@@ -325,11 +368,27 @@ func (r *wikiPageRepository) GetTitlesForGuild(ctx context.Context, guildID stri
 	}
 	defer rows.Close()
 
-	var titles []struct{ ID, Title string }
+	var titles []struct {
+		ID    string
+		Title string
+		Slug  string
+	}
 	for rows.Next() {
-		var t struct{ ID, Title string }
-		if err := rows.Scan(&t.ID, &t.Title); err != nil {
+		var t struct {
+			ID    string
+			Title string
+			Slug  string
+		}
+		var titleStr, slugStr sql.NullString
+		if err := rows.Scan(&t.ID, &titleStr, &slugStr); err != nil {
 			return nil, err
+		}
+		t.Title = titleStr.String
+		if slugStr.Valid {
+			t.Slug = slugStr.String
+		} else {
+			// Fallback if wiki_titles entry missing
+			t.Slug = slug.Make(t.Title)
 		}
 		titles = append(titles, t)
 	}

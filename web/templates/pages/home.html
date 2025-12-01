@@ -51,7 +51,7 @@
                         <td class="px-4 py-3">
                             {{if .Title}}
                             {{if eq .Type "wiki"}}
-                            <a href="/wiki?title={{.Title}}&guild_id={{.GuildID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
+                            <a href="/wiki?slug={{.Slug}}&guild_id={{.GuildID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
                                 {{.Title}}
                             </a>
                             {{else if eq .Type "note"}}

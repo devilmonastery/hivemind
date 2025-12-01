@@ -43,12 +43,12 @@ func (h *Handler) WikiListPage(w http.ResponseWriter, r *http.Request) {
 
 // WikiPage displays a single wiki page with its references
 func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
-	// Get wiki page title and guild_id from query params
-	title := r.URL.Query().Get("title")
+	// Get wiki page slug and guild_id from query params
+	slug := r.URL.Query().Get("slug")
 	guildID := r.URL.Query().Get("guild_id")
 
-	if title == "" || guildID == "" {
-		http.Error(w, "Missing wiki page title or guild_id", http.StatusBadRequest)
+	if slug == "" || guildID == "" {
+		http.Error(w, "Missing wiki page slug or guild_id", http.StatusBadRequest)
 		return
 	}
 
@@ -56,7 +56,7 @@ func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
 	client, err := h.getClient(r, w)
 	if err != nil {
 		h.log.Error("Failed to create client for wiki page",
-			slog.String("title", title),
+			slog.String("slug", slug),
 			slog.String("guild_id", guildID),
 			slog.String("error", err.Error()))
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
@@ -64,15 +64,15 @@ func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer client.Close()
 
-	// Get wiki page by title (case-insensitive, efficient direct lookup)
+	// Get wiki page by slug (normalized for lookup)
 	wikiClient := wikipb.NewWikiServiceClient(client.Conn())
 	page, err := wikiClient.GetWikiPageByTitle(r.Context(), &wikipb.GetWikiPageByTitleRequest{
 		GuildId: guildID,
-		Title:   title,
+		Title:   slug,
 	})
 	if err != nil {
 		h.log.Error("Failed to find wiki page",
-			slog.String("title", title),
+			slog.String("slug", slug),
 			slog.String("guild_id", guildID),
 			slog.String("error", err.Error()))
 		http.Error(w, "Wiki page not found", http.StatusNotFound)

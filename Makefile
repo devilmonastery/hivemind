@@ -109,6 +109,16 @@ run-server: server
 	@echo "Starting hivemind server..."
 	@$(SERVER_BIN) --config configs/dev-server.yaml
 
+## force-migration: Force database migration to a specific version (use VERSION=6)
+force-migration: server
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION not specified"; \
+		echo "Usage: make force-migration VERSION=6"; \
+		exit 1; \
+	fi
+	@echo "Forcing migration to version $(VERSION)..."
+	@$(SERVER_BIN) --config configs/dev-server.yaml --force-migration $(VERSION)
+
 ## run-cli: Build and run the CLI
 run-cli: cli
 	@echo "Starting hivemind CLI..."
