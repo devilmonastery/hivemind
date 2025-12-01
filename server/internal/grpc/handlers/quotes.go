@@ -100,6 +100,35 @@ func (h *QuoteHandler) DeleteQuote(ctx context.Context, req *quotespb.DeleteQuot
 	return &commonpb.SuccessResponse{Success: true}, nil
 }
 
+// UpdateQuote updates a quote's body and tags
+func (h *QuoteHandler) UpdateQuote(ctx context.Context, req *quotespb.UpdateQuoteRequest) (*quotespb.Quote, error) {
+	user, err := interceptors.GetUserFromContext(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "user context not found")
+	}
+
+	// Get existing quote to verify ownership
+	existing, err := h.quoteService.GetQuote(ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "quote not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get quote: %v", err)
+	}
+
+	if existing.AuthorID != user.UserID {
+		return nil, status.Error(codes.PermissionDenied, "you can only edit quotes you saved")
+	}
+
+	// Update the quote
+	updated, err := h.quoteService.UpdateQuote(ctx, req.Id, req.Body, req.Tags)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update quote: %v", err)
+	}
+
+	return quoteToProto(updated), nil
+}
+
 // ListQuotes lists quotes in a guild
 func (h *QuoteHandler) ListQuotes(ctx context.Context, req *quotespb.ListQuotesRequest) (*quotespb.ListQuotesResponse, error) {
 	_, err := interceptors.GetUserFromContext(ctx)

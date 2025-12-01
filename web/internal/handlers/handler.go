@@ -110,6 +110,24 @@ func (h *Handler) renderTemplate(w http.ResponseWriter, name string, data interf
 	}
 }
 
+// renderContentOnly renders just the "content" block of a template (for HTMX partial updates)
+func (h *Handler) renderContentOnly(w http.ResponseWriter, name string, data interface{}) {
+	if h.templates == nil {
+		http.Error(w, "Templates not loaded", http.StatusInternalServerError)
+		return
+	}
+	h.log.Debug("rendering content block only", slog.String("template", name))
+
+	// Execute just the "content" block, not the full page with base template
+	err := h.templates.ExecuteTemplate(w, name, "content", data)
+	if err != nil {
+		h.log.Error("content block rendering failed",
+			slog.String("template", name),
+			slog.String("error", err.Error()))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
 // isAuthError checks if a gRPC error indicates authentication failure
 func isAuthError(err error) bool {
 	if err == nil {

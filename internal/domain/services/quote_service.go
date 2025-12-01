@@ -45,6 +45,20 @@ func (s *QuoteService) DeleteQuote(ctx context.Context, id string) error {
 	return nil
 }
 
+// UpdateQuote updates a quote's body and tags
+func (s *QuoteService) UpdateQuote(ctx context.Context, id, body string, tags []string) (*entities.Quote, error) {
+	if err := s.quoteRepo.Update(ctx, id, body, tags); err != nil {
+		return nil, fmt.Errorf("failed to update quote: %w", err)
+	}
+
+	// Fetch and return the updated quote
+	quote, err := s.quoteRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updated quote: %w", err)
+	}
+	return quote, nil
+}
+
 // ListQuotes lists quotes in a guild
 func (s *QuoteService) ListQuotes(ctx context.Context, guildID, authorDiscordID string, tags []string, limit, offset int, orderBy string, ascending bool) ([]*entities.Quote, int, error) {
 	quotes, total, err := s.quoteRepo.List(ctx, guildID, authorDiscordID, tags, limit, offset, orderBy, ascending)

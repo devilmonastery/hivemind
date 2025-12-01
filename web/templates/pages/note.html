@@ -11,7 +11,7 @@ Note - Hivemind
 {{end}}
 
 {{define "content"}}
-<div class="max-w-4xl mx-auto">
+<div id="note-content" class="max-w-4xl mx-auto">
   <!-- Back Link -->
   <div class="mb-4">
     <a href="/notes" class="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1">
@@ -20,35 +20,45 @@ Note - Hivemind
   </div>
 
   <!-- Note Header -->
-  <div class="mb-6">
-    {{if .Note.Title}}
-    <h1 class="text-3xl font-bold text-cyan-400 mb-2">{{.Note.Title}}</h1>
-    {{else}}
-    <h1 class="text-3xl font-bold text-gray-500 italic mb-2">(untitled)</h1>
-    {{end}}
-    
-    <div class="flex items-center gap-4 text-sm text-gray-400">
-      <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded uppercase font-semibold">Private</span>
-      <span>Created {{formatDate .Note.CreatedAt}}</span>
-      {{if ne .Note.CreatedAt .Note.UpdatedAt}}
-      <span>•</span>
-      <span>Updated {{formatDate .Note.UpdatedAt}}</span>
+  <div class="mb-6 flex items-start justify-between">
+    <div class="flex-1">
+      {{if .Note.Title}}
+      <h1 class="text-3xl font-bold text-cyan-400 mb-2">{{.Note.Title}}</h1>
+      {{else}}
+      <h1 class="text-3xl font-bold text-gray-500 italic mb-2">(untitled)</h1>
       {{end}}
-      {{if .Note.GuildName}}
-      <span>•</span>
-      <a href="https://discord.com/channels/{{.Note.GuildId}}" target="_blank" class="text-cyan-400 hover:text-cyan-300 hover:underline">
-        {{.Note.GuildName}}
-      </a>
+      
+      <div class="flex items-center gap-4 text-sm text-gray-400">
+        <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded uppercase font-semibold">Private</span>
+        <span>Created {{formatDate .Note.CreatedAt}}</span>
+        {{if ne .Note.CreatedAt .Note.UpdatedAt}}
+        <span>•</span>
+        <span>Updated {{formatDate .Note.UpdatedAt}}</span>
+        {{end}}
+        {{if .Note.GuildName}}
+        <span>•</span>
+        <a href="https://discord.com/channels/{{.Note.GuildId}}" target="_blank" class="text-cyan-400 hover:text-cyan-300 hover:underline">
+          {{.Note.GuildName}}
+        </a>
+        {{end}}
+      </div>
+      
+      {{if .Note.Tags}}
+      <div class="mt-2 flex flex-wrap gap-2">
+        {{range .Note.Tags}}
+        <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded">#{{.}}</span>
+        {{end}}
+      </div>
       {{end}}
     </div>
-    
-    {{if .Note.Tags}}
-    <div class="mt-2 flex flex-wrap gap-2">
-      {{range .Note.Tags}}
-      <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded">#{{.}}</span>
-      {{end}}
-    </div>
-    {{end}}
+    <button 
+      class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded transition-colors"
+      hx-get="/note/edit?id={{.Note.Id}}"
+      hx-target="#note-content"
+      hx-swap="innerHTML"
+    >
+      Edit
+    </button>
   </div>
 
   <!-- Note Body -->

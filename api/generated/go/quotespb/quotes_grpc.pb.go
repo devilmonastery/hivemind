@@ -24,6 +24,7 @@ const (
 	QuoteService_GetQuote_FullMethodName       = "/hivemind.quotes.QuoteService/GetQuote"
 	QuoteService_ListQuotes_FullMethodName     = "/hivemind.quotes.QuoteService/ListQuotes"
 	QuoteService_DeleteQuote_FullMethodName    = "/hivemind.quotes.QuoteService/DeleteQuote"
+	QuoteService_UpdateQuote_FullMethodName    = "/hivemind.quotes.QuoteService/UpdateQuote"
 	QuoteService_SearchQuotes_FullMethodName   = "/hivemind.quotes.QuoteService/SearchQuotes"
 	QuoteService_GetRandomQuote_FullMethodName = "/hivemind.quotes.QuoteService/GetRandomQuote"
 )
@@ -42,6 +43,8 @@ type QuoteServiceClient interface {
 	ListQuotes(ctx context.Context, in *ListQuotesRequest, opts ...grpc.CallOption) (*ListQuotesResponse, error)
 	// DeleteQuote soft-deletes a quote (must be owned by caller or guild admin)
 	DeleteQuote(ctx context.Context, in *DeleteQuoteRequest, opts ...grpc.CallOption) (*commonpb.SuccessResponse, error)
+	// UpdateQuote updates an existing quote (must be owned by caller)
+	UpdateQuote(ctx context.Context, in *UpdateQuoteRequest, opts ...grpc.CallOption) (*Quote, error)
 	// SearchQuotes searches quotes by full-text query
 	SearchQuotes(ctx context.Context, in *SearchQuotesRequest, opts ...grpc.CallOption) (*SearchQuotesResponse, error)
 	// GetRandomQuote retrieves a random quote from a guild
@@ -96,6 +99,16 @@ func (c *quoteServiceClient) DeleteQuote(ctx context.Context, in *DeleteQuoteReq
 	return out, nil
 }
 
+func (c *quoteServiceClient) UpdateQuote(ctx context.Context, in *UpdateQuoteRequest, opts ...grpc.CallOption) (*Quote, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Quote)
+	err := c.cc.Invoke(ctx, QuoteService_UpdateQuote_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *quoteServiceClient) SearchQuotes(ctx context.Context, in *SearchQuotesRequest, opts ...grpc.CallOption) (*SearchQuotesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SearchQuotesResponse)
@@ -130,6 +143,8 @@ type QuoteServiceServer interface {
 	ListQuotes(context.Context, *ListQuotesRequest) (*ListQuotesResponse, error)
 	// DeleteQuote soft-deletes a quote (must be owned by caller or guild admin)
 	DeleteQuote(context.Context, *DeleteQuoteRequest) (*commonpb.SuccessResponse, error)
+	// UpdateQuote updates an existing quote (must be owned by caller)
+	UpdateQuote(context.Context, *UpdateQuoteRequest) (*Quote, error)
 	// SearchQuotes searches quotes by full-text query
 	SearchQuotes(context.Context, *SearchQuotesRequest) (*SearchQuotesResponse, error)
 	// GetRandomQuote retrieves a random quote from a guild
@@ -154,6 +169,9 @@ func (UnimplementedQuoteServiceServer) ListQuotes(context.Context, *ListQuotesRe
 }
 func (UnimplementedQuoteServiceServer) DeleteQuote(context.Context, *DeleteQuoteRequest) (*commonpb.SuccessResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteQuote not implemented")
+}
+func (UnimplementedQuoteServiceServer) UpdateQuote(context.Context, *UpdateQuoteRequest) (*Quote, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateQuote not implemented")
 }
 func (UnimplementedQuoteServiceServer) SearchQuotes(context.Context, *SearchQuotesRequest) (*SearchQuotesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchQuotes not implemented")
@@ -253,6 +271,24 @@ func _QuoteService_DeleteQuote_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _QuoteService_UpdateQuote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateQuoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QuoteServiceServer).UpdateQuote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: QuoteService_UpdateQuote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QuoteServiceServer).UpdateQuote(ctx, req.(*UpdateQuoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _QuoteService_SearchQuotes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SearchQuotesRequest)
 	if err := dec(in); err != nil {
@@ -311,6 +347,10 @@ var QuoteService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteQuote",
 			Handler:    _QuoteService_DeleteQuote_Handler,
+		},
+		{
+			MethodName: "UpdateQuote",
+			Handler:    _QuoteService_UpdateQuote_Handler,
 		},
 		{
 			MethodName: "SearchQuotes",

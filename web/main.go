@@ -184,9 +184,16 @@ func createRouter(h *handlers.Handler, authMw *middleware.AuthMiddleware) http.H
 	// Notes routes (auth required)
 	router.Handle("/notes", authMw.RequireAuth(http.HandlerFunc(h.NotesListPage))).Methods("GET")
 	router.Handle("/note", authMw.RequireAuth(http.HandlerFunc(h.NotePage))).Methods("GET")
+	router.Handle("/note/edit", authMw.RequireAuth(http.HandlerFunc(h.NoteEdit))).Methods("GET")
+	router.Handle("/note/preview", authMw.RequireAuth(http.HandlerFunc(h.NotePreview))).Methods("POST")
+	router.Handle("/note/save", authMw.RequireAuth(http.HandlerFunc(h.NoteSave))).Methods("POST")
 
 	// Quotes routes (auth required)
 	router.Handle("/quotes", authMw.RequireAuth(http.HandlerFunc(h.QuotesListPage))).Methods("GET")
+	router.Handle("/quote", authMw.RequireAuth(http.HandlerFunc(h.QuotePage))).Methods("GET")
+	router.Handle("/quote/edit", authMw.RequireAuth(http.HandlerFunc(h.QuoteEdit))).Methods("GET")
+	router.Handle("/quote/preview", authMw.RequireAuth(http.HandlerFunc(h.QuotePreview))).Methods("POST")
+	router.Handle("/quote/save", authMw.RequireAuth(http.HandlerFunc(h.QuoteSave))).Methods("POST")
 
 	// Wrap router with logging middleware
 	return middleware.LogRequest(router)

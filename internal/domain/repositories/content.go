@@ -96,6 +96,9 @@ type QuoteRepository interface {
 	// Delete soft-deletes a quote
 	Delete(ctx context.Context, id string) error
 
+	// Update updates a quote's body and tags
+	Update(ctx context.Context, id, body string, tags []string) error
+
 	// List lists quotes in a guild with pagination
 	List(ctx context.Context, guildID string, authorDiscordID string, tags []string, limit, offset int, orderBy string, ascending bool) ([]*entities.Quote, int, error)
 
