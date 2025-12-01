@@ -509,6 +509,66 @@ func (x *DeleteQuoteRequest) GetId() string {
 	return ""
 }
 
+type UpdateQuoteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Body          string                 `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
+	Tags          []string               `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateQuoteRequest) Reset() {
+	*x = UpdateQuoteRequest{}
+	mi := &file_quotes_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateQuoteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateQuoteRequest) ProtoMessage() {}
+
+func (x *UpdateQuoteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotes_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateQuoteRequest.ProtoReflect.Descriptor instead.
+func (*UpdateQuoteRequest) Descriptor() ([]byte, []int) {
+	return file_quotes_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *UpdateQuoteRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateQuoteRequest) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *UpdateQuoteRequest) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 type SearchQuotesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	GuildId       string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
@@ -522,7 +582,7 @@ type SearchQuotesRequest struct {
 
 func (x *SearchQuotesRequest) Reset() {
 	*x = SearchQuotesRequest{}
-	mi := &file_quotes_proto_msgTypes[6]
+	mi := &file_quotes_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -534,7 +594,7 @@ func (x *SearchQuotesRequest) String() string {
 func (*SearchQuotesRequest) ProtoMessage() {}
 
 func (x *SearchQuotesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotes_proto_msgTypes[6]
+	mi := &file_quotes_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -547,7 +607,7 @@ func (x *SearchQuotesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchQuotesRequest.ProtoReflect.Descriptor instead.
 func (*SearchQuotesRequest) Descriptor() ([]byte, []int) {
-	return file_quotes_proto_rawDescGZIP(), []int{6}
+	return file_quotes_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SearchQuotesRequest) GetGuildId() string {
@@ -595,7 +655,7 @@ type SearchQuotesResponse struct {
 
 func (x *SearchQuotesResponse) Reset() {
 	*x = SearchQuotesResponse{}
-	mi := &file_quotes_proto_msgTypes[7]
+	mi := &file_quotes_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -607,7 +667,7 @@ func (x *SearchQuotesResponse) String() string {
 func (*SearchQuotesResponse) ProtoMessage() {}
 
 func (x *SearchQuotesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotes_proto_msgTypes[7]
+	mi := &file_quotes_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -620,7 +680,7 @@ func (x *SearchQuotesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchQuotesResponse.ProtoReflect.Descriptor instead.
 func (*SearchQuotesResponse) Descriptor() ([]byte, []int) {
-	return file_quotes_proto_rawDescGZIP(), []int{7}
+	return file_quotes_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SearchQuotesResponse) GetQuotes() []*Quote {
@@ -647,7 +707,7 @@ type GetRandomQuoteRequest struct {
 
 func (x *GetRandomQuoteRequest) Reset() {
 	*x = GetRandomQuoteRequest{}
-	mi := &file_quotes_proto_msgTypes[8]
+	mi := &file_quotes_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -659,7 +719,7 @@ func (x *GetRandomQuoteRequest) String() string {
 func (*GetRandomQuoteRequest) ProtoMessage() {}
 
 func (x *GetRandomQuoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotes_proto_msgTypes[8]
+	mi := &file_quotes_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -672,7 +732,7 @@ func (x *GetRandomQuoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRandomQuoteRequest.ProtoReflect.Descriptor instead.
 func (*GetRandomQuoteRequest) Descriptor() ([]byte, []int) {
-	return file_quotes_proto_rawDescGZIP(), []int{8}
+	return file_quotes_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetRandomQuoteRequest) GetGuildId() string {
@@ -735,7 +795,11 @@ const file_quotes_proto_rawDesc = "" +
 	"\x06quotes\x18\x01 \x03(\v2\x16.hivemind.quotes.QuoteR\x06quotes\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\"$\n" +
 	"\x12DeleteQuoteRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x88\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"L\n" +
+	"\x12UpdateQuoteRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04body\x18\x02 \x01(\tR\x04body\x12\x12\n" +
+	"\x04tags\x18\x03 \x03(\tR\x04tags\"\x88\x01\n" +
 	"\x13SearchQuotesRequest\x12\x19\n" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12\x12\n" +
@@ -747,13 +811,14 @@ const file_quotes_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\"F\n" +
 	"\x15GetRandomQuoteRequest\x12\x19\n" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x12\n" +
-	"\x04tags\x18\x02 \x03(\tR\x04tags2\xff\x03\n" +
+	"\x04tags\x18\x02 \x03(\tR\x04tags2\xcb\x04\n" +
 	"\fQuoteService\x12J\n" +
 	"\vCreateQuote\x12#.hivemind.quotes.CreateQuoteRequest\x1a\x16.hivemind.quotes.Quote\x12D\n" +
 	"\bGetQuote\x12 .hivemind.quotes.GetQuoteRequest\x1a\x16.hivemind.quotes.Quote\x12U\n" +
 	"\n" +
 	"ListQuotes\x12\".hivemind.quotes.ListQuotesRequest\x1a#.hivemind.quotes.ListQuotesResponse\x12W\n" +
-	"\vDeleteQuote\x12#.hivemind.quotes.DeleteQuoteRequest\x1a#.hivemind.common.v1.SuccessResponse\x12[\n" +
+	"\vDeleteQuote\x12#.hivemind.quotes.DeleteQuoteRequest\x1a#.hivemind.common.v1.SuccessResponse\x12J\n" +
+	"\vUpdateQuote\x12#.hivemind.quotes.UpdateQuoteRequest\x1a\x16.hivemind.quotes.Quote\x12[\n" +
 	"\fSearchQuotes\x12$.hivemind.quotes.SearchQuotesRequest\x1a%.hivemind.quotes.SearchQuotesResponse\x12P\n" +
 	"\x0eGetRandomQuote\x12&.hivemind.quotes.GetRandomQuoteRequest\x1a\x16.hivemind.quotes.QuoteB>Z<github.com/devilmonastery/hivemind/api/generated/go/quotespbb\x06proto3"
 
@@ -769,7 +834,7 @@ func file_quotes_proto_rawDescGZIP() []byte {
 	return file_quotes_proto_rawDescData
 }
 
-var file_quotes_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_quotes_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_quotes_proto_goTypes = []any{
 	(*Quote)(nil),                    // 0: hivemind.quotes.Quote
 	(*CreateQuoteRequest)(nil),       // 1: hivemind.quotes.CreateQuoteRequest
@@ -777,30 +842,33 @@ var file_quotes_proto_goTypes = []any{
 	(*ListQuotesRequest)(nil),        // 3: hivemind.quotes.ListQuotesRequest
 	(*ListQuotesResponse)(nil),       // 4: hivemind.quotes.ListQuotesResponse
 	(*DeleteQuoteRequest)(nil),       // 5: hivemind.quotes.DeleteQuoteRequest
-	(*SearchQuotesRequest)(nil),      // 6: hivemind.quotes.SearchQuotesRequest
-	(*SearchQuotesResponse)(nil),     // 7: hivemind.quotes.SearchQuotesResponse
-	(*GetRandomQuoteRequest)(nil),    // 8: hivemind.quotes.GetRandomQuoteRequest
-	(*timestamppb.Timestamp)(nil),    // 9: google.protobuf.Timestamp
-	(*commonpb.SuccessResponse)(nil), // 10: hivemind.common.v1.SuccessResponse
+	(*UpdateQuoteRequest)(nil),       // 6: hivemind.quotes.UpdateQuoteRequest
+	(*SearchQuotesRequest)(nil),      // 7: hivemind.quotes.SearchQuotesRequest
+	(*SearchQuotesResponse)(nil),     // 8: hivemind.quotes.SearchQuotesResponse
+	(*GetRandomQuoteRequest)(nil),    // 9: hivemind.quotes.GetRandomQuoteRequest
+	(*timestamppb.Timestamp)(nil),    // 10: google.protobuf.Timestamp
+	(*commonpb.SuccessResponse)(nil), // 11: hivemind.common.v1.SuccessResponse
 }
 var file_quotes_proto_depIdxs = []int32{
-	9,  // 0: hivemind.quotes.Quote.created_at:type_name -> google.protobuf.Timestamp
+	10, // 0: hivemind.quotes.Quote.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 1: hivemind.quotes.ListQuotesResponse.quotes:type_name -> hivemind.quotes.Quote
 	0,  // 2: hivemind.quotes.SearchQuotesResponse.quotes:type_name -> hivemind.quotes.Quote
 	1,  // 3: hivemind.quotes.QuoteService.CreateQuote:input_type -> hivemind.quotes.CreateQuoteRequest
 	2,  // 4: hivemind.quotes.QuoteService.GetQuote:input_type -> hivemind.quotes.GetQuoteRequest
 	3,  // 5: hivemind.quotes.QuoteService.ListQuotes:input_type -> hivemind.quotes.ListQuotesRequest
 	5,  // 6: hivemind.quotes.QuoteService.DeleteQuote:input_type -> hivemind.quotes.DeleteQuoteRequest
-	6,  // 7: hivemind.quotes.QuoteService.SearchQuotes:input_type -> hivemind.quotes.SearchQuotesRequest
-	8,  // 8: hivemind.quotes.QuoteService.GetRandomQuote:input_type -> hivemind.quotes.GetRandomQuoteRequest
-	0,  // 9: hivemind.quotes.QuoteService.CreateQuote:output_type -> hivemind.quotes.Quote
-	0,  // 10: hivemind.quotes.QuoteService.GetQuote:output_type -> hivemind.quotes.Quote
-	4,  // 11: hivemind.quotes.QuoteService.ListQuotes:output_type -> hivemind.quotes.ListQuotesResponse
-	10, // 12: hivemind.quotes.QuoteService.DeleteQuote:output_type -> hivemind.common.v1.SuccessResponse
-	7,  // 13: hivemind.quotes.QuoteService.SearchQuotes:output_type -> hivemind.quotes.SearchQuotesResponse
-	0,  // 14: hivemind.quotes.QuoteService.GetRandomQuote:output_type -> hivemind.quotes.Quote
-	9,  // [9:15] is the sub-list for method output_type
-	3,  // [3:9] is the sub-list for method input_type
+	6,  // 7: hivemind.quotes.QuoteService.UpdateQuote:input_type -> hivemind.quotes.UpdateQuoteRequest
+	7,  // 8: hivemind.quotes.QuoteService.SearchQuotes:input_type -> hivemind.quotes.SearchQuotesRequest
+	9,  // 9: hivemind.quotes.QuoteService.GetRandomQuote:input_type -> hivemind.quotes.GetRandomQuoteRequest
+	0,  // 10: hivemind.quotes.QuoteService.CreateQuote:output_type -> hivemind.quotes.Quote
+	0,  // 11: hivemind.quotes.QuoteService.GetQuote:output_type -> hivemind.quotes.Quote
+	4,  // 12: hivemind.quotes.QuoteService.ListQuotes:output_type -> hivemind.quotes.ListQuotesResponse
+	11, // 13: hivemind.quotes.QuoteService.DeleteQuote:output_type -> hivemind.common.v1.SuccessResponse
+	0,  // 14: hivemind.quotes.QuoteService.UpdateQuote:output_type -> hivemind.quotes.Quote
+	8,  // 15: hivemind.quotes.QuoteService.SearchQuotes:output_type -> hivemind.quotes.SearchQuotesResponse
+	0,  // 16: hivemind.quotes.QuoteService.GetRandomQuote:output_type -> hivemind.quotes.Quote
+	10, // [10:17] is the sub-list for method output_type
+	3,  // [3:10] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -817,7 +885,7 @@ func file_quotes_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotes_proto_rawDesc), len(file_quotes_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

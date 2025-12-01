@@ -16,7 +16,7 @@
   {{if .Quotes}}
   <div class="space-y-4">
     {{range .Quotes}}
-    <div class="border-2 border-hive-metal rounded-lg p-6 bg-hive-surface hover:border-cyan-500 transition-colors">
+    <a href="/quote?id={{.Id}}" class="block border-2 border-hive-metal rounded-lg p-6 bg-hive-surface hover:border-cyan-500 transition-colors">
       <div class="flex items-start gap-4">
         <!-- Quote Mark -->
         <div class="text-6xl text-cyan-400/20 leading-none">"</div>
@@ -45,19 +45,6 @@
             <span>•</span>
             <span class="text-gray-500">added by {{.AuthorUsername}}</span>
             {{end}}
-            
-            {{if and .SourceMsgId .SourceChannelId .GuildId}}
-            <span>•</span>
-            <a href="https://discord.com/channels/{{.GuildId}}/{{.SourceChannelId}}/{{.SourceMsgId}}" 
-               target="_blank" 
-               rel="noopener noreferrer"
-               class="text-neon-cyan hover:text-neon-magenta transition-colors flex items-center gap-1">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-              </svg>
-              original message
-            </a>
-            {{end}}
           </div>
 
           <!-- Tags -->
@@ -70,7 +57,7 @@
           {{end}}
         </div>
       </div>
-    </div>
+    </a>
     {{end}}
   </div>
 

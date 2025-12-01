@@ -21,6 +21,9 @@ service QuoteService {
   // DeleteQuote soft-deletes a quote (must be owned by caller or guild admin)
   rpc DeleteQuote(DeleteQuoteRequest) returns (hivemind.common.v1.SuccessResponse);
 
+  // UpdateQuote updates an existing quote (must be owned by caller)
+  rpc UpdateQuote(UpdateQuoteRequest) returns (Quote);
+
   // SearchQuotes searches quotes by full-text query
   rpc SearchQuotes(SearchQuotesRequest) returns (SearchQuotesResponse);
 
@@ -89,6 +92,12 @@ message ListQuotesResponse {
 
 message DeleteQuoteRequest {
   string id = 1;
+}
+
+message UpdateQuoteRequest {
+  string id = 1;
+  string body = 2;
+  repeated string tags = 3;
 }
 
 message SearchQuotesRequest {

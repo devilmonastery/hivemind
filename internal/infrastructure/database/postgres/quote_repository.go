@@ -104,6 +104,28 @@ func (r *quoteRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r *quoteRepository) Update(ctx context.Context, id, body string, tags []string) error {
+	query := `
+		UPDATE quotes
+		SET body = $2, tags = $3
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+	result, err := r.db.ExecContext(ctx, query, id, body, pq.Array(tags))
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("quote not found: %s", id)
+	}
+
+	return nil
+}
+
 func (r *quoteRepository) List(ctx context.Context, guildID string, authorDiscordID string, tags []string, limit, offset int, orderBy string, ascending bool) ([]*entities.Quote, int, error) {
 	if limit <= 0 {
 		limit = 50

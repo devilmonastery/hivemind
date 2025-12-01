@@ -1,0 +1,89 @@
+{{define "quote"}}
+{{template "base" .}}
+{{end}}
+
+{{define "title"}}Quote - Hivemind{{end}}
+
+{{define "content"}}
+<div id="quote-content" class="max-w-4xl mx-auto">
+  <!-- Back Link -->
+  <div class="mb-4">
+    <a href="/quotes" class="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1">
+      ← Back to Quotes
+    </a>
+  </div>
+
+  <!-- Edit Button (Top Right) -->
+  <div class="flex justify-end mb-6">
+    <button 
+      class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded transition-colors"
+      hx-get="/quote/edit?id={{.Quote.Id}}"
+      hx-target="#quote-content"
+      hx-swap="innerHTML"
+    >
+      Edit
+    </button>
+  </div>
+
+  <!-- Quote Body -->
+  <div class="border-2 border-hive-metal rounded-lg p-8 bg-hive-surface">
+    <div class="flex items-start gap-6 mb-6">
+      <!-- Quote Mark -->
+      <div class="text-8xl text-cyan-400/20 leading-none">"</div>
+      
+      <div class="flex-1">
+        <div class="text-xl text-gray-200 italic prose prose-invert prose-cyan max-w-none">
+          {{renderMarkdown .Quote.Body}}
+        </div>
+      </div>
+    </div>
+
+    <!-- Attribution -->
+    <div class="flex items-center justify-end gap-4 mt-6 pt-6 border-t border-hive-metal">
+      {{if .Quote.SourceMsgAuthorUsername}}
+      <div class="text-right">
+        <div class="text-cyan-400 font-semibold text-lg">— {{.Quote.SourceMsgAuthorUsername}}</div>
+        <div class="text-gray-500 text-sm">
+          {{formatDate .Quote.CreatedAt}}
+          {{if .Quote.GuildName}}
+          <span class="mx-2">•</span>
+          <span>{{.Quote.GuildName}}</span>
+          {{end}}
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+
+  <!-- Metadata Footer -->
+  <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-4 text-sm text-gray-400">
+      {{if .Quote.AuthorUsername}}
+      <span class="text-gray-500">added by {{.Quote.AuthorUsername}}</span>
+      {{end}}
+      
+      {{if and .Quote.SourceMsgId .Quote.SourceChannelId .Quote.GuildId}}
+      <span>•</span>
+      <a href="https://discord.com/channels/{{.Quote.GuildId}}/{{.Quote.SourceChannelId}}/{{.Quote.SourceMsgId}}" 
+         target="_blank" 
+         rel="noopener noreferrer"
+         class="text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+        </svg>
+        View original message in Discord
+      </a>
+      {{end}}
+    </div>
+
+    <!-- Tags -->
+    {{if .Quote.Tags}}
+    <div class="flex flex-wrap gap-2">
+      {{range .Quote.Tags}}
+      <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded">#{{.}}</span>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}
