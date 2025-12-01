@@ -571,7 +571,7 @@ func handleWikiMerge(s *discordgo.Session, i *discordgo.InteractionCreate, subco
 	}
 
 	// Perform merge
-	merged, err := wikiClient.MergeWikiPages(ctx, &wikipb.MergeWikiPagesRequest{
+	mergedPage, err := wikiClient.MergeWikiPages(ctx, &wikipb.MergeWikiPagesRequest{
 		SourcePageId: sourceResp.Id,
 		TargetPageId: targetResp.Id,
 	})
@@ -586,16 +586,20 @@ func handleWikiMerge(s *discordgo.Session, i *discordgo.InteractionCreate, subco
 		return
 	}
 
-	// Build web URL
-	webURL := mustBuildWikiURL(getWebBaseURL(cfg), i.GuildID, merged.Slug)
+	// Fetch message references for the merged page
+	refs := fetchWikiMessageReferences(ctx, wikiClient, mergedPage.Id, log)
 
-	// Send success response
+	// Show standard wiki embed with success header
+	embed, components := showWikiDetailEmbed(s, mergedPage, refs, cfg, "", false)
+	embed.Title = fmt.Sprintf("✅ Successfully merged **%s** into **%s**\n\n%s",
+		sourceResp.Title,
+		mergedPage.Title,
+		embed.Title)
+
+	// Send success response with embed and buttons
 	_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-		Content: ptrString(fmt.Sprintf("✅ Successfully merged **%s** into **%s**\n\nView merged page: %s",
-			sourceResp.Title,
-			merged.Title,
-			webURL,
-		)),
+		Embeds:     &[]*discordgo.MessageEmbed{embed},
+		Components: &components,
 	})
 	if err != nil {
 		log.Error("failed to send merge confirmation", slog.String("error", err.Error()))

@@ -446,28 +446,28 @@ func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate
 	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
 	ctx := discordContextFor(i)
 
+	log.Info("handleContextWikiModal processing", "title", title, "body_len", len(body), "guild_id", i.GuildID)
+
 	// Check if a page with this title already exists
-	searchResp, err := wikiClient.SearchWikiPages(ctx, &wikipb.SearchWikiPagesRequest{
+	existingPage, err := wikiClient.GetWikiPageByTitle(ctx, &wikipb.GetWikiPageByTitleRequest{
 		GuildId: i.GuildID,
-		Query:   title,
-		Limit:   25,
+		Title:   title,
 	})
 
 	// If page exists, append to body instead of replacing
-	var existingPage *wikipb.WikiPage
-	if err == nil && searchResp.Total > 0 {
-		// Find exact title match (case-insensitive)
-		for _, p := range searchResp.Pages {
-			if strings.EqualFold(p.Title, title) {
-				existingPage = p
-				break
-			}
-		}
+	if err != nil {
+		log.Info("Page not found or error, will create new", "error", err, "title", title)
+		existingPage = nil
+	} else {
+		log.Info("Found existing page - will append", "page_id", existingPage.Id, "existing_body_len", len(existingPage.Body))
 	}
 
 	if existingPage != nil {
+		log.Info("Appending to existing page", "page_id", existingPage.Id, "old_body_len", len(existingPage.Body), "new_body_len", len(body))
 		// Append new content to existing body
+		originalBody := existingPage.Body
 		body = existingPage.Body + "\n\n" + body
+		log.Info("After append", "combined_body_len", len(body), "original_preview", originalBody[:min(50, len(originalBody))], "new_preview", body[:min(50, len(body))])
 		// Merge tags
 		tagSet := make(map[string]bool)
 		for _, t := range existingPage.Tags {
@@ -759,12 +759,19 @@ func handleContextWikiUnifiedModal(s *discordgo.Session, i *discordgo.Interactio
 			}
 
 			// Only update if content actually changed
-			if body != existingPage.Body {
+			if body != "" && body != existingPage.Body {
+				// Append new content to existing body instead of replacing
+				updatedBody := existingPage.Body
+				if updatedBody != "" {
+					updatedBody += "\n\n---\n\n" // Add spacing between sections
+				}
+				updatedBody += body
+
 				_, err = wikiClient.UpdateWikiPage(discordContextFor(i), &wikipb.UpdateWikiPageRequest{
 					Id:    pageID,
 					Title: existingPage.Title,
-					Body:  body,
-					Tags:  extractHashtags(body),
+					Body:  updatedBody,
+					Tags:  extractHashtags(updatedBody),
 				})
 				if err != nil {
 					log.Warn("Failed to update wiki page", "error", err)

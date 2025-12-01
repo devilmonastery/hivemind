@@ -138,9 +138,10 @@ func (s *NoteService) ListMessageReferences(ctx context.Context, noteID string, 
 }
 
 // AutocompleteNoteTitles returns all note titles for a user in a guild (lightweight for autocomplete)
-func (s *NoteService) AutocompleteNoteTitles(ctx context.Context, authorID, guildID string) ([]struct{ ID, Title string }, error) {
-	// Get all titles for the user in the guild (with caching)
-	titles, err := s.getNoteTitlesForUser(ctx, authorID, guildID)
+// Uses ACL filtering based on userDiscordID guild membership
+func (s *NoteService) AutocompleteNoteTitles(ctx context.Context, userDiscordID, guildID string) ([]struct{ ID, Title string }, error) {
+	// Get all titles visible to user in the guild (with ACL and caching)
+	titles, err := s.getNoteTitlesForUser(ctx, userDiscordID, guildID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get note titles: %w", err)
 	}
@@ -149,8 +150,9 @@ func (s *NoteService) AutocompleteNoteTitles(ctx context.Context, authorID, guil
 }
 
 // getNoteTitlesForUser retrieves note titles with caching
-func (s *NoteService) getNoteTitlesForUser(ctx context.Context, authorID, guildID string) ([]struct{ ID, Title string }, error) {
-	cacheKey := s.noteTitlesCacheKey(authorID, guildID)
+// Uses ACL filtering based on userDiscordID
+func (s *NoteService) getNoteTitlesForUser(ctx context.Context, userDiscordID, guildID string) ([]struct{ ID, Title string }, error) {
+	cacheKey := s.noteTitlesCacheKey(userDiscordID, guildID)
 
 	// Check cache
 	if entry, ok := s.titlesCache.Load(cacheKey); ok {
@@ -162,8 +164,8 @@ func (s *NoteService) getNoteTitlesForUser(ctx context.Context, authorID, guildI
 		s.titlesCache.Delete(cacheKey)
 	}
 
-	// Cache miss or expired, fetch from database
-	titles, err := s.noteRepo.GetTitlesForUser(ctx, authorID, guildID)
+	// Cache miss or expired, fetch from database with ACL filtering
+	titles, err := s.noteRepo.GetTitlesForUser(ctx, userDiscordID, guildID)
 	if err != nil {
 		return nil, err
 	}

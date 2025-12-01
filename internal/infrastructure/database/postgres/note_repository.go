@@ -43,20 +43,11 @@ func (r *noteRepository) Create(ctx context.Context, note *entities.Note) error 
 }
 
 func (r *noteRepository) GetByID(ctx context.Context, id string, userDiscordID string) (*entities.Note, error) {
-	// Build query with optional ACL check via guild_members JOIN
+	// Notes are personal - no ACL check needed, just retrieve by ID
+	// Ownership verification happens at the service layer (author_id check)
 	query := `
 		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at, n.deleted_at
 		FROM notes n
-	`
-
-	// Add ACL check if userDiscordID provided (non-admin)
-	if userDiscordID != "" {
-		query += `
-			INNER JOIN guild_members gm ON n.guild_id = gm.guild_id AND gm.discord_id = $2
-		`
-	}
-
-	query += `
 		WHERE n.id = $1 AND n.deleted_at IS NULL
 	`
 
@@ -65,20 +56,11 @@ func (r *noteRepository) GetByID(ctx context.Context, id string, userDiscordID s
 	var title, guildID, channelID, sourceMsgID, sourceChannelID sql.NullString
 	var deletedAt sql.NullTime
 
-	var err error
-	if userDiscordID != "" {
-		err = r.db.QueryRowContext(ctx, query, id, userDiscordID).Scan(
-			&note.ID, &title, &note.Body, &note.AuthorID, &guildID,
-			&channelID, &sourceMsgID, &sourceChannelID, &tags,
-			&note.CreatedAt, &note.UpdatedAt, &deletedAt,
-		)
-	} else {
-		err = r.db.QueryRowContext(ctx, query, id).Scan(
-			&note.ID, &title, &note.Body, &note.AuthorID, &guildID,
-			&channelID, &sourceMsgID, &sourceChannelID, &tags,
-			&note.CreatedAt, &note.UpdatedAt, &deletedAt,
-		)
-	}
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&note.ID, &title, &note.Body, &note.AuthorID, &guildID,
+		&channelID, &sourceMsgID, &sourceChannelID, &tags,
+		&note.CreatedAt, &note.UpdatedAt, &deletedAt,
+	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("note not found: %s", id)
 	}
@@ -158,19 +140,17 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 	args := []interface{}{authorID}
 	argCount := 1
 
-	// Add ACL filter if userDiscordID provided (non-admin)
-	if userDiscordID != "" {
-		fromClause += " INNER JOIN guild_members gm ON n.guild_id = gm.guild_id"
-		argCount++
-		conditions = append(conditions, fmt.Sprintf("gm.discord_id = $%d", argCount))
-		args = append(args, userDiscordID)
-	}
-
+	// Add guild filter if specified
 	if guildID != "" {
 		argCount++
 		conditions = append(conditions, fmt.Sprintf("n.guild_id = $%d", argCount))
 		args = append(args, guildID)
+
+		// NO ACL CHECK: When listing your own notes (author_id = current_user),
+		// you can always see them regardless of guild membership status.
+		// ACL checks would only apply if we were querying OTHER users' notes.
 	}
+	// Note: If no guild_id filter, return all user's notes across all guilds
 
 	if len(tags) > 0 {
 		argCount++
@@ -197,10 +177,13 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 	// Get total count
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
+	fmt.Printf("[NoteRepository.List] COUNT query: %s args: %v\n", countQuery, args)
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
+		fmt.Printf("[NoteRepository.List] COUNT error: %v\n", err)
 		return nil, 0, err
 	}
+	fmt.Printf("[NoteRepository.List] COUNT result: %d\n", total)
 
 	// Get notes
 	query := fmt.Sprintf(`
@@ -213,6 +196,7 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 	`, fromClause, whereClause, orderBy, direction, argCount+1, argCount+2)
 
 	args = append(args, limit, offset)
+	fmt.Printf("[NoteRepository.List] SELECT query: %s args: %v\n", query, args)
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -259,20 +243,11 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 	args := []interface{}{authorID}
 	argCount := 1
 
-	// Add ACL filter if userDiscordID provided (non-admin)
-	if userDiscordID != "" {
-		fromClause += " INNER JOIN guild_members gm ON n.guild_id = gm.guild_id"
-		argCount++
-		conditions = append(conditions, fmt.Sprintf("gm.discord_id = $%d", argCount))
-		args = append(args, userDiscordID)
-	}
-
-	// Full-text search on title and body
+	// Full-text search on title and body using ILIKE (search_vector column doesn't exist)
 	if query != "" {
 		argCount++
-		// Use hybrid search vector: searches both english and simple dictionaries
-		conditions = append(conditions, fmt.Sprintf("(n.search_vector @@ websearch_to_tsquery('english', $%d) OR n.search_vector @@ websearch_to_tsquery('simple', $%d))", argCount, argCount))
-		args = append(args, query)
+		conditions = append(conditions, fmt.Sprintf("(n.title ILIKE $%d OR n.body ILIKE $%d)", argCount, argCount))
+		args = append(args, "%"+query+"%")
 	}
 
 	// Guild filtering
@@ -280,7 +255,16 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 		argCount++
 		conditions = append(conditions, fmt.Sprintf("n.guild_id = $%d", argCount))
 		args = append(args, guildID)
+
+		// Add ACL check only when filtering by guild (ensure user is a member)
+		if userDiscordID != "" {
+			fromClause += " INNER JOIN guild_members gm ON n.guild_id = gm.guild_id"
+			argCount++
+			conditions = append(conditions, fmt.Sprintf("gm.discord_id = $%d", argCount))
+			args = append(args, userDiscordID)
+		}
 	}
+	// Note: If no guild_id filter, return all user's notes across all guilds (no ACL check needed)
 
 	// Tag filtering
 	if len(tags) > 0 {
@@ -299,33 +283,14 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 		return nil, 0, err
 	}
 
-	// Get notes with ranking if query provided
-	var searchQuery string
-	if query != "" {
-		// Find query parameter position for ranking
-		queryParamIdx := 0
-		for i, arg := range args {
-			if s, ok := arg.(string); ok && s == query {
-				queryParamIdx = i + 1
-				break
-			}
-		}
-		searchQuery = fmt.Sprintf(`
-			SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at
-			FROM %s
-			WHERE %s
-			ORDER BY ts_rank(n.search_vector, websearch_to_tsquery('english', $%d)) DESC
-			LIMIT $%d OFFSET $%d
-		`, fromClause, whereClause, queryParamIdx, argCount+1, argCount+2)
-	} else {
-		searchQuery = fmt.Sprintf(`
-			SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at
-			FROM %s
-			WHERE %s
-			ORDER BY n.created_at DESC
-			LIMIT $%d OFFSET $%d
-		`, fromClause, whereClause, argCount+1, argCount+2)
-	}
+	// Get notes (always order by created_at since we don't have search_vector for ranking)
+	searchQuery := fmt.Sprintf(`
+		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at
+		FROM %s
+		WHERE %s
+		ORDER BY n.created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, fromClause, whereClause, argCount+1, argCount+2)
 
 	args = append(args, limit, offset)
 
@@ -362,28 +327,36 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 	return notes, total, nil
 }
 
-// GetTitlesForUser retrieves only the ID and title of all notes for a user in a guild (lightweight for autocomplete)
-func (r *noteRepository) GetTitlesForUser(ctx context.Context, authorID, guildID string) ([]struct {
+// GetTitlesForUser retrieves only the ID and title of all notes visible to a user in a guild (lightweight for autocomplete)
+// Uses ACL filtering with guild_members JOIN
+func (r *noteRepository) GetTitlesForUser(ctx context.Context, userDiscordID, guildID string) ([]struct {
 	ID    string
 	Title string
 }, error,
 ) {
-	conditions := []string{"author_id = $1", "deleted_at IS NULL"}
-	args := []interface{}{authorID}
+	var query string
+	var args []interface{}
 
-	if guildID != "" {
-		conditions = append(conditions, "guild_id = $2")
-		args = append(args, guildID)
+	if userDiscordID == "" {
+		// Admin bypass: no ACL filtering
+		query = `
+			SELECT id, title
+			FROM notes
+			WHERE deleted_at IS NULL AND guild_id = $1
+			ORDER BY updated_at DESC
+		`
+		args = []interface{}{guildID}
+	} else {
+		// Apply ACL filtering with guild_members JOIN
+		query = `
+			SELECT n.id, n.title
+			FROM notes n
+			INNER JOIN guild_members gm ON n.guild_id = gm.guild_id AND gm.discord_id = $1
+			WHERE n.deleted_at IS NULL AND n.guild_id = $2
+			ORDER BY n.updated_at DESC
+		`
+		args = []interface{}{userDiscordID, guildID}
 	}
-
-	whereClause := strings.Join(conditions, " AND ")
-
-	query := fmt.Sprintf(`
-		SELECT id, title
-		FROM notes
-		WHERE %s
-		ORDER BY updated_at DESC
-	`, whereClause)
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {

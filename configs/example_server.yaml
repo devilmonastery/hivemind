@@ -32,6 +32,15 @@ grpc:
   # Port to listen on
   port: 9091
 
+# Logging configuration
+logging:
+  # Log level: "debug", "info", "warn", "error"
+  level: "info"
+  # Log format: "json" or "text"
+  format: "json"
+  # Output: "stdout", "stderr", or file path
+  output: "stdout"
+
 # Authentication configuration
 auth:
   # JWT token configuration

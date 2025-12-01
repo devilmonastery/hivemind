@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -55,7 +56,7 @@ func (r *DiscordUserRepository) Upsert(ctx context.Context, discordUser *entitie
 			avatar_url, linked_at, last_seen
 		) VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (discord_id) DO UPDATE SET
-			user_id = EXCLUDED.user_id,
+			user_id = COALESCE(EXCLUDED.user_id, discord_users.user_id),
 			discord_username = EXCLUDED.discord_username,
 			discord_global_name = EXCLUDED.discord_global_name,
 			avatar_url = EXCLUDED.avatar_url,
@@ -124,22 +125,34 @@ func (r *DiscordUserRepository) GetByUserID(ctx context.Context, userID string) 
 func (r *DiscordUserRepository) Update(ctx context.Context, discordUser *entities.DiscordUser) error {
 	query := `
 		UPDATE discord_users
-		SET discord_username = $2,
-		    discord_global_name = $3,
-		    avatar_url = $4,
-		    last_seen = $5
+		SET user_id = $2,
+		    discord_username = $3,
+		    discord_global_name = $4,
+		    avatar_url = $5,
+		    last_seen = $6
 		WHERE discord_id = $1
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	fmt.Printf("[DiscordUserRepository.Update] discord_id=%s user_id=%v\n",
+		discordUser.DiscordID, discordUser.UserID)
+
+	result, err := r.db.ExecContext(ctx, query,
 		discordUser.DiscordID,
+		discordUser.UserID,
 		discordUser.DiscordUsername,
 		discordUser.DiscordGlobalName,
 		discordUser.AvatarURL,
 		discordUser.LastSeen,
 	)
+	if err != nil {
+		fmt.Printf("[DiscordUserRepository.Update] ERROR: %v\n", err)
+		return err
+	}
 
-	return err
+	rows, _ := result.RowsAffected()
+	fmt.Printf("[DiscordUserRepository.Update] rows affected: %d\n", rows)
+
+	return nil
 }
 
 // UpdateLastSeen updates the last_seen timestamp for a Discord user
