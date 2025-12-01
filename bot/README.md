@@ -25,11 +25,17 @@ cp configs/example_bot.yaml configs/dev-bot.yaml
 Edit `configs/dev-bot.yaml` and fill in:
 - `bot.token`: Your bot token from step 1
 - `bot.application_id`: Your application ID (from the "General Information" tab)
+- `backend.service_token`: Service token for authenticating with the backend server
+  - Generate one using: `./bin/hivemind-server token --type service`
+- `backend.grpc_host`: Backend server host (default: localhost)
+- `backend.grpc_port`: Backend server gRPC port (default: 50051)
+- `web.base_url`: Web interface URL for generating links (optional)
 
 Or use environment variables:
 ```bash
 export DISCORD_BOT_TOKEN="your-token-here"
 export DISCORD_APPLICATION_ID="your-app-id-here"
+export BACKEND_SERVICE_TOKEN="your-service-token-here"
 ```
 
 ### 3. Invite Bot to Server
@@ -102,10 +108,29 @@ bot/
 
 ## Commands
 
-Currently available:
-- `/ping` - Test if bot is alive
+### Wiki Commands
+- `/wiki search <query>` - Search for wiki pages
+- `/wiki view <title>` - View a specific wiki page
+- `/wiki edit <title>` - Edit or create a wiki page
+- `/wiki merge <source> <target>` - Merge one wiki page into another
 
-Coming soon:
-- `/wiki` - Manage guild knowledge base
-- `/note` - Manage private notes
-- `/quote` - Save memorable quotes
+### Note Commands
+- `/note create` - Create a new note
+- `/note view <title>` - View a note by title
+- `/note search <query>` - Search your notes
+
+### Quote Commands
+- `/quote add <text>` - Add a new quote
+- `/quote random [tags]` - Get a random quote
+- `/quote search <query>` - Search quotes
+
+### Context Menu Actions
+Right-click on a message to:
+- **Save as Quote** - Save the message as a quote
+- **Add to Note** - Add message to a note
+- **Add as Wiki** - Add message to a wiki page
+- **Add Note for User** - Create a private note about a user
+- **View Note for User** - View your notes about a user
+
+### Utility Commands
+- `/ping` - Test if bot is alive
