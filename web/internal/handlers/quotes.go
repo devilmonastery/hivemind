@@ -83,7 +83,12 @@ func (h *Handler) QuotePage(w http.ResponseWriter, r *http.Request) {
 	data := h.newTemplateData(r)
 	data["Quote"] = quote
 
-	h.renderTemplate(w, "quote.html", data)
+	// Check if this is an HTMX request (e.g., from Cancel button)
+	if r.Header.Get("HX-Request") == "true" {
+		h.renderContentOnly(w, "quote_view.html", data)
+	} else {
+		h.renderTemplate(w, "quote.html", data)
+	}
 }
 
 // QuoteEdit displays the editor for an existing quote
@@ -222,5 +227,5 @@ func (h *Handler) QuoteSave(w http.ResponseWriter, r *http.Request) {
 	data := h.newTemplateData(r)
 	data["Quote"] = quote
 
-	h.renderContentOnly(w, "quote.html", data)
+	h.renderContentOnly(w, "quote_view.html", data)
 }

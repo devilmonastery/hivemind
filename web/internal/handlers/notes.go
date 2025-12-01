@@ -113,7 +113,12 @@ func (h *Handler) NotePage(w http.ResponseWriter, r *http.Request) {
 	data["Note"] = note
 	data["References"] = refsResp.GetReferences()
 
-	h.renderTemplate(w, "note.html", data)
+	// Check if this is an HTMX request (e.g., from Cancel button)
+	if r.Header.Get("HX-Request") == "true" {
+		h.renderContentOnly(w, "note_view.html", data)
+	} else {
+		h.renderTemplate(w, "note.html", data)
+	}
 }
 
 // NoteEdit displays the editor for an existing note
@@ -153,7 +158,7 @@ func (h *Handler) NoteEdit(w http.ResponseWriter, r *http.Request) {
 	data := h.newTemplateData(r)
 	data["Note"] = note
 
-	h.renderTemplate(w, "note_editor.html", data)
+	h.renderContentOnly(w, "note_editor.html", data)
 }
 
 // NotePreview renders markdown preview for the note editor
@@ -254,5 +259,5 @@ func (h *Handler) NoteSave(w http.ResponseWriter, r *http.Request) {
 	data["Note"] = note
 	data["References"] = refsResp.GetReferences()
 
-	h.renderTemplate(w, "note.html", data)
+	h.renderContentOnly(w, "note_view.html", data)
 }

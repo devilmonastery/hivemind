@@ -124,7 +124,12 @@ func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
 	data["Page"] = page
 	data["References"] = refsResp.GetReferences()
 
-	h.renderTemplate(w, "wiki_page.html", data)
+	// Check if this is an HTMX request (e.g., from Cancel button)
+	if r.Header.Get("HX-Request") == "true" {
+		h.renderContentOnly(w, "wiki_view.html", data)
+	} else {
+		h.renderTemplate(w, "wiki_page.html", data)
+	}
 }
 
 // WikiEdit displays the editor for an existing wiki page
@@ -169,7 +174,7 @@ func (h *Handler) WikiEdit(w http.ResponseWriter, r *http.Request) {
 	data := h.newTemplateData(r)
 	data["Page"] = page
 
-	h.renderTemplate(w, "wiki_editor.html", data)
+	h.renderContentOnly(w, "wiki_editor.html", data)
 }
 
 // WikiPreview renders markdown preview for the editor
@@ -289,5 +294,5 @@ func (h *Handler) WikiSave(w http.ResponseWriter, r *http.Request) {
 	data["Page"] = page
 	data["References"] = refsResp.GetReferences()
 
-	h.renderTemplate(w, "wiki_page.html", data)
+	h.renderContentOnly(w, "wiki_view.html", data)
 }

@@ -317,6 +317,12 @@ func LoadTemplates(path string) (*TemplateSet, error) {
 		return nil, fmt.Errorf("no page templates found in %s/pages", path)
 	}
 
+	// Get partial templates (HTMX content fragments)
+	partialFiles, err := filepath.Glob(filepath.Join(path, "partials", "*.html"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list partial templates: %w", err)
+	}
+
 	// Create template set
 	ts := &TemplateSet{
 		pages: make(map[string]*template.Template),
@@ -339,6 +345,25 @@ func LoadTemplates(path string) (*TemplateSet, error) {
 		}
 
 		ts.pages[pageName] = pageTemplate
+	}
+
+	// Parse each partial template (for HTMX content swaps)
+	// Partials also get base + components so they can use the same template functions
+	for _, partialFile := range partialFiles {
+		partialName := filepath.Base(partialFile)
+
+		// Build list of files: base + components + this partial ONLY
+		filesToParse := []string{baseFile}
+		filesToParse = append(filesToParse, componentFiles...)
+		filesToParse = append(filesToParse, partialFile)
+
+		// Create a completely new, isolated template for this partial
+		partialTemplate, err := template.New("base").Funcs(funcMap).ParseFiles(filesToParse...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse partial template %s: %w", partialName, err)
+		}
+
+		ts.pages[partialName] = partialTemplate
 	}
 
 	return ts, nil
