@@ -182,3 +182,25 @@ func (r *wikiTitleRepository) UpdatePageID(ctx context.Context, oldPageID, newPa
 
 	return int(rows), nil
 }
+
+func (r *wikiTitleRepository) ConvertToAlias(ctx context.Context, oldPageID, newPageID string) (int, error) {
+	// Convert canonical title to alias pointing to new page
+	// This is used during merge to redirect the old page name to the merged page
+	query := `
+		UPDATE wiki_titles
+		SET page_id = $2, is_canonical = FALSE
+		WHERE page_id = $1 AND is_canonical = TRUE
+	`
+
+	result, err := r.db.ExecContext(ctx, query, oldPageID, newPageID)
+	if err != nil {
+		return 0, err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(rows), nil
+}

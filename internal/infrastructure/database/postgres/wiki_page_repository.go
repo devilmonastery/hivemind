@@ -116,10 +116,20 @@ func (r *wikiPageRepository) GetByGuildAndSlug(ctx context.Context, guildID, pag
 		return nil, err
 	}
 
-	// Populate the Title field with the display_title for backward compatibility
+	// Populate the Title and Slug fields
+	// Always use the canonical title's slug, not the accessed alias
 	if page != nil {
-		page.Title = wikiTitle.DisplayTitle
-		page.Slug = wikiTitle.PageSlug
+		// Get the canonical title for this page
+		canonicalTitle, err := r.titleRepo.GetCanonicalTitle(ctx, page.ID)
+		if err != nil {
+			return nil, err
+		}
+		if canonicalTitle == nil {
+			return nil, fmt.Errorf("page %s has no canonical title", page.ID)
+		}
+
+		page.Title = canonicalTitle.DisplayTitle
+		page.Slug = canonicalTitle.PageSlug
 	}
 
 	return page, nil
