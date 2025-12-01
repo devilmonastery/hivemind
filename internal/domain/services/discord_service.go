@@ -47,30 +47,49 @@ func (s *DiscordService) GetOrCreateUserFromDiscord(
 	avatarURL *string,
 ) (*entities.User, error) {
 	// Try to find existing Discord user mapping
+	s.logger.Debug("GetOrCreateUserFromDiscord called",
+		slog.String("discord_id", discordID),
+		slog.String("discord_username", discordUsername))
+
 	discordUser, err := s.discordUserRepo.GetByDiscordID(ctx, discordID)
 	if err == nil {
-		// Found existing mapping - update last seen and return the Hivemind user
+		// Found existing mapping
+		s.logger.Debug("found existing discord_user record",
+			slog.String("discord_id", discordID),
+			slog.Any("user_id", discordUser.UserID))
+
 		if updateErr := s.discordUserRepo.UpdateLastSeen(ctx, discordID); updateErr != nil {
 			s.logger.Warn("failed to update last seen",
 				slog.String("discord_id", discordID),
 				slog.String("error", updateErr.Error()))
 		}
 
-		// Get the Hivemind user
-		if discordUser.UserID == nil {
-			return nil, fmt.Errorf("discord user %s has no linked Hivemind account", discordID)
-		}
-		user, getUserErr := s.userRepo.GetByID(ctx, *discordUser.UserID)
-		if getUserErr != nil {
-			return nil, fmt.Errorf("failed to get user: %w", getUserErr)
+		// If already linked to a Hivemind user, return it
+		if discordUser.UserID != nil {
+			s.logger.Debug("discord_user already linked, fetching existing user",
+				slog.String("user_id", *discordUser.UserID))
+			user, getUserErr := s.userRepo.GetByID(ctx, *discordUser.UserID)
+			if getUserErr != nil {
+				return nil, fmt.Errorf("failed to get user: %w", getUserErr)
+			}
+			s.logger.Debug("returning existing user",
+				slog.String("user_id", user.ID),
+				slog.String("display_name", user.DisplayName))
+			return user, nil
 		}
 
-		return user, nil
-	}
-
-	// If error is not "not found", return it
-	if err != repositories.ErrDiscordUserNotFound {
+		// Discord user exists but not linked - fall through to create and link Hivemind user
+		s.logger.Info("linking existing Discord user to new Hivemind account",
+			slog.String("discord_id", discordID),
+			slog.String("discord_username", discordUsername))
+	} else if err != repositories.ErrDiscordUserNotFound {
+		// If error is not "not found", return it
+		s.logger.Error("error querying discord_users",
+			slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to query discord user: %w", err)
+	} else {
+		s.logger.Debug("discord_user not found, will create new",
+			slog.String("discord_id", discordID))
 	}
 
 	// User doesn't exist - create new Hivemind user and link Discord identity
@@ -94,27 +113,63 @@ func (s *DiscordService) GetOrCreateUserFromDiscord(
 		IsActive:    true,
 	}
 
+	s.logger.Debug("creating new user",
+		slog.String("user_id", user.ID),
+		slog.String("display_name", displayName))
+
 	if err := s.userRepo.Create(ctx, user); err != nil {
+		s.logger.Error("failed to create user in database",
+			slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	// Create Discord user mapping
+	s.logger.Debug("user created successfully", slog.String("user_id", user.ID))
+
+	// Create or update Discord user mapping
 	now := time.Now()
 	userIDPtr := user.ID
-	discordUser = &entities.DiscordUser{
-		DiscordID:         discordID,
-		UserID:            &userIDPtr,
-		DiscordUsername:   discordUsername,
-		DiscordGlobalName: discordGlobalName,
-		AvatarURL:         avatarURL,
-		LinkedAt:          now,
-		LastSeen:          &now,
-	}
 
-	if err := s.discordUserRepo.Create(ctx, discordUser); err != nil {
-		// Try to clean up the user we just created
-		_ = s.userRepo.Delete(ctx, user.ID)
-		return nil, fmt.Errorf("failed to create discord user mapping: %w", err)
+	if discordUser != nil {
+		// Update existing discord_users record with the new UserID link
+		s.logger.Debug("updating existing discord_users record",
+			slog.String("discord_id", discordID),
+			slog.String("new_user_id", userIDPtr),
+			slog.Any("old_user_id", discordUser.UserID))
+
+		discordUser.UserID = &userIDPtr
+		discordUser.LastSeen = &now
+		if err := s.discordUserRepo.Update(ctx, discordUser); err != nil {
+			s.logger.Error("failed to update discord_users record",
+				slog.String("error", err.Error()))
+			// Try to clean up the user we just created
+			_ = s.userRepo.Delete(ctx, user.ID)
+			return nil, fmt.Errorf("failed to update discord user mapping: %w", err)
+		}
+		s.logger.Debug("discord_users record updated successfully")
+	} else {
+		// Create new discord_users record
+		s.logger.Debug("creating new discord_users record",
+			slog.String("discord_id", discordID),
+			slog.String("user_id", userIDPtr))
+
+		discordUser = &entities.DiscordUser{
+			DiscordID:         discordID,
+			UserID:            &userIDPtr,
+			DiscordUsername:   discordUsername,
+			DiscordGlobalName: discordGlobalName,
+			AvatarURL:         avatarURL,
+			LinkedAt:          now,
+			LastSeen:          &now,
+		}
+
+		if err := s.discordUserRepo.Create(ctx, discordUser); err != nil {
+			s.logger.Error("failed to create discord_users record",
+				slog.String("error", err.Error()))
+			// Try to clean up the user we just created
+			_ = s.userRepo.Delete(ctx, user.ID)
+			return nil, fmt.Errorf("failed to create discord user mapping: %w", err)
+		}
+		s.logger.Debug("discord_users record created successfully")
 	}
 
 	s.logger.Info("user auto-provisioned from Discord",

@@ -94,6 +94,9 @@ func (h *wikiHandler) GetWikiPageByTitle(ctx context.Context, req *wikipb.GetWik
 	if err != nil {
 		return nil, err
 	}
+	if page == nil {
+		return nil, status.Error(codes.NotFound, "wiki page not found")
+	}
 
 	return toProtoWikiPage(page, userCtx.Username), nil
 }

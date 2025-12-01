@@ -302,6 +302,11 @@ func handleNoteView(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 
 	titleQuery := subcommand.Options[0].StringValue()
 
+	log.Info("note view command",
+		"title_query", titleQuery,
+		"user_id", i.Member.User.ID,
+		"guild_id", i.GuildID)
+
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -316,23 +321,46 @@ func handleNoteView(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 	noteClient := notespb.NewNoteServiceClient(grpcClient.Conn())
 	ctx := discordContextFor(i)
 
-	// Search for notes by title
-	searchResp, err := noteClient.SearchNotes(ctx, &notespb.SearchNotesRequest{
-		Query:   titleQuery,
+	// List notes and filter by title (exact or partial match)
+	listResp, err := noteClient.ListNotes(ctx, &notespb.ListNotesRequest{
 		GuildId: i.GuildID,
-		Limit:   5,
+		Limit:   100, // Get enough notes to find matches
 	})
 	if err != nil {
-		log.Error("Failed to search notes", "error", err)
+		log.Error("Failed to list notes", "error", err)
 		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: fmt.Sprintf("❌ Failed to search notes: %v", err),
+			Content: fmt.Sprintf("❌ Failed to list notes: %v", err),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		})
 		return
 	}
 
+	log.Info("note view - list response received",
+		"total_notes", len(listResp.Notes),
+		"title_query", titleQuery)
+
+	// Filter notes by title (case-insensitive partial match)
+	var matchingNotes []*notespb.Note
+	titleLower := strings.ToLower(titleQuery)
+	for _, note := range listResp.Notes {
+		log.Info("note view - checking note",
+			"note_id", note.Id,
+			"note_title", note.Title,
+			"guild_id", note.GuildId)
+		noteTitleLower := strings.ToLower(note.Title)
+		if strings.Contains(noteTitleLower, titleLower) {
+			matchingNotes = append(matchingNotes, note)
+			if len(matchingNotes) >= 5 {
+				break // Limit to 5 matches
+			}
+		}
+	}
+
+	log.Info("note view - filtering complete",
+		"matching_notes", len(matchingNotes))
+
 	// No results
-	if len(searchResp.Notes) == 0 {
+	if len(matchingNotes) == 0 {
 		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: fmt.Sprintf("📝 No notes found matching \"%s\"", titleQuery),
 			Flags:   discordgo.MessageFlagsEphemeral,
@@ -341,8 +369,8 @@ func handleNoteView(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 	}
 
 	// If exactly one match, show it
-	if len(searchResp.Notes) == 1 {
-		note := searchResp.Notes[0]
+	if len(matchingNotes) == 1 {
+		note := matchingNotes[0]
 
 		// Fetch message references
 		refs := fetchNoteMessageReferences(ctx, noteClient, note.Id, log)
@@ -366,8 +394,8 @@ func handleNoteView(s *discordgo.Session, i *discordgo.InteractionCreate, subcom
 
 	// Multiple matches - show list to disambiguate
 	var content strings.Builder
-	content.WriteString(fmt.Sprintf("📝 Found %d notes matching \"%s\". Please be more specific:\n\n", len(searchResp.Notes), titleQuery))
-	for idx, note := range searchResp.Notes {
+	content.WriteString(fmt.Sprintf("📝 Found %d notes matching \"%s\". Please be more specific:\n\n", len(matchingNotes), titleQuery))
+	for idx, note := range matchingNotes {
 		title := note.Title
 		if title == "" {
 			title = "(untitled)"
@@ -404,13 +432,19 @@ func handleNoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, subc
 	var tags []string
 	limit := int32(25) // Increased to match Discord's dropdown limit
 
+	// Default to current guild if command is run in a guild
+	if i.GuildID != "" {
+		guildID = i.GuildID
+	}
+
 	for _, opt := range subcommand.Options {
 		switch opt.Name {
 		case "query":
 			query = opt.StringValue()
 		case "guild":
-			if opt.BoolValue() {
-				guildID = i.GuildID
+			// Allow users to override default and search across all guilds
+			if !opt.BoolValue() {
+				guildID = "" // Search all guilds
 			}
 		case "tags":
 			tagStr := opt.StringValue()

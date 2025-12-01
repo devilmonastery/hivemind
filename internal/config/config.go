@@ -10,6 +10,7 @@ type Config struct {
 	Database    DatabaseConfig `yaml:"database"`
 	GRPC        GRPCConfig     `yaml:"grpc"`
 	Auth        AuthConfig     `yaml:"auth"`
+	Logging     LoggingConfig  `yaml:"logging"`
 	Environment string         `yaml:"environment" default:"local"`       // local, dev, prod
 	VaultPath   string         `yaml:"vault_path" default:"/mnt/secrets"` // Path where Vault secrets are mounted
 }
@@ -69,6 +70,13 @@ type ProviderConfig struct {
 	AllowedUsers   []string `yaml:"allowed_users,omitempty"`         // Individual user email allowlist
 	AllowedOrgs    []string `yaml:"allowed_organizations,omitempty"` // GitHub orgs, etc.
 	AutoProvision  bool     `yaml:"auto_provision" default:"true"`   // Auto-create users on first login
+}
+
+// LoggingConfig holds logging configuration
+type LoggingConfig struct {
+	Level  string `yaml:"level" default:"info"`    // debug, info, warn, error
+	Format string `yaml:"format" default:"json"`   // text, json
+	Output string `yaml:"output" default:"stdout"` // stdout, stderr, or file path
 }
 
 // ConnectionString returns the PostgreSQL connection string

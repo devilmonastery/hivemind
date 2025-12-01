@@ -26,6 +26,20 @@ func newRunCommand() *cobra.Command {
 		Short: "Start the Discord bot",
 		Long:  `Start the Discord bot and connect to Discord API. The bot will listen for commands and interactions.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Load configuration first
+			cfg, err := config.Load(configPath)
+			if err != nil {
+				return fmt.Errorf("failed to load config: %w", err)
+			}
+
+			// Use config file logging settings if not overridden by flags
+			if !cmd.Flags().Changed("log-level") && cfg.Logging.Level != "" {
+				logLevel = cfg.Logging.Level
+			}
+			if !cmd.Flags().Changed("log-format") && cfg.Logging.Format != "" {
+				logFormat = cfg.Logging.Format
+			}
+
 			// Initialize logger
 			log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 				Level: parseLogLevel(logLevel),
@@ -34,12 +48,6 @@ func newRunCommand() *cobra.Command {
 				log = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 					Level: parseLogLevel(logLevel),
 				}))
-			}
-
-			// Load configuration
-			cfg, err := config.Load(configPath)
-			if err != nil {
-				return fmt.Errorf("failed to load config: %w", err)
 			}
 
 			// Validate required configuration

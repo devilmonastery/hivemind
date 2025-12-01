@@ -194,12 +194,15 @@ func (h *NoteHandler) DeleteNote(ctx context.Context, req *notespb.DeleteNoteReq
 
 // ListNotes lists notes for the authenticated user
 func (h *NoteHandler) ListNotes(ctx context.Context, req *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
-	user, err := interceptors.GetUserFromContext(ctx)
+	userCtx, err := interceptors.GetUserFromContext(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
-	userDiscordID := h.getUserDiscordID(ctx, user)
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
+
+	log.Printf("[NoteHandler.ListNotes] user_id=%s discord_id=%s guild_id=%s limit=%d",
+		userCtx.UserID, userDiscordID, req.GuildId, req.Limit)
 
 	limit := int(req.Limit)
 	if limit == 0 {
@@ -211,10 +214,15 @@ func (h *NoteHandler) ListNotes(ctx context.Context, req *notespb.ListNotesReque
 		orderBy = "created_at"
 	}
 
-	notes, total, err := h.noteService.ListNotes(ctx, user.UserID, req.GuildId, req.Tags, limit, int(req.Offset), orderBy, req.Ascending, userDiscordID)
+	notes, total, err := h.noteService.ListNotes(ctx, userCtx.UserID, req.GuildId, req.Tags, int(req.Limit), int(req.Offset), req.OrderBy, req.Ascending, userDiscordID)
 	if err != nil {
+		log.Printf("[NoteHandler.ListNotes] ERROR: %v author_id=%s guild_id=%s",
+			err, userCtx.UserID, req.GuildId)
 		return nil, status.Errorf(codes.Internal, "failed to list notes: %v", err)
 	}
+
+	log.Printf("[NoteHandler.ListNotes] total=%d returned=%d author_id=%s",
+		total, len(notes), userCtx.UserID)
 
 	protoNotes := make([]*notespb.Note, len(notes))
 	for i, note := range notes {
@@ -374,7 +382,10 @@ func (h *NoteHandler) AutocompleteNoteTitles(ctx context.Context, req *notespb.A
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
-	titles, err := h.noteService.AutocompleteNoteTitles(ctx, user.UserID, req.GuildId)
+	// Get Discord ID for ACL filtering
+	userDiscordID := h.getUserDiscordID(ctx, user)
+
+	titles, err := h.noteService.AutocompleteNoteTitles(ctx, userDiscordID, req.GuildId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to autocomplete note titles: %v", err)
 	}

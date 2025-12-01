@@ -59,6 +59,29 @@ func newRootCommand() *cobra.Command {
 		Short: "Hivemind gRPC server",
 		Long:  "The gRPC server for the Hivemind service",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			// Load config to get logging settings
+			if configPath != "" {
+				cfg, err := config.Load(configPath)
+				if err != nil {
+					return fmt.Errorf("failed to load config: %w", err)
+				}
+
+				// Use config file logging settings if not overridden by flags
+				if !cmd.Flags().Changed("log-level") && cfg.Logging.Level != "" {
+					logLevel = cfg.Logging.Level
+				}
+				if !cmd.Flags().Changed("log-format") && cfg.Logging.Format != "" {
+					logFormat = cfg.Logging.Format
+				}
+				// Map config output to file or stderr
+				if !cmd.Flags().Changed("log-file") && cfg.Logging.Output != "" && cfg.Logging.Output != "stdout" && cfg.Logging.Output != "stderr" {
+					logFile = cfg.Logging.Output
+				}
+				if !cmd.Flags().Changed("logtostderr") && cfg.Logging.Output == "stderr" {
+					logToStderr = true
+				}
+			}
+
 			return setupServerLogging(logLevel, logFile, logToStderr, alsoLogStderr, logFormat)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -123,6 +146,10 @@ func runServer(configPath string, forceVersion int) error {
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
+
+	// Logging was already configured in PreRunE
+	logger = slog.Default().With("component", "server")
+	logger.Info("Configuration loaded", "path", configPath)
 
 	// Debug: log loaded providers
 	logger.Info("Loaded OAuth providers", "count", len(cfg.Auth.Providers))

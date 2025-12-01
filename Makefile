@@ -147,6 +147,15 @@ endif
 db-shell:
 	@psql postgresql://postgres:postgres@hivemind_devcontainer-postgres-1:5432/hivemind
 
+## db-reset: Drop and recreate the database (WARNING: destroys all data)
+db-reset:
+	@echo "⚠️  WARNING: This will destroy all data in the database!"
+	@echo "Dropping database..."
+	@docker exec hivemind_devcontainer-postgres-1 psql -U postgres -c "DROP DATABASE IF EXISTS hivemind;"
+	@echo "Creating database..."
+	@docker exec hivemind_devcontainer-postgres-1 psql -U postgres -c "CREATE DATABASE hivemind;"
+	@echo "✅ Database reset complete. Run the server to apply migrations."
+
 ## docker-server: Build Docker image for server (loads locally)
 docker-server:
 	@echo "Building Docker image for server: $(DOCKER_REGISTRY)/hivemind-server:$(DOCKER_VERSION)"
