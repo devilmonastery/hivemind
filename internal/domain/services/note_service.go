@@ -46,8 +46,8 @@ func (s *NoteService) CreateNote(ctx context.Context, note *entities.Note) (*ent
 }
 
 // GetNote retrieves a note by ID
-func (s *NoteService) GetNote(ctx context.Context, id string) (*entities.Note, error) {
-	note, err := s.noteRepo.GetByID(ctx, id)
+func (s *NoteService) GetNote(ctx context.Context, id string, userDiscordID string) (*entities.Note, error) {
+	note, err := s.noteRepo.GetByID(ctx, id, userDiscordID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get note: %w", err)
 	}
@@ -55,7 +55,7 @@ func (s *NoteService) GetNote(ctx context.Context, id string) (*entities.Note, e
 }
 
 // UpdateNote updates an existing note
-func (s *NoteService) UpdateNote(ctx context.Context, note *entities.Note) (*entities.Note, error) {
+func (s *NoteService) UpdateNote(ctx context.Context, note *entities.Note, userDiscordID string) (*entities.Note, error) {
 	if err := s.noteRepo.Update(ctx, note); err != nil {
 		return nil, fmt.Errorf("failed to update note: %w", err)
 	}
@@ -63,13 +63,13 @@ func (s *NoteService) UpdateNote(ctx context.Context, note *entities.Note) (*ent
 	// Invalidate cache for this user+guild
 	s.invalidateNoteTitlesCache(note.AuthorID, note.GuildID)
 
-	return s.noteRepo.GetByID(ctx, note.ID)
+	return s.noteRepo.GetByID(ctx, note.ID, userDiscordID)
 }
 
 // DeleteNote soft-deletes a note
-func (s *NoteService) DeleteNote(ctx context.Context, id string) error {
+func (s *NoteService) DeleteNote(ctx context.Context, id string, userDiscordID string) error {
 	// Fetch the note to get authorID and guildID
-	note, err := s.noteRepo.GetByID(ctx, id)
+	note, err := s.noteRepo.GetByID(ctx, id, userDiscordID)
 	if err != nil {
 		return fmt.Errorf("failed to get note: %w", err)
 	}
@@ -85,8 +85,8 @@ func (s *NoteService) DeleteNote(ctx context.Context, id string) error {
 }
 
 // ListNotes lists notes for a user
-func (s *NoteService) ListNotes(ctx context.Context, authorID, guildID string, tags []string, limit, offset int, orderBy string, ascending bool) ([]*entities.Note, int, error) {
-	notes, total, err := s.noteRepo.List(ctx, authorID, guildID, tags, limit, offset, orderBy, ascending)
+func (s *NoteService) ListNotes(ctx context.Context, authorID, guildID string, tags []string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.Note, int, error) {
+	notes, total, err := s.noteRepo.List(ctx, authorID, guildID, tags, limit, offset, orderBy, ascending, userDiscordID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list notes: %w", err)
 	}
@@ -94,8 +94,8 @@ func (s *NoteService) ListNotes(ctx context.Context, authorID, guildID string, t
 }
 
 // SearchNotes searches notes by full-text query
-func (s *NoteService) SearchNotes(ctx context.Context, authorID, query, guildID string, tags []string, limit, offset int) ([]*entities.Note, int, error) {
-	notes, total, err := s.noteRepo.Search(ctx, authorID, query, guildID, tags, limit, offset)
+func (s *NoteService) SearchNotes(ctx context.Context, authorID, query, guildID string, tags []string, limit, offset int, userDiscordID string) ([]*entities.Note, int, error) {
+	notes, total, err := s.noteRepo.Search(ctx, authorID, query, guildID, tags, limit, offset, userDiscordID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to search notes: %w", err)
 	}
@@ -103,9 +103,9 @@ func (s *NoteService) SearchNotes(ctx context.Context, authorID, query, guildID 
 }
 
 // AddMessageReference adds a message reference to a note
-func (s *NoteService) AddMessageReference(ctx context.Context, ref *entities.NoteMessageReference) (*entities.NoteMessageReference, error) {
+func (s *NoteService) AddMessageReference(ctx context.Context, ref *entities.NoteMessageReference, userDiscordID string) (*entities.NoteMessageReference, error) {
 	// First verify the note exists and belongs to the user making the request
-	note, err := s.noteRepo.GetByID(ctx, ref.NoteID)
+	note, err := s.noteRepo.GetByID(ctx, ref.NoteID, userDiscordID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get note: %w", err)
 	}
@@ -120,9 +120,9 @@ func (s *NoteService) AddMessageReference(ctx context.Context, ref *entities.Not
 }
 
 // ListMessageReferences retrieves all message references for a note
-func (s *NoteService) ListMessageReferences(ctx context.Context, noteID string) ([]*entities.NoteMessageReference, error) {
+func (s *NoteService) ListMessageReferences(ctx context.Context, noteID string, userDiscordID string) ([]*entities.NoteMessageReference, error) {
 	// First verify the note exists and belongs to the user making the request
-	note, err := s.noteRepo.GetByID(ctx, noteID)
+	note, err := s.noteRepo.GetByID(ctx, noteID, userDiscordID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get note: %w", err)
 	}

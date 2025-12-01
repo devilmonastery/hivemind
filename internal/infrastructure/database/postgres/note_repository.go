@@ -42,22 +42,43 @@ func (r *noteRepository) Create(ctx context.Context, note *entities.Note) error 
 	return err
 }
 
-func (r *noteRepository) GetByID(ctx context.Context, id string) (*entities.Note, error) {
+func (r *noteRepository) GetByID(ctx context.Context, id string, userDiscordID string) (*entities.Note, error) {
+	// Build query with optional ACL check via guild_members JOIN
 	query := `
-		SELECT id, title, body, author_id, guild_id, channel_id, source_msg_id, source_channel_id, tags, created_at, updated_at, deleted_at
-		FROM notes
-		WHERE id = $1 AND deleted_at IS NULL
+		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at, n.deleted_at
+		FROM notes n
 	`
+
+	// Add ACL check if userDiscordID provided (non-admin)
+	if userDiscordID != "" {
+		query += `
+			INNER JOIN guild_members gm ON n.guild_id = gm.guild_id AND gm.discord_id = $2
+		`
+	}
+
+	query += `
+		WHERE n.id = $1 AND n.deleted_at IS NULL
+	`
+
 	note := &entities.Note{}
 	var tags pq.StringArray
 	var title, guildID, channelID, sourceMsgID, sourceChannelID sql.NullString
 	var deletedAt sql.NullTime
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&note.ID, &title, &note.Body, &note.AuthorID, &guildID,
-		&channelID, &sourceMsgID, &sourceChannelID, &tags,
-		&note.CreatedAt, &note.UpdatedAt, &deletedAt,
-	)
+	var err error
+	if userDiscordID != "" {
+		err = r.db.QueryRowContext(ctx, query, id, userDiscordID).Scan(
+			&note.ID, &title, &note.Body, &note.AuthorID, &guildID,
+			&channelID, &sourceMsgID, &sourceChannelID, &tags,
+			&note.CreatedAt, &note.UpdatedAt, &deletedAt,
+		)
+	} else {
+		err = r.db.QueryRowContext(ctx, query, id).Scan(
+			&note.ID, &title, &note.Body, &note.AuthorID, &guildID,
+			&channelID, &sourceMsgID, &sourceChannelID, &tags,
+			&note.CreatedAt, &note.UpdatedAt, &deletedAt,
+		)
+	}
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("note not found: %s", id)
 	}
@@ -126,25 +147,34 @@ func (r *noteRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tags []string, limit, offset int, orderBy string, ascending bool) ([]*entities.Note, int, error) {
+func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tags []string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.Note, int, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 
-	// Build WHERE conditions
-	conditions := []string{"author_id = $1", "deleted_at IS NULL"}
+	// Build FROM clause and WHERE conditions
+	fromClause := "notes n"
+	conditions := []string{"n.author_id = $1", "n.deleted_at IS NULL"}
 	args := []interface{}{authorID}
 	argCount := 1
 
+	// Add ACL filter if userDiscordID provided (non-admin)
+	if userDiscordID != "" {
+		fromClause += " INNER JOIN guild_members gm ON n.guild_id = gm.guild_id"
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("gm.discord_id = $%d", argCount))
+		args = append(args, userDiscordID)
+	}
+
 	if guildID != "" {
 		argCount++
-		conditions = append(conditions, fmt.Sprintf("guild_id = $%d", argCount))
+		conditions = append(conditions, fmt.Sprintf("n.guild_id = $%d", argCount))
 		args = append(args, guildID)
 	}
 
 	if len(tags) > 0 {
 		argCount++
-		conditions = append(conditions, fmt.Sprintf("tags && $%d", argCount))
+		conditions = append(conditions, fmt.Sprintf("n.tags && $%d", argCount))
 		args = append(args, pq.Array(tags))
 	}
 
@@ -166,7 +196,7 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 
 	// Get total count
 	var total int
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM notes WHERE %s", whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -175,12 +205,12 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 	// Get notes
 	query := fmt.Sprintf(`
 		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, dg.guild_name, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at
-		FROM notes n
+		FROM %s
 		LEFT JOIN discord_guilds dg ON n.guild_id = dg.guild_id
 		WHERE %s
 		ORDER BY n.%s %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, orderBy, direction, argCount+1, argCount+2)
+	`, fromClause, whereClause, orderBy, direction, argCount+1, argCount+2)
 
 	args = append(args, limit, offset)
 
@@ -218,35 +248,44 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 	return notes, total, nil
 }
 
-func (r *noteRepository) Search(ctx context.Context, authorID string, query, guildID string, tags []string, limit, offset int) ([]*entities.Note, int, error) {
+func (r *noteRepository) Search(ctx context.Context, authorID string, query, guildID string, tags []string, limit, offset int, userDiscordID string) ([]*entities.Note, int, error) {
 	if limit <= 0 {
 		limit = 10
 	}
 
-	// Build search conditions
-	conditions := []string{"author_id = $1", "deleted_at IS NULL"}
+	// Build FROM clause and search conditions
+	fromClause := "notes n"
+	conditions := []string{"n.author_id = $1", "n.deleted_at IS NULL"}
 	args := []interface{}{authorID}
 	argCount := 1
+
+	// Add ACL filter if userDiscordID provided (non-admin)
+	if userDiscordID != "" {
+		fromClause += " INNER JOIN guild_members gm ON n.guild_id = gm.guild_id"
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("gm.discord_id = $%d", argCount))
+		args = append(args, userDiscordID)
+	}
 
 	// Full-text search on title and body
 	if query != "" {
 		argCount++
 		// Use hybrid search vector: searches both english and simple dictionaries
-		conditions = append(conditions, fmt.Sprintf("(search_vector @@ websearch_to_tsquery('english', $%d) OR search_vector @@ websearch_to_tsquery('simple', $%d))", argCount, argCount))
+		conditions = append(conditions, fmt.Sprintf("(n.search_vector @@ websearch_to_tsquery('english', $%d) OR n.search_vector @@ websearch_to_tsquery('simple', $%d))", argCount, argCount))
 		args = append(args, query)
 	}
 
 	// Guild filtering
 	if guildID != "" {
 		argCount++
-		conditions = append(conditions, fmt.Sprintf("guild_id = $%d", argCount))
+		conditions = append(conditions, fmt.Sprintf("n.guild_id = $%d", argCount))
 		args = append(args, guildID)
 	}
 
 	// Tag filtering
 	if len(tags) > 0 {
 		argCount++
-		conditions = append(conditions, fmt.Sprintf("tags && $%d", argCount))
+		conditions = append(conditions, fmt.Sprintf("n.tags && $%d", argCount))
 		args = append(args, pq.Array(tags))
 	}
 
@@ -254,7 +293,7 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 
 	// Get total count
 	var total int
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM notes WHERE %s", whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -263,21 +302,29 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 	// Get notes with ranking if query provided
 	var searchQuery string
 	if query != "" {
+		// Find query parameter position for ranking
+		queryParamIdx := 0
+		for i, arg := range args {
+			if s, ok := arg.(string); ok && s == query {
+				queryParamIdx = i + 1
+				break
+			}
+		}
 		searchQuery = fmt.Sprintf(`
-			SELECT id, title, body, author_id, guild_id, channel_id, source_msg_id, source_channel_id, tags, created_at, updated_at
-			FROM notes
+			SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at
+			FROM %s
 			WHERE %s
-			ORDER BY ts_rank(search_vector, websearch_to_tsquery('english', $2)) DESC
+			ORDER BY ts_rank(n.search_vector, websearch_to_tsquery('english', $%d)) DESC
 			LIMIT $%d OFFSET $%d
-		`, whereClause, argCount+1, argCount+2)
+		`, fromClause, whereClause, queryParamIdx, argCount+1, argCount+2)
 	} else {
 		searchQuery = fmt.Sprintf(`
-			SELECT id, title, body, author_id, guild_id, channel_id, source_msg_id, source_channel_id, tags, created_at, updated_at
-			FROM notes
+			SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at
+			FROM %s
 			WHERE %s
-			ORDER BY created_at DESC
+			ORDER BY n.created_at DESC
 			LIMIT $%d OFFSET $%d
-		`, whereClause, argCount+1, argCount+2)
+		`, fromClause, whereClause, argCount+1, argCount+2)
 	}
 
 	args = append(args, limit, offset)

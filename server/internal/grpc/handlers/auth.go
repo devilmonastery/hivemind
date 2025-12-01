@@ -195,8 +195,11 @@ func (s *AuthHandler) ExchangeAuthCode(
 
 	if err == nil && discordUser != nil {
 		// User exists - get and potentially update email
-		log.Info("found existing discord_users record", slog.String("user_id", discordUser.UserID))
-		user, err = s.userRepo.GetByID(ctx, discordUser.UserID)
+		if discordUser.UserID == nil {
+			return nil, status.Error(codes.FailedPrecondition, "discord user has no linked account")
+		}
+		log.Info("found existing discord_users record", slog.String("user_id", *discordUser.UserID))
+		user, err = s.userRepo.GetByID(ctx, *discordUser.UserID)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 		}
@@ -235,9 +238,10 @@ func (s *AuthHandler) ExchangeAuthCode(
 		log.Info("user created successfully", slog.String("user_id", user.ID))
 
 		// Create discord_users record
+		userIDPtr := user.ID
 		newDiscordUser := &entities.DiscordUser{
 			DiscordID:       claims.Subject,
-			UserID:          user.ID,
+			UserID:          &userIDPtr,
 			DiscordUsername: claims.Name,
 			AvatarURL:       &claims.Picture,
 			LinkedAt:        time.Now(),
@@ -453,15 +457,19 @@ func (s *AuthHandler) RefreshOAuthToken(
 	}
 
 	// Get user
-	user, err := s.userRepo.GetByID(ctx, discordUser.UserID)
+	if discordUser.UserID == nil {
+		s.log.Error("discord user has no linked account", slog.String("discord_id", claims.Subject))
+		return nil, status.Error(codes.Unauthenticated, "user not found")
+	}
+	user, err := s.userRepo.GetByID(ctx, *discordUser.UserID)
 	if err != nil {
 		s.log.Error("user not found for discord user",
-			slog.String("discord_user_id", discordUser.UserID),
+			slog.String("discord_user_id", *discordUser.UserID),
 			slog.String("error", err.Error()))
 		return nil, status.Error(codes.Unauthenticated, "user not found")
 	}
 	if user == nil {
-		s.log.Error("user is nil", slog.String("discord_user_id", discordUser.UserID))
+		s.log.Error("user is nil", slog.String("discord_user_id", *discordUser.UserID))
 		return nil, status.Error(codes.Unauthenticated, "user not found")
 	}
 
@@ -862,7 +870,10 @@ func (s *AuthHandler) LoginWithOIDC(
 
 	if err == nil && discordUser != nil {
 		// Discord user exists, get the associated user
-		user, err = s.userRepo.GetByID(ctx, discordUser.UserID)
+		if discordUser.UserID == nil {
+			return nil, status.Error(codes.FailedPrecondition, "discord user has no linked account")
+		}
+		user, err = s.userRepo.GetByID(ctx, *discordUser.UserID)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 		}
@@ -896,9 +907,10 @@ func (s *AuthHandler) LoginWithOIDC(
 		}
 
 		// Create discord_users record
+		userIDPtr := user.ID
 		newDiscordUser := &entities.DiscordUser{
 			DiscordID:       claims.Subject,
-			UserID:          user.ID,
+			UserID:          &userIDPtr,
 			DiscordUsername: claims.Name,
 			AvatarURL:       &claims.Picture,
 			LinkedAt:        time.Now(),

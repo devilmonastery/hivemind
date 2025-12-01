@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 
 	"github.com/devilmonastery/hivemind/api/generated/go/commonpb"
 	"github.com/devilmonastery/hivemind/api/generated/go/quotespb"
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
+	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/domain/services"
 	"github.com/devilmonastery/hivemind/server/internal/grpc/interceptors"
 	"google.golang.org/grpc/codes"
@@ -18,14 +20,42 @@ import (
 // QuoteHandler implements the QuoteService gRPC handler
 type QuoteHandler struct {
 	quotespb.UnimplementedQuoteServiceServer
-	quoteService *services.QuoteService
+	quoteService    *services.QuoteService
+	discordUserRepo repositories.DiscordUserRepository
 }
 
 // NewQuoteHandler creates a new quote handler
-func NewQuoteHandler(quoteService *services.QuoteService) *QuoteHandler {
+func NewQuoteHandler(quoteService *services.QuoteService, discordUserRepo repositories.DiscordUserRepository) *QuoteHandler {
 	return &QuoteHandler{
-		quoteService: quoteService,
+		quoteService:    quoteService,
+		discordUserRepo: discordUserRepo,
 	}
+}
+
+// getUserDiscordID extracts Discord ID from context for ACL filtering
+// Returns empty string for admin users (no ACL filtering)
+func (h *QuoteHandler) getUserDiscordID(ctx context.Context, userCtx *interceptors.UserContext) string {
+	log.Printf("[QuoteHandler.getUserDiscordID] UserID: %s, Role: %s", userCtx.UserID, userCtx.Role)
+
+	// Admin bypass: empty string means no ACL filtering
+	if userCtx.Role == "admin" {
+		log.Printf("[QuoteHandler.getUserDiscordID] Admin bypass - no ACL filtering")
+		return ""
+	}
+
+	// Get user's Discord ID for ACL filtering
+	discordUser, err := h.discordUserRepo.GetByUserID(ctx, userCtx.UserID)
+	if err != nil {
+		log.Printf("[QuoteHandler.getUserDiscordID] Error getting Discord user: %v", err)
+		return ""
+	}
+	if discordUser == nil {
+		log.Printf("[QuoteHandler.getUserDiscordID] No Discord user found for UserID %s", userCtx.UserID)
+		return ""
+	}
+
+	log.Printf("[QuoteHandler.getUserDiscordID] Found Discord ID: %s", discordUser.DiscordID)
+	return discordUser.DiscordID
 }
 
 // CreateQuote creates a new quote
@@ -57,12 +87,14 @@ func (h *QuoteHandler) CreateQuote(ctx context.Context, req *quotespb.CreateQuot
 
 // GetQuote retrieves a quote by ID
 func (h *QuoteHandler) GetQuote(ctx context.Context, req *quotespb.GetQuoteRequest) (*quotespb.Quote, error) {
-	_, err := interceptors.GetUserFromContext(ctx)
+	userCtx, err := interceptors.GetUserFromContext(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
-	quote, err := h.quoteService.GetQuote(ctx, req.Id)
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
+
+	quote, err := h.quoteService.GetQuote(ctx, req.Id, userDiscordID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "quote not found")
@@ -80,8 +112,10 @@ func (h *QuoteHandler) DeleteQuote(ctx context.Context, req *quotespb.DeleteQuot
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
+	userDiscordID := h.getUserDiscordID(ctx, user)
+
 	// Get existing quote to verify ownership
-	existing, err := h.quoteService.GetQuote(ctx, req.Id)
+	existing, err := h.quoteService.GetQuote(ctx, req.Id, userDiscordID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "quote not found")
@@ -107,8 +141,10 @@ func (h *QuoteHandler) UpdateQuote(ctx context.Context, req *quotespb.UpdateQuot
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
+	userDiscordID := h.getUserDiscordID(ctx, user)
+
 	// Get existing quote to verify ownership
-	existing, err := h.quoteService.GetQuote(ctx, req.Id)
+	existing, err := h.quoteService.GetQuote(ctx, req.Id, userDiscordID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "quote not found")
@@ -121,7 +157,7 @@ func (h *QuoteHandler) UpdateQuote(ctx context.Context, req *quotespb.UpdateQuot
 	}
 
 	// Update the quote
-	updated, err := h.quoteService.UpdateQuote(ctx, req.Id, req.Body, req.Tags)
+	updated, err := h.quoteService.UpdateQuote(ctx, req.Id, req.Body, req.Tags, userDiscordID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update quote: %v", err)
 	}
@@ -131,10 +167,12 @@ func (h *QuoteHandler) UpdateQuote(ctx context.Context, req *quotespb.UpdateQuot
 
 // ListQuotes lists quotes in a guild
 func (h *QuoteHandler) ListQuotes(ctx context.Context, req *quotespb.ListQuotesRequest) (*quotespb.ListQuotesResponse, error) {
-	_, err := interceptors.GetUserFromContext(ctx)
+	userCtx, err := interceptors.GetUserFromContext(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
+
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
 
 	limit := int(req.Limit)
 	if limit == 0 {
@@ -146,7 +184,7 @@ func (h *QuoteHandler) ListQuotes(ctx context.Context, req *quotespb.ListQuotesR
 		orderBy = "created_at"
 	}
 
-	quotes, total, err := h.quoteService.ListQuotes(ctx, req.GuildId, req.SourceMsgAuthorDiscordId, req.Tags, limit, int(req.Offset), orderBy, req.Ascending)
+	quotes, total, err := h.quoteService.ListQuotes(ctx, req.GuildId, limit, int(req.Offset), orderBy, req.Ascending, userDiscordID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list quotes: %v", err)
 	}
@@ -164,17 +202,19 @@ func (h *QuoteHandler) ListQuotes(ctx context.Context, req *quotespb.ListQuotesR
 
 // SearchQuotes searches quotes by full-text query
 func (h *QuoteHandler) SearchQuotes(ctx context.Context, req *quotespb.SearchQuotesRequest) (*quotespb.SearchQuotesResponse, error) {
-	_, err := interceptors.GetUserFromContext(ctx)
+	userCtx, err := interceptors.GetUserFromContext(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
+
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
 
 	limit := int(req.Limit)
 	if limit == 0 {
 		limit = 20
 	}
 
-	quotes, total, err := h.quoteService.SearchQuotes(ctx, req.GuildId, req.Query, req.Tags, limit, int(req.Offset))
+	quotes, total, err := h.quoteService.SearchQuotes(ctx, req.GuildId, req.Query, req.Tags, limit, int(req.Offset), userDiscordID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to search quotes: %v", err)
 	}

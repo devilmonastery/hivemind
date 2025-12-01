@@ -5,6 +5,7 @@ import (
 	"time"
 
 	discordpb "github.com/devilmonastery/hivemind/api/generated/go/discordpb"
+	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/services"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -102,4 +103,159 @@ func timestampPtrToProto(t *time.Time) *timestamppb.Timestamp {
 		return nil
 	}
 	return timestamppb.New(*t)
+}
+
+// UpsertGuildMember creates or updates a guild member record
+func (h *DiscordHandler) UpsertGuildMember(ctx context.Context, req *discordpb.UpsertGuildMemberRequest) (*discordpb.UpsertGuildMemberResponse, error) {
+	if req.GuildId == "" {
+		return nil, status.Error(codes.InvalidArgument, "guild_id is required")
+	}
+	if req.DiscordId == "" {
+		return nil, status.Error(codes.InvalidArgument, "discord_id is required")
+	}
+
+	member := &entities.GuildMember{
+		GuildID:   req.GuildId,
+		DiscordID: req.DiscordId,
+		JoinedAt:  req.JoinedAt.AsTime(),
+		Roles:     req.Roles,
+		SyncedAt:  time.Now(),
+	}
+
+	if req.GuildNick != "" {
+		member.GuildNick = &req.GuildNick
+	}
+	if req.GuildAvatarHash != "" {
+		member.GuildAvatarHash = &req.GuildAvatarHash
+	}
+
+	if err := h.discordService.UpsertGuildMember(ctx, member); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to upsert guild member: %v", err)
+	}
+
+	return &discordpb.UpsertGuildMemberResponse{
+		Success: true,
+	}, nil
+}
+
+// UpsertGuildMembersBatch efficiently inserts/updates multiple members
+func (h *DiscordHandler) UpsertGuildMembersBatch(ctx context.Context, req *discordpb.UpsertGuildMembersBatchRequest) (*discordpb.UpsertGuildMembersBatchResponse, error) {
+	if len(req.Members) == 0 {
+		return &discordpb.UpsertGuildMembersBatchResponse{Count: 0}, nil
+	}
+
+	// First, ensure all Discord users exist
+	discordUsers := make([]*entities.DiscordUser, 0, len(req.Members))
+	for _, m := range req.Members {
+		// Only create discord_users entries if we have username info
+		if m.DiscordUsername != "" {
+			discordUser := &entities.DiscordUser{
+				DiscordID:       m.DiscordId,
+				UserID:          nil, // No linked Hivemind user yet during sync
+				DiscordUsername: m.DiscordUsername,
+				LinkedAt:        time.Now(),
+			}
+			if m.DiscordGlobalName != "" {
+				discordUser.DiscordGlobalName = &m.DiscordGlobalName
+			}
+			if m.AvatarUrl != "" {
+				discordUser.AvatarURL = &m.AvatarUrl
+			}
+			now := time.Now()
+			discordUser.LastSeen = &now
+
+			discordUsers = append(discordUsers, discordUser)
+		}
+	}
+
+	// Upsert all Discord users first (satisfies foreign key constraint)
+	if len(discordUsers) > 0 {
+		if err := h.discordService.UpsertDiscordUsersBatch(ctx, discordUsers); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to batch upsert discord users: %v", err)
+		}
+	}
+
+	// Now upsert guild members
+	members := make([]*entities.GuildMember, len(req.Members))
+	for i, m := range req.Members {
+		member := &entities.GuildMember{
+			GuildID:   m.GuildId,
+			DiscordID: m.DiscordId,
+			JoinedAt:  m.JoinedAt.AsTime(),
+			Roles:     m.Roles,
+			SyncedAt:  time.Now(),
+		}
+		if m.GuildNick != "" {
+			member.GuildNick = &m.GuildNick
+		}
+		if m.GuildAvatarHash != "" {
+			member.GuildAvatarHash = &m.GuildAvatarHash
+		}
+		if m.LastSeen != nil {
+			t := m.LastSeen.AsTime()
+			member.LastSeen = &t
+		}
+		members[i] = member
+	}
+
+	if err := h.discordService.UpsertGuildMembersBatch(ctx, members); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to batch upsert members: %v", err)
+	}
+
+	return &discordpb.UpsertGuildMembersBatchResponse{
+		Count: int32(len(members)),
+	}, nil
+}
+
+// RemoveGuildMember removes a member record
+func (h *DiscordHandler) RemoveGuildMember(ctx context.Context, req *discordpb.RemoveGuildMemberRequest) (*discordpb.RemoveGuildMemberResponse, error) {
+	if req.GuildId == "" {
+		return nil, status.Error(codes.InvalidArgument, "guild_id is required")
+	}
+	if req.DiscordId == "" {
+		return nil, status.Error(codes.InvalidArgument, "discord_id is required")
+	}
+
+	if err := h.discordService.RemoveGuildMember(ctx, req.GuildId, req.DiscordId); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to remove guild member: %v", err)
+	}
+
+	return &discordpb.RemoveGuildMemberResponse{
+		Success: true,
+	}, nil
+}
+
+// CheckGuildMembership checks if a user is a member of a guild
+func (h *DiscordHandler) CheckGuildMembership(ctx context.Context, req *discordpb.CheckGuildMembershipRequest) (*discordpb.CheckGuildMembershipResponse, error) {
+	if req.GuildId == "" {
+		return nil, status.Error(codes.InvalidArgument, "guild_id is required")
+	}
+	if req.DiscordId == "" {
+		return nil, status.Error(codes.InvalidArgument, "discord_id is required")
+	}
+
+	isMember, err := h.discordService.CheckGuildMembership(ctx, req.GuildId, req.DiscordId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check membership: %v", err)
+	}
+
+	return &discordpb.CheckGuildMembershipResponse{
+		IsMember: isMember,
+	}, nil
+}
+
+// ListUserGuilds returns all guilds a user is a member of
+func (h *DiscordHandler) ListUserGuilds(ctx context.Context, req *discordpb.ListUserGuildsRequest) (*discordpb.ListUserGuildsResponse, error) {
+	if req.DiscordId == "" {
+		return nil, status.Error(codes.InvalidArgument, "discord_id is required")
+	}
+
+	guildIDs, err := h.discordService.ListUserGuilds(ctx, req.DiscordId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list user guilds: %v", err)
+	}
+
+	return &discordpb.ListUserGuildsResponse{
+		GuildIds: guildIDs,
+	}, nil
 }

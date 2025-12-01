@@ -1,0 +1,248 @@
+package postgres
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
+
+	"github.com/devilmonastery/hivemind/internal/domain/entities"
+	"github.com/devilmonastery/hivemind/internal/domain/repositories"
+)
+
+// GuildMemberRepository implements repositories.GuildMemberRepository for PostgreSQL
+type GuildMemberRepository struct {
+	db *sqlx.DB
+}
+
+// NewGuildMemberRepository creates a new guild member repository
+func NewGuildMemberRepository(db *sqlx.DB) repositories.GuildMemberRepository {
+	return &GuildMemberRepository{db: db}
+}
+
+// Upsert creates or updates a guild member record
+func (r *GuildMemberRepository) Upsert(ctx context.Context, member *entities.GuildMember) error {
+	query := `
+		INSERT INTO guild_members (
+			guild_id, discord_id, guild_nick, guild_avatar_hash,
+			roles, joined_at, synced_at, last_seen
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (guild_id, discord_id) DO UPDATE SET
+			guild_nick = EXCLUDED.guild_nick,
+			guild_avatar_hash = EXCLUDED.guild_avatar_hash,
+			roles = EXCLUDED.roles,
+			synced_at = EXCLUDED.synced_at,
+			last_seen = COALESCE(EXCLUDED.last_seen, guild_members.last_seen)
+	`
+
+	_, err := r.db.ExecContext(ctx, query,
+		member.GuildID,
+		member.DiscordID,
+		member.GuildNick,
+		member.GuildAvatarHash,
+		pq.Array(member.Roles),
+		member.JoinedAt,
+		member.SyncedAt,
+		member.LastSeen,
+	)
+	return err
+}
+
+// UpsertBatch efficiently inserts/updates multiple members in a transaction
+func (r *GuildMemberRepository) UpsertBatch(ctx context.Context, members []*entities.GuildMember) error {
+	if len(members) == 0 {
+		return nil
+	}
+
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `
+		INSERT INTO guild_members (
+			guild_id, discord_id, guild_nick, guild_avatar_hash,
+			roles, joined_at, synced_at, last_seen
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (guild_id, discord_id) DO UPDATE SET
+			guild_nick = EXCLUDED.guild_nick,
+			guild_avatar_hash = EXCLUDED.guild_avatar_hash,
+			roles = EXCLUDED.roles,
+			synced_at = EXCLUDED.synced_at,
+			last_seen = COALESCE(EXCLUDED.last_seen, guild_members.last_seen)
+	`
+
+	stmt, err := tx.PreparexContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, member := range members {
+		_, err := stmt.ExecContext(ctx,
+			member.GuildID,
+			member.DiscordID,
+			member.GuildNick,
+			member.GuildAvatarHash,
+			pq.Array(member.Roles),
+			member.JoinedAt,
+			member.SyncedAt,
+			member.LastSeen,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// IsMember checks if a Discord user is a member of a guild
+func (r *GuildMemberRepository) IsMember(ctx context.Context, guildID, discordID string) (bool, error) {
+	query := `
+		SELECT EXISTS(
+			SELECT 1 FROM guild_members
+			WHERE guild_id = $1 AND discord_id = $2
+		)
+	`
+
+	var exists bool
+	err := r.db.GetContext(ctx, &exists, query, guildID, discordID)
+	return exists, err
+}
+
+// GetMember retrieves a guild member record
+func (r *GuildMemberRepository) GetMember(ctx context.Context, guildID, discordID string) (*entities.GuildMember, error) {
+	query := `
+		SELECT guild_id, discord_id, guild_nick, guild_avatar_hash,
+		       roles, joined_at, synced_at, last_seen
+		FROM guild_members
+		WHERE guild_id = $1 AND discord_id = $2
+	`
+
+	var member entities.GuildMember
+	err := r.db.GetContext(ctx, &member, query, guildID, discordID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repositories.ErrGuildMemberNotFound
+		}
+		return nil, err
+	}
+
+	return &member, nil
+}
+
+// ListGuildMembers retrieves all members for a guild
+func (r *GuildMemberRepository) ListGuildMembers(ctx context.Context, guildID string) ([]*entities.GuildMember, error) {
+	query := `
+		SELECT guild_id, discord_id, guild_nick, guild_avatar_hash,
+		       roles, joined_at, synced_at, last_seen
+		FROM guild_members
+		WHERE guild_id = $1
+		ORDER BY joined_at ASC
+	`
+
+	var members []*entities.GuildMember
+	err := r.db.SelectContext(ctx, &members, query, guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	return members, nil
+}
+
+// ListUserGuilds retrieves all guild IDs a user is a member of
+func (r *GuildMemberRepository) ListUserGuilds(ctx context.Context, discordID string) ([]string, error) {
+	query := `
+		SELECT guild_id
+		FROM guild_members
+		WHERE discord_id = $1
+		ORDER BY joined_at DESC
+	`
+
+	var guildIDs []string
+	err := r.db.SelectContext(ctx, &guildIDs, query, discordID)
+	if err != nil {
+		return nil, err
+	}
+
+	return guildIDs, nil
+}
+
+// UpdateLastSeen updates the last_seen timestamp for a guild member
+func (r *GuildMemberRepository) UpdateLastSeen(ctx context.Context, guildID, discordID string) error {
+	query := `
+		UPDATE guild_members
+		SET last_seen = $3
+		WHERE guild_id = $1 AND discord_id = $2
+	`
+
+	now := time.Now()
+	result, err := r.db.ExecContext(ctx, query, guildID, discordID, now)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return repositories.ErrGuildMemberNotFound
+	}
+
+	return nil
+}
+
+// DeleteMember removes a member record (when they leave)
+func (r *GuildMemberRepository) DeleteMember(ctx context.Context, guildID, discordID string) error {
+	query := `
+		DELETE FROM guild_members
+		WHERE guild_id = $1 AND discord_id = $2
+	`
+
+	result, err := r.db.ExecContext(ctx, query, guildID, discordID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return repositories.ErrGuildMemberNotFound
+	}
+
+	return nil
+}
+
+// DeleteAllGuildMembers removes all members for a guild (when bot leaves guild)
+func (r *GuildMemberRepository) DeleteAllGuildMembers(ctx context.Context, guildID string) error {
+	query := `
+		DELETE FROM guild_members
+		WHERE guild_id = $1
+	`
+
+	_, err := r.db.ExecContext(ctx, query, guildID)
+	return err
+}
+
+// CountGuildMembers returns the number of members in a guild
+func (r *GuildMemberRepository) CountGuildMembers(ctx context.Context, guildID string) (int, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM guild_members
+		WHERE guild_id = $1
+	`
+
+	var count int
+	err := r.db.GetContext(ctx, &count, query, guildID)
+	return count, err
+}

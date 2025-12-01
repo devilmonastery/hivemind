@@ -19,9 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	DiscordService_UpsertGuild_FullMethodName  = "/hivemind.discord.DiscordService/UpsertGuild"
-	DiscordService_DisableGuild_FullMethodName = "/hivemind.discord.DiscordService/DisableGuild"
-	DiscordService_GetGuild_FullMethodName     = "/hivemind.discord.DiscordService/GetGuild"
+	DiscordService_UpsertGuild_FullMethodName             = "/hivemind.discord.DiscordService/UpsertGuild"
+	DiscordService_DisableGuild_FullMethodName            = "/hivemind.discord.DiscordService/DisableGuild"
+	DiscordService_GetGuild_FullMethodName                = "/hivemind.discord.DiscordService/GetGuild"
+	DiscordService_UpsertGuildMember_FullMethodName       = "/hivemind.discord.DiscordService/UpsertGuildMember"
+	DiscordService_UpsertGuildMembersBatch_FullMethodName = "/hivemind.discord.DiscordService/UpsertGuildMembersBatch"
+	DiscordService_RemoveGuildMember_FullMethodName       = "/hivemind.discord.DiscordService/RemoveGuildMember"
+	DiscordService_CheckGuildMembership_FullMethodName    = "/hivemind.discord.DiscordService/CheckGuildMembership"
+	DiscordService_ListUserGuilds_FullMethodName          = "/hivemind.discord.DiscordService/ListUserGuilds"
 )
 
 // DiscordServiceClient is the client API for DiscordService service.
@@ -36,6 +41,16 @@ type DiscordServiceClient interface {
 	DisableGuild(ctx context.Context, in *DisableGuildRequest, opts ...grpc.CallOption) (*DisableGuildResponse, error)
 	// GetGuild retrieves guild information
 	GetGuild(ctx context.Context, in *GetGuildRequest, opts ...grpc.CallOption) (*GetGuildResponse, error)
+	// UpsertGuildMember creates or updates a guild member record
+	UpsertGuildMember(ctx context.Context, in *UpsertGuildMemberRequest, opts ...grpc.CallOption) (*UpsertGuildMemberResponse, error)
+	// UpsertGuildMembersBatch efficiently inserts/updates multiple members
+	UpsertGuildMembersBatch(ctx context.Context, in *UpsertGuildMembersBatchRequest, opts ...grpc.CallOption) (*UpsertGuildMembersBatchResponse, error)
+	// RemoveGuildMember removes a member record (when they leave)
+	RemoveGuildMember(ctx context.Context, in *RemoveGuildMemberRequest, opts ...grpc.CallOption) (*RemoveGuildMemberResponse, error)
+	// CheckGuildMembership checks if a user is a member of a guild
+	CheckGuildMembership(ctx context.Context, in *CheckGuildMembershipRequest, opts ...grpc.CallOption) (*CheckGuildMembershipResponse, error)
+	// ListUserGuilds returns all guilds a user is a member of
+	ListUserGuilds(ctx context.Context, in *ListUserGuildsRequest, opts ...grpc.CallOption) (*ListUserGuildsResponse, error)
 }
 
 type discordServiceClient struct {
@@ -76,6 +91,56 @@ func (c *discordServiceClient) GetGuild(ctx context.Context, in *GetGuildRequest
 	return out, nil
 }
 
+func (c *discordServiceClient) UpsertGuildMember(ctx context.Context, in *UpsertGuildMemberRequest, opts ...grpc.CallOption) (*UpsertGuildMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpsertGuildMemberResponse)
+	err := c.cc.Invoke(ctx, DiscordService_UpsertGuildMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *discordServiceClient) UpsertGuildMembersBatch(ctx context.Context, in *UpsertGuildMembersBatchRequest, opts ...grpc.CallOption) (*UpsertGuildMembersBatchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpsertGuildMembersBatchResponse)
+	err := c.cc.Invoke(ctx, DiscordService_UpsertGuildMembersBatch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *discordServiceClient) RemoveGuildMember(ctx context.Context, in *RemoveGuildMemberRequest, opts ...grpc.CallOption) (*RemoveGuildMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveGuildMemberResponse)
+	err := c.cc.Invoke(ctx, DiscordService_RemoveGuildMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *discordServiceClient) CheckGuildMembership(ctx context.Context, in *CheckGuildMembershipRequest, opts ...grpc.CallOption) (*CheckGuildMembershipResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckGuildMembershipResponse)
+	err := c.cc.Invoke(ctx, DiscordService_CheckGuildMembership_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *discordServiceClient) ListUserGuilds(ctx context.Context, in *ListUserGuildsRequest, opts ...grpc.CallOption) (*ListUserGuildsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUserGuildsResponse)
+	err := c.cc.Invoke(ctx, DiscordService_ListUserGuilds_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DiscordServiceServer is the server API for DiscordService service.
 // All implementations should embed UnimplementedDiscordServiceServer
 // for forward compatibility.
@@ -88,6 +153,16 @@ type DiscordServiceServer interface {
 	DisableGuild(context.Context, *DisableGuildRequest) (*DisableGuildResponse, error)
 	// GetGuild retrieves guild information
 	GetGuild(context.Context, *GetGuildRequest) (*GetGuildResponse, error)
+	// UpsertGuildMember creates or updates a guild member record
+	UpsertGuildMember(context.Context, *UpsertGuildMemberRequest) (*UpsertGuildMemberResponse, error)
+	// UpsertGuildMembersBatch efficiently inserts/updates multiple members
+	UpsertGuildMembersBatch(context.Context, *UpsertGuildMembersBatchRequest) (*UpsertGuildMembersBatchResponse, error)
+	// RemoveGuildMember removes a member record (when they leave)
+	RemoveGuildMember(context.Context, *RemoveGuildMemberRequest) (*RemoveGuildMemberResponse, error)
+	// CheckGuildMembership checks if a user is a member of a guild
+	CheckGuildMembership(context.Context, *CheckGuildMembershipRequest) (*CheckGuildMembershipResponse, error)
+	// ListUserGuilds returns all guilds a user is a member of
+	ListUserGuilds(context.Context, *ListUserGuildsRequest) (*ListUserGuildsResponse, error)
 }
 
 // UnimplementedDiscordServiceServer should be embedded to have
@@ -105,6 +180,21 @@ func (UnimplementedDiscordServiceServer) DisableGuild(context.Context, *DisableG
 }
 func (UnimplementedDiscordServiceServer) GetGuild(context.Context, *GetGuildRequest) (*GetGuildResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetGuild not implemented")
+}
+func (UnimplementedDiscordServiceServer) UpsertGuildMember(context.Context, *UpsertGuildMemberRequest) (*UpsertGuildMemberResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpsertGuildMember not implemented")
+}
+func (UnimplementedDiscordServiceServer) UpsertGuildMembersBatch(context.Context, *UpsertGuildMembersBatchRequest) (*UpsertGuildMembersBatchResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpsertGuildMembersBatch not implemented")
+}
+func (UnimplementedDiscordServiceServer) RemoveGuildMember(context.Context, *RemoveGuildMemberRequest) (*RemoveGuildMemberResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveGuildMember not implemented")
+}
+func (UnimplementedDiscordServiceServer) CheckGuildMembership(context.Context, *CheckGuildMembershipRequest) (*CheckGuildMembershipResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CheckGuildMembership not implemented")
+}
+func (UnimplementedDiscordServiceServer) ListUserGuilds(context.Context, *ListUserGuildsRequest) (*ListUserGuildsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListUserGuilds not implemented")
 }
 func (UnimplementedDiscordServiceServer) testEmbeddedByValue() {}
 
@@ -180,6 +270,96 @@ func _DiscordService_GetGuild_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DiscordService_UpsertGuildMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertGuildMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordServiceServer).UpsertGuildMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordService_UpsertGuildMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordServiceServer).UpsertGuildMember(ctx, req.(*UpsertGuildMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DiscordService_UpsertGuildMembersBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertGuildMembersBatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordServiceServer).UpsertGuildMembersBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordService_UpsertGuildMembersBatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordServiceServer).UpsertGuildMembersBatch(ctx, req.(*UpsertGuildMembersBatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DiscordService_RemoveGuildMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveGuildMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordServiceServer).RemoveGuildMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordService_RemoveGuildMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordServiceServer).RemoveGuildMember(ctx, req.(*RemoveGuildMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DiscordService_CheckGuildMembership_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckGuildMembershipRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordServiceServer).CheckGuildMembership(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordService_CheckGuildMembership_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordServiceServer).CheckGuildMembership(ctx, req.(*CheckGuildMembershipRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DiscordService_ListUserGuilds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUserGuildsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordServiceServer).ListUserGuilds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordService_ListUserGuilds_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordServiceServer).ListUserGuilds(ctx, req.(*ListUserGuildsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DiscordService_ServiceDesc is the grpc.ServiceDesc for DiscordService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -198,6 +378,26 @@ var DiscordService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetGuild",
 			Handler:    _DiscordService_GetGuild_Handler,
+		},
+		{
+			MethodName: "UpsertGuildMember",
+			Handler:    _DiscordService_UpsertGuildMember_Handler,
+		},
+		{
+			MethodName: "UpsertGuildMembersBatch",
+			Handler:    _DiscordService_UpsertGuildMembersBatch_Handler,
+		},
+		{
+			MethodName: "RemoveGuildMember",
+			Handler:    _DiscordService_RemoveGuildMember_Handler,
+		},
+		{
+			MethodName: "CheckGuildMembership",
+			Handler:    _DiscordService_CheckGuildMembership_Handler,
+		},
+		{
+			MethodName: "ListUserGuilds",
+			Handler:    _DiscordService_ListUserGuilds_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

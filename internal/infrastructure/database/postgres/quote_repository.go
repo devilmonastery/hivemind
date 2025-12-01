@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -41,7 +42,7 @@ func (r *quoteRepository) Create(ctx context.Context, quote *entities.Quote) err
 	return err
 }
 
-func (r *quoteRepository) GetByID(ctx context.Context, id string) (*entities.Quote, error) {
+func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID string) (*entities.Quote, error) {
 	query := `
 		SELECT q.id, q.body, q.author_id, u.name, q.guild_id, dg.guild_name,
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
@@ -49,20 +50,39 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string) (*entities.Quo
 		FROM quotes q
 		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
 		LEFT JOIN users u ON q.author_id = u.id
-		LEFT JOIN discord_users du ON q.source_msg_author_discord_id = du.discord_id
-		WHERE q.id = $1 AND q.deleted_at IS NULL
-	`
+		LEFT JOIN discord_users du ON q.source_msg_author_discord_id = du.discord_id`
+
+	// Add ACL check if userDiscordID provided (non-admin)
+	if userDiscordID != "" {
+		query += `
+		INNER JOIN guild_members gm ON q.guild_id = gm.guild_id AND gm.discord_id = $2`
+	}
+
+	query += `
+		WHERE q.id = $1 AND q.deleted_at IS NULL`
+
 	quote := &entities.Quote{}
 	var tags pq.StringArray
 	var guildName, authorUsername, sourceChannelName, sourceMsgAuthorUsername sql.NullString
 	var deletedAt sql.NullTime
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&quote.ID, &quote.Body, &quote.AuthorID, &authorUsername, &quote.GuildID, &guildName,
-		&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
-		&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
-		&tags, &quote.CreatedAt, &deletedAt,
-	)
+	var err error
+	if userDiscordID != "" {
+		err = r.db.QueryRowContext(ctx, query, id, userDiscordID).Scan(
+			&quote.ID, &quote.Body, &quote.AuthorID, &authorUsername, &quote.GuildID, &guildName,
+			&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
+			&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
+			&tags, &quote.CreatedAt, &deletedAt,
+		)
+	} else {
+		err = r.db.QueryRowContext(ctx, query, id).Scan(
+			&quote.ID, &quote.Body, &quote.AuthorID, &authorUsername, &quote.GuildID, &guildName,
+			&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
+			&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
+			&tags, &quote.CreatedAt, &deletedAt,
+		)
+	}
+
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("quote not found: %s", id)
 	}
@@ -126,12 +146,12 @@ func (r *quoteRepository) Update(ctx context.Context, id, body string, tags []st
 	return nil
 }
 
-func (r *quoteRepository) List(ctx context.Context, guildID string, authorDiscordID string, tags []string, limit, offset int, orderBy string, ascending bool) ([]*entities.Quote, int, error) {
+func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.Quote, int, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 
-	// Build WHERE conditions
+	// Build WHERE conditions and args first
 	conditions := []string{"q.deleted_at IS NULL"}
 	args := []interface{}{}
 	argCount := 0
@@ -142,16 +162,18 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, authorDiscor
 		args = append(args, guildID)
 	}
 
-	if authorDiscordID != "" {
-		argCount++
-		conditions = append(conditions, fmt.Sprintf("q.source_msg_author_discord_id = $%d", argCount))
-		args = append(args, authorDiscordID)
-	}
+	// Build base query with JOINs
+	baseFrom := `FROM quotes q
+		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
+		LEFT JOIN users u ON q.author_id = u.id
+		LEFT JOIN discord_users du ON q.source_msg_author_discord_id = du.discord_id`
 
-	if len(tags) > 0 {
+	// Add ACL check if userDiscordID provided (non-admin)
+	if userDiscordID != "" {
 		argCount++
-		conditions = append(conditions, fmt.Sprintf("q.tags && $%d", argCount))
-		args = append(args, pq.Array(tags))
+		baseFrom += fmt.Sprintf(`
+		INNER JOIN guild_members gm ON q.guild_id = gm.guild_id AND gm.discord_id = $%d`, argCount)
+		args = append(args, userDiscordID)
 	}
 
 	whereClause := strings.Join(conditions, " AND ")
@@ -177,25 +199,26 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, authorDiscor
 
 	// Get total count
 	var total int
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM quotes q WHERE %s", whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) %s WHERE %s", baseFrom, whereClause)
+	log.Printf("[QuoteRepo.List] Count Query: %s", countQuery)
+	log.Printf("[QuoteRepo.List] Args: %v (userDiscordID=%q, guildID=%q)", args, userDiscordID, guildID)
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
+	log.Printf("[QuoteRepo.List] Total count: %d", total)
 
 	// Get quotes
 	query := fmt.Sprintf(`
 		SELECT q.id, q.body, q.author_id, u.name, q.guild_id, dg.guild_name, 
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
 		       q.source_msg_author_discord_id, COALESCE(q.source_msg_author_username, du.discord_username), q.tags, q.created_at
-		FROM quotes q
-		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
-		LEFT JOIN users u ON q.author_id = u.id
-		LEFT JOIN discord_users du ON q.source_msg_author_discord_id = du.discord_id
+		%s
 		WHERE %s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, orderClause, argCount+1, argCount+2)
+	`, baseFrom, whereClause, orderClause, argCount+1, argCount+2)
+	log.Printf("[QuoteRepo.List] Select Query: %s", query)
 
 	args = append(args, limit, offset)
 
@@ -232,19 +255,35 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, authorDiscor
 	return quotes, total, nil
 }
 
-func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tags []string, limit, offset int) ([]*entities.Quote, int, error) {
+func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tags []string, limit, offset int, userDiscordID string) ([]*entities.Quote, int, error) {
 	if limit <= 0 {
 		limit = 10
 	}
 
-	// Build search conditions
+	// Build search conditions and args first
 	conditions := []string{"q.guild_id = $1", "q.deleted_at IS NULL"}
 	args := []interface{}{guildID}
 	argCount := 1
 
+	// Build base FROM clause with JOINs
+	baseFrom := `FROM quotes q
+		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
+		LEFT JOIN users u ON q.author_id = u.id
+		LEFT JOIN discord_users du ON q.source_msg_author_discord_id = du.discord_id`
+
+	// Add ACL check if userDiscordID provided (non-admin)
+	if userDiscordID != "" {
+		argCount++
+		baseFrom += fmt.Sprintf(`
+		INNER JOIN guild_members gm ON q.guild_id = gm.guild_id AND gm.discord_id = $%d`, argCount)
+		args = append(args, userDiscordID)
+	}
+
 	// Full-text search on body
+	var queryParamPos int
 	if query != "" {
 		argCount++
+		queryParamPos = argCount
 		// Use hybrid search vector: searches both english (stemmed, weight A) and simple (literal, weight B)
 		conditions = append(conditions, fmt.Sprintf("(q.search_vector @@ websearch_to_tsquery('english', $%d) OR q.search_vector @@ websearch_to_tsquery('simple', $%d))", argCount, argCount))
 		args = append(args, query)
@@ -261,7 +300,7 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 
 	// Get total count
 	var total int
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM quotes q WHERE %s", whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) %s WHERE %s", baseFrom, whereClause)
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -274,27 +313,21 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 			SELECT q.id, q.body, q.author_id, u.name, q.guild_id, dg.guild_name,
 			       q.source_msg_id, q.source_channel_id, q.source_channel_name,
 			       q.source_msg_author_discord_id, COALESCE(q.source_msg_author_username, du.discord_username), q.tags, q.created_at
-			FROM quotes q
-			LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
-			LEFT JOIN users u ON q.author_id = u.id
-			LEFT JOIN discord_users du ON q.source_msg_author_discord_id = du.discord_id
+			%s
 			WHERE %s
-			ORDER BY ts_rank(q.search_vector, websearch_to_tsquery('english', $2)) DESC
+			ORDER BY ts_rank(q.search_vector, websearch_to_tsquery('english', $%d)) DESC
 			LIMIT $%d OFFSET $%d
-		`, whereClause, argCount+1, argCount+2)
+		`, baseFrom, whereClause, queryParamPos, argCount+1, argCount+2)
 	} else {
 		searchQuery = fmt.Sprintf(`
 			SELECT q.id, q.body, q.author_id, u.name, q.guild_id, dg.guild_name,
 			       q.source_msg_id, q.source_channel_id, q.source_channel_name,
 			       q.source_msg_author_discord_id, COALESCE(q.source_msg_author_username, du.discord_username), q.tags, q.created_at
-			FROM quotes q
-			LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
-			LEFT JOIN users u ON q.author_id = u.id
-			LEFT JOIN discord_users du ON q.source_msg_author_discord_id = du.discord_id
+			%s
 			WHERE %s
 			ORDER BY created_at DESC
 			LIMIT $%d OFFSET $%d
-		`, whereClause, argCount+1, argCount+2)
+		`, baseFrom, whereClause, argCount+1, argCount+2)
 	}
 
 	args = append(args, limit, offset)

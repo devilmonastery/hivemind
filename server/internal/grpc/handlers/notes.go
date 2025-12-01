@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"strings"
 
 	"github.com/devilmonastery/hivemind/api/generated/go/commonpb"
 	"github.com/devilmonastery/hivemind/api/generated/go/notespb"
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
+	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/domain/services"
 	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 	"github.com/devilmonastery/hivemind/server/internal/grpc/interceptors"
@@ -20,14 +22,42 @@ import (
 // NoteHandler implements the NoteService gRPC handler
 type NoteHandler struct {
 	notespb.UnimplementedNoteServiceServer
-	noteService *services.NoteService
+	noteService     *services.NoteService
+	discordUserRepo repositories.DiscordUserRepository
 }
 
 // NewNoteHandler creates a new note handler
-func NewNoteHandler(noteService *services.NoteService) *NoteHandler {
+func NewNoteHandler(noteService *services.NoteService, discordUserRepo repositories.DiscordUserRepository) *NoteHandler {
 	return &NoteHandler{
-		noteService: noteService,
+		noteService:     noteService,
+		discordUserRepo: discordUserRepo,
 	}
+}
+
+// getUserDiscordID extracts Discord ID from context for ACL filtering
+// Returns empty string for admin users (no ACL filtering)
+func (h *NoteHandler) getUserDiscordID(ctx context.Context, userCtx *interceptors.UserContext) string {
+	log.Printf("[NoteHandler.getUserDiscordID] UserID: %s, Role: %s", userCtx.UserID, userCtx.Role)
+
+	// Admin bypass: empty string means no ACL filtering
+	if userCtx.Role == "admin" {
+		log.Printf("[NoteHandler.getUserDiscordID] Admin bypass - no ACL filtering")
+		return ""
+	}
+
+	// Get user's Discord ID for ACL filtering
+	discordUser, err := h.discordUserRepo.GetByUserID(ctx, userCtx.UserID)
+	if err != nil {
+		log.Printf("[NoteHandler.getUserDiscordID] Error getting Discord user: %v", err)
+		return ""
+	}
+	if discordUser == nil {
+		log.Printf("[NoteHandler.getUserDiscordID] No Discord user found for UserID %s", userCtx.UserID)
+		return ""
+	}
+
+	log.Printf("[NoteHandler.getUserDiscordID] Found Discord ID: %s", discordUser.DiscordID)
+	return discordUser.DiscordID
 }
 
 // CreateNote creates a new note
@@ -67,12 +97,14 @@ func (h *NoteHandler) CreateNote(ctx context.Context, req *notespb.CreateNoteReq
 
 // GetNote retrieves a note by ID
 func (h *NoteHandler) GetNote(ctx context.Context, req *notespb.GetNoteRequest) (*notespb.Note, error) {
-	_, err := interceptors.GetUserFromContext(ctx)
+	userCtx, err := interceptors.GetUserFromContext(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
-	note, err := h.noteService.GetNote(ctx, req.Id)
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
+
+	note, err := h.noteService.GetNote(ctx, req.Id, userDiscordID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "note not found")
@@ -90,8 +122,10 @@ func (h *NoteHandler) UpdateNote(ctx context.Context, req *notespb.UpdateNoteReq
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
+	userDiscordID := h.getUserDiscordID(ctx, user)
+
 	// Get existing note to verify ownership
-	existing, err := h.noteService.GetNote(ctx, req.Id)
+	existing, err := h.noteService.GetNote(ctx, req.Id, userDiscordID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "note not found")
@@ -121,7 +155,7 @@ func (h *NoteHandler) UpdateNote(ctx context.Context, req *notespb.UpdateNoteReq
 		AuthorID: user.UserID,
 	}
 
-	updated, err := h.noteService.UpdateNote(ctx, note)
+	updated, err := h.noteService.UpdateNote(ctx, note, userDiscordID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update note: %v", err)
 	}
@@ -136,8 +170,10 @@ func (h *NoteHandler) DeleteNote(ctx context.Context, req *notespb.DeleteNoteReq
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
+	userDiscordID := h.getUserDiscordID(ctx, user)
+
 	// Get existing note to verify ownership
-	existing, err := h.noteService.GetNote(ctx, req.Id)
+	existing, err := h.noteService.GetNote(ctx, req.Id, userDiscordID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "note not found")
@@ -149,7 +185,7 @@ func (h *NoteHandler) DeleteNote(ctx context.Context, req *notespb.DeleteNoteReq
 		return nil, status.Error(codes.PermissionDenied, "you can only delete your own notes")
 	}
 
-	if err := h.noteService.DeleteNote(ctx, req.Id); err != nil {
+	if err := h.noteService.DeleteNote(ctx, req.Id, userDiscordID); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete note: %v", err)
 	}
 
@@ -163,6 +199,8 @@ func (h *NoteHandler) ListNotes(ctx context.Context, req *notespb.ListNotesReque
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
+	userDiscordID := h.getUserDiscordID(ctx, user)
+
 	limit := int(req.Limit)
 	if limit == 0 {
 		limit = 20
@@ -173,7 +211,7 @@ func (h *NoteHandler) ListNotes(ctx context.Context, req *notespb.ListNotesReque
 		orderBy = "created_at"
 	}
 
-	notes, total, err := h.noteService.ListNotes(ctx, user.UserID, req.GuildId, req.Tags, limit, int(req.Offset), orderBy, req.Ascending)
+	notes, total, err := h.noteService.ListNotes(ctx, user.UserID, req.GuildId, req.Tags, limit, int(req.Offset), orderBy, req.Ascending, userDiscordID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list notes: %v", err)
 	}
@@ -196,12 +234,14 @@ func (h *NoteHandler) SearchNotes(ctx context.Context, req *notespb.SearchNotesR
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
+	userDiscordID := h.getUserDiscordID(ctx, user)
+
 	limit := int(req.Limit)
 	if limit == 0 {
 		limit = 20
 	}
 
-	notes, total, err := h.noteService.SearchNotes(ctx, user.UserID, req.Query, req.GuildId, req.Tags, limit, int(req.Offset))
+	notes, total, err := h.noteService.SearchNotes(ctx, user.UserID, req.Query, req.GuildId, req.Tags, limit, int(req.Offset), userDiscordID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to search notes: %v", err)
 	}
@@ -242,8 +282,10 @@ func (h *NoteHandler) AddNoteMessageReference(ctx context.Context, req *notespb.
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
+	userDiscordID := h.getUserDiscordID(ctx, user)
+
 	// Verify note ownership
-	note, err := h.noteService.GetNote(ctx, req.NoteId)
+	note, err := h.noteService.GetNote(ctx, req.NoteId, userDiscordID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "note not found")
@@ -281,7 +323,7 @@ func (h *NoteHandler) AddNoteMessageReference(ctx context.Context, req *notespb.
 		Attachments:       attachments,
 	}
 
-	created, err := h.noteService.AddMessageReference(ctx, ref)
+	created, err := h.noteService.AddMessageReference(ctx, ref, userDiscordID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to add message reference: %v", err)
 	}
@@ -296,8 +338,10 @@ func (h *NoteHandler) ListNoteMessageReferences(ctx context.Context, req *notesp
 		return nil, status.Error(codes.Unauthenticated, "user context not found")
 	}
 
+	userDiscordID := h.getUserDiscordID(ctx, user)
+
 	// Verify note ownership
-	note, err := h.noteService.GetNote(ctx, req.NoteId)
+	note, err := h.noteService.GetNote(ctx, req.NoteId, userDiscordID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "note not found")
@@ -309,7 +353,7 @@ func (h *NoteHandler) ListNoteMessageReferences(ctx context.Context, req *notesp
 		return nil, status.Error(codes.PermissionDenied, "you can only view references for your own notes")
 	}
 
-	refs, err := h.noteService.ListMessageReferences(ctx, req.NoteId)
+	refs, err := h.noteService.ListMessageReferences(ctx, req.NoteId, userDiscordID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list message references: %v", err)
 	}
