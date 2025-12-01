@@ -39,7 +39,8 @@ type Note struct {
 type Quote struct {
 	ID                       string     `json:"id"`
 	Body                     string     `json:"body"`
-	AuthorID                 string     `json:"author_id"` // Who saved the quote
+	AuthorID                 string     `json:"author_id"`         // Who saved the quote (internal user ID)
+	AuthorDiscordID          string     `json:"author_discord_id"` // Discord ID of who saved the quote
 	AuthorUsername           string     `json:"author_username,omitempty"`
 	GuildID                  string     `json:"guild_id"`
 	GuildName                string     `json:"guild_name,omitempty"`

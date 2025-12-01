@@ -36,6 +36,7 @@ const (
 // UserContext contains authenticated user information
 type UserContext struct {
 	UserID      string
+	DiscordID   string // Discord user ID (for bot requests)
 	Username    string
 	DisplayName string
 	Picture     string
@@ -255,6 +256,7 @@ func (i *AuthInterceptor) authenticateDiscordUser(ctx context.Context, md metada
 	// Return UserContext with mapped Hivemind user
 	return &UserContext{
 		UserID:      user.ID,
+		DiscordID:   discordUserID,
 		Username:    username,
 		DisplayName: user.DisplayName,
 		Picture:     stringPtrToString(user.AvatarURL),

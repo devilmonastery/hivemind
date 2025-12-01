@@ -29,10 +29,11 @@ type Quote struct {
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Body  string                 `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
 	// Ownership
-	AuthorId       string `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"` // Who saved the quote
-	AuthorUsername string `protobuf:"bytes,4,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
-	GuildId        string `protobuf:"bytes,5,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
-	GuildName      string `protobuf:"bytes,6,opt,name=guild_name,json=guildName,proto3" json:"guild_name,omitempty"` // Guild display name
+	AuthorId        string `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`                         // Who saved the quote (internal user ID)
+	AuthorDiscordId string `protobuf:"bytes,15,opt,name=author_discord_id,json=authorDiscordId,proto3" json:"author_discord_id,omitempty"` // Discord ID of who saved the quote
+	AuthorUsername  string `protobuf:"bytes,4,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
+	GuildId         string `protobuf:"bytes,5,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	GuildName       string `protobuf:"bytes,6,opt,name=guild_name,json=guildName,proto3" json:"guild_name,omitempty"` // Guild display name
 	// Source message information
 	SourceMsgId              string   `protobuf:"bytes,7,opt,name=source_msg_id,json=sourceMsgId,proto3" json:"source_msg_id,omitempty"` // Original Discord message ID
 	SourceChannelId          string   `protobuf:"bytes,8,opt,name=source_channel_id,json=sourceChannelId,proto3" json:"source_channel_id,omitempty"`
@@ -95,6 +96,13 @@ func (x *Quote) GetBody() string {
 func (x *Quote) GetAuthorId() string {
 	if x != nil {
 		return x.AuthorId
+	}
+	return ""
+}
+
+func (x *Quote) GetAuthorDiscordId() string {
+	if x != nil {
+		return x.AuthorDiscordId
 	}
 	return ""
 }
@@ -753,11 +761,12 @@ var File_quotes_proto protoreflect.FileDescriptor
 
 const file_quotes_proto_rawDesc = "" +
 	"\n" +
-	"\fquotes.proto\x12\x0fhivemind.quotes\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa5\x04\n" +
+	"\fquotes.proto\x12\x0fhivemind.quotes\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd1\x04\n" +
 	"\x05Quote\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1b\n" +
-	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12'\n" +
+	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12*\n" +
+	"\x11author_discord_id\x18\x0f \x01(\tR\x0fauthorDiscordId\x12'\n" +
 	"\x0fauthor_username\x18\x04 \x01(\tR\x0eauthorUsername\x12\x19\n" +
 	"\bguild_id\x18\x05 \x01(\tR\aguildId\x12\x1d\n" +
 	"\n" +
