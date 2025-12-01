@@ -15,6 +15,7 @@ type TitlesCacheEntry struct {
 type TitleSuggestion struct {
 	ID    string
 	Title string
+	Slug  string
 }
 
 // TitlesCache manages autocomplete caches with thread-safe operations

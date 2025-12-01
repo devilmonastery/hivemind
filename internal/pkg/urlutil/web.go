@@ -19,17 +19,15 @@ func BuildNoteViewURL(baseURL, noteID string) (string, error) {
 }
 
 // BuildWikiViewURL builds a web application URL for viewing a wiki page.
-// Returns a URL like: {baseURL}/wiki?guild_id={guildID}&title={title}
-// The title parameter is automatically URL-encoded.
-func BuildWikiViewURL(baseURL, guildID, title string) (string, error) {
+// Returns a URL like: {baseURL}/wiki?slug={slug}&guild_id={guildID}
+// The slug parameter is automatically URL-encoded.
+func BuildWikiViewURL(baseURL, guildID, slug string) (string, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return "", err
 	}
 	u.Path = "/wiki"
-	q := u.Query()
-	q.Set("guild_id", guildID)
-	q.Set("title", title)
-	u.RawQuery = q.Encode()
+	// Manually construct query string with slug first for human-friendliness
+	u.RawQuery = "slug=" + url.QueryEscape(slug) + "&guild_id=" + url.QueryEscape(guildID)
 	return u.String(), nil
 }

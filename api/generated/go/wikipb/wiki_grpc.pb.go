@@ -31,6 +31,7 @@ const (
 	WikiService_ListWikiPages_FullMethodName             = "/hivemind.wiki.WikiService/ListWikiPages"
 	WikiService_AddWikiMessageReference_FullMethodName   = "/hivemind.wiki.WikiService/AddWikiMessageReference"
 	WikiService_ListWikiMessageReferences_FullMethodName = "/hivemind.wiki.WikiService/ListWikiMessageReferences"
+	WikiService_MergeWikiPages_FullMethodName            = "/hivemind.wiki.WikiService/MergeWikiPages"
 )
 
 // WikiServiceClient is the client API for WikiService service.
@@ -61,6 +62,8 @@ type WikiServiceClient interface {
 	AddWikiMessageReference(ctx context.Context, in *AddWikiMessageReferenceRequest, opts ...grpc.CallOption) (*WikiMessageReference, error)
 	// ListWikiMessageReferences retrieves all message references for a wiki page
 	ListWikiMessageReferences(ctx context.Context, in *ListWikiMessageReferencesRequest, opts ...grpc.CallOption) (*ListWikiMessageReferencesResponse, error)
+	// MergeWikiPages merges source page into target page
+	MergeWikiPages(ctx context.Context, in *MergeWikiPagesRequest, opts ...grpc.CallOption) (*WikiPage, error)
 }
 
 type wikiServiceClient struct {
@@ -181,6 +184,16 @@ func (c *wikiServiceClient) ListWikiMessageReferences(ctx context.Context, in *L
 	return out, nil
 }
 
+func (c *wikiServiceClient) MergeWikiPages(ctx context.Context, in *MergeWikiPagesRequest, opts ...grpc.CallOption) (*WikiPage, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WikiPage)
+	err := c.cc.Invoke(ctx, WikiService_MergeWikiPages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WikiServiceServer is the server API for WikiService service.
 // All implementations should embed UnimplementedWikiServiceServer
 // for forward compatibility.
@@ -209,6 +222,8 @@ type WikiServiceServer interface {
 	AddWikiMessageReference(context.Context, *AddWikiMessageReferenceRequest) (*WikiMessageReference, error)
 	// ListWikiMessageReferences retrieves all message references for a wiki page
 	ListWikiMessageReferences(context.Context, *ListWikiMessageReferencesRequest) (*ListWikiMessageReferencesResponse, error)
+	// MergeWikiPages merges source page into target page
+	MergeWikiPages(context.Context, *MergeWikiPagesRequest) (*WikiPage, error)
 }
 
 // UnimplementedWikiServiceServer should be embedded to have
@@ -250,6 +265,9 @@ func (UnimplementedWikiServiceServer) AddWikiMessageReference(context.Context, *
 }
 func (UnimplementedWikiServiceServer) ListWikiMessageReferences(context.Context, *ListWikiMessageReferencesRequest) (*ListWikiMessageReferencesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListWikiMessageReferences not implemented")
+}
+func (UnimplementedWikiServiceServer) MergeWikiPages(context.Context, *MergeWikiPagesRequest) (*WikiPage, error) {
+	return nil, status.Error(codes.Unimplemented, "method MergeWikiPages not implemented")
 }
 func (UnimplementedWikiServiceServer) testEmbeddedByValue() {}
 
@@ -469,6 +487,24 @@ func _WikiService_ListWikiMessageReferences_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WikiService_MergeWikiPages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MergeWikiPagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WikiServiceServer).MergeWikiPages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WikiService_MergeWikiPages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WikiServiceServer).MergeWikiPages(ctx, req.(*MergeWikiPagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WikiService_ServiceDesc is the grpc.ServiceDesc for WikiService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -519,6 +555,10 @@ var WikiService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListWikiMessageReferences",
 			Handler:    _WikiService_ListWikiMessageReferences_Handler,
+		},
+		{
+			MethodName: "MergeWikiPages",
+			Handler:    _WikiService_MergeWikiPages_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

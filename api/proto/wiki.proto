@@ -41,6 +41,9 @@ service WikiService {
 
   // ListWikiMessageReferences retrieves all message references for a wiki page
   rpc ListWikiMessageReferences(ListWikiMessageReferencesRequest) returns (ListWikiMessageReferencesResponse);
+
+  // MergeWikiPages merges source page into target page
+  rpc MergeWikiPages(MergeWikiPagesRequest) returns (WikiPage);
 }
 
 // WikiPage represents a guild knowledge base article
@@ -64,6 +67,9 @@ message WikiPage {
   // Timestamps
   google.protobuf.Timestamp created_at = 12;
   google.protobuf.Timestamp updated_at = 13;
+
+  // URL-friendly slug for the page title
+  string slug = 14;
 }
 
 message CreateWikiPageRequest {
@@ -144,6 +150,7 @@ message AutocompleteWikiTitlesResponse {
 message WikiTitleSuggestion {
   string id = 1;
   string title = 2;
+  string slug = 3; // URL-friendly slug
 }
 
 // WikiMessageReference represents a Discord message tagged with a wiki page topic
@@ -216,4 +223,9 @@ message ListWikiMessageReferencesRequest {
 
 message ListWikiMessageReferencesResponse {
   repeated WikiMessageReference references = 1;
+}
+
+message MergeWikiPagesRequest {
+  string source_page_id = 1; // Page to merge from (will be soft-deleted)
+  string target_page_id = 2; // Page to merge into (will receive combined content)
 }

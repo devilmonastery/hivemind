@@ -170,7 +170,7 @@ func TestBuildWikiViewURL(t *testing.T) {
 		name    string
 		baseURL string
 		guildID string
-		title   string
+		slug    string
 		want    string
 		wantErr bool
 	}{
@@ -178,23 +178,23 @@ func TestBuildWikiViewURL(t *testing.T) {
 			name:    "basic wiki URL",
 			baseURL: "http://localhost:8080",
 			guildID: "guild123",
-			title:   "My Page",
-			want:    "http://localhost:8080/wiki?guild_id=guild123&title=My+Page",
+			slug:    "my-page",
+			want:    "http://localhost:8080/wiki?slug=my-page&guild_id=guild123",
 			wantErr: false,
 		},
 		{
-			name:    "with special characters in title",
+			name:    "with dashes in slug",
 			baseURL: "https://example.com",
 			guildID: "guild456",
-			title:   "Page & Title / With Special?",
-			want:    "https://example.com/wiki?guild_id=guild456&title=Page+%26+Title+%2F+With+Special%3F",
+			slug:    "page-with-dashes",
+			want:    "https://example.com/wiki?slug=page-with-dashes&guild_id=guild456",
 			wantErr: false,
 		},
 		{
-			name:    "with unicode in title",
+			name:    "with unicode slug",
 			baseURL: "https://example.com",
 			guildID: "guild789",
-			title:   "日本語タイトル",
+			slug:    "unicode-slug",
 			wantErr: false,
 			// Note: We don't check exact encoding, just that it doesn't error
 		},
@@ -202,7 +202,7 @@ func TestBuildWikiViewURL(t *testing.T) {
 			name:    "invalid base URL",
 			baseURL: "://invalid",
 			guildID: "guild123",
-			title:   "Title",
+			slug:    "slug",
 			want:    "",
 			wantErr: true,
 		},
@@ -210,7 +210,7 @@ func TestBuildWikiViewURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := BuildWikiViewURL(tt.baseURL, tt.guildID, tt.title)
+			got, err := BuildWikiViewURL(tt.baseURL, tt.guildID, tt.slug)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildWikiViewURL() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -228,8 +228,8 @@ func TestBuildWikiViewURL(t *testing.T) {
 				if parsedURL.Query().Get("guild_id") != tt.guildID {
 					t.Errorf("BuildWikiViewURL() guild_id = %v, want %v", parsedURL.Query().Get("guild_id"), tt.guildID)
 				}
-				if parsedURL.Query().Get("title") != tt.title {
-					t.Errorf("BuildWikiViewURL() title = %v, want %v", parsedURL.Query().Get("title"), tt.title)
+				if parsedURL.Query().Get("slug") != tt.slug {
+					t.Errorf("BuildWikiViewURL() slug = %v, want %v", parsedURL.Query().Get("slug"), tt.slug)
 				}
 			}
 		})

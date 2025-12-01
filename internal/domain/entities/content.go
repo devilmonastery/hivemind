@@ -6,6 +6,7 @@ import "time"
 type WikiPage struct {
 	ID        string     `json:"id"`
 	Title     string     `json:"title"`
+	Slug      string     `json:"slug"`
 	Body      string     `json:"body"`
 	AuthorID  string     `json:"author_id"`
 	GuildID   string     `json:"guild_id"`
@@ -86,6 +87,19 @@ type NoteMessageReference struct {
 	MessageTimestamp  time.Time            `json:"message_timestamp"`
 	Attachments       []AttachmentMetadata `json:"attachments,omitempty"` // Attachment metadata with content types
 	AddedAt           time.Time            `json:"added_at"`
+}
+
+// WikiTitle represents a title (canonical or alias) for a wiki page
+type WikiTitle struct {
+	ID              string    `json:"id"`
+	GuildID         string    `json:"guild_id"`
+	DisplayTitle    string    `json:"display_title"` // Original formatting for display
+	PageSlug        string    `json:"page_slug"`     // URL-friendly slug for lookups
+	PageID          string    `json:"page_id"`
+	IsCanonical     bool      `json:"is_canonical"`
+	CreatedAt       time.Time `json:"created_at"`
+	CreatedByUserID string    `json:"created_by_user_id,omitempty"`
+	CreatedByMerge  bool      `json:"created_by_merge"`
 }
 
 // AttachmentMetadata stores Discord attachment information

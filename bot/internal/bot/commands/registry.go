@@ -54,6 +54,27 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 						},
 					},
 				},
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "merge",
+					Description: "Merge two wiki pages",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:         discordgo.ApplicationCommandOptionString,
+							Name:         "source",
+							Description:  "Source page to merge from (will be deleted)",
+							Required:     true,
+							Autocomplete: true,
+						},
+						{
+							Type:         discordgo.ApplicationCommandOptionString,
+							Name:         "target",
+							Description:  "Target page to merge into (will keep this page)",
+							Required:     true,
+							Autocomplete: true,
+						},
+					},
+				},
 			},
 		},
 		{

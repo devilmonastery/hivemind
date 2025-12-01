@@ -14,8 +14,8 @@ type WikiPageRepository interface {
 	// GetByID retrieves a wiki page by ID
 	GetByID(ctx context.Context, id string) (*entities.WikiPage, error)
 
-	// GetByGuildAndTitle retrieves a wiki page by guild ID and title (case-insensitive)
-	GetByGuildAndTitle(ctx context.Context, guildID, title string) (*entities.WikiPage, error)
+	// GetByGuildAndSlug retrieves a wiki page by guild ID and slug (normalized for lookup)
+	GetByGuildAndSlug(ctx context.Context, guildID, slug string) (*entities.WikiPage, error)
 
 	// Update updates an existing wiki page
 	Update(ctx context.Context, page *entities.WikiPage) error
@@ -29,11 +29,30 @@ type WikiPageRepository interface {
 	// Search performs full-text search on wiki pages
 	Search(ctx context.Context, guildID, query string, tags []string, limit, offset int) ([]*entities.WikiPage, int, error)
 
-	// GetTitlesForGuild retrieves only the ID and title of all wiki pages in a guild
+	// GetTitlesForGuild retrieves only the ID, title, and slug of all wiki pages in a guild
 	GetTitlesForGuild(ctx context.Context, guildID string) ([]struct {
 		ID    string
 		Title string
+		Slug  string
 	}, error)
+}
+
+// WikiTitleRepository defines operations for wiki title (canonical + alias) persistence
+type WikiTitleRepository interface {
+	// Create creates a new title (canonical or alias)
+	Create(ctx context.Context, title *entities.WikiTitle) error
+
+	// GetByGuildAndSlug retrieves the page ID for a slug (normalized lookup)
+	GetByGuildAndSlug(ctx context.Context, guildID, slug string) (*entities.WikiTitle, error)
+
+	// GetCanonicalTitle retrieves the canonical title for a page
+	GetCanonicalTitle(ctx context.Context, pageID string) (*entities.WikiTitle, error)
+
+	// ListByPageID retrieves all titles (canonical + aliases) for a page
+	ListByPageID(ctx context.Context, pageID string) ([]*entities.WikiTitle, error)
+
+	// UpdatePageID updates the page ID for all non-canonical titles pointing to oldPageID
+	UpdatePageID(ctx context.Context, oldPageID, newPageID string) (int, error)
 }
 
 // NoteRepository defines operations for note persistence
@@ -100,6 +119,10 @@ type WikiMessageReferenceRepository interface {
 
 	// DeleteByMessageID deletes all references to a specific message (cleanup if message deleted)
 	DeleteByMessageID(ctx context.Context, messageID string) error
+
+	// TransferReferences transfers all references from sourcePageID to targetPageID
+	// Uses ON CONFLICT DO NOTHING to handle duplicates
+	TransferReferences(ctx context.Context, sourcePageID, targetPageID string) (int, error)
 }
 
 // NoteMessageReferenceRepository defines operations for note message reference persistence
