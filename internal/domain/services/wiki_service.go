@@ -40,9 +40,10 @@ func NewWikiService(wikiRepo repositories.WikiPageRepository, wikiRefRepo reposi
 }
 
 // CreateWikiPage creates a new wiki page
-func (s *WikiService) CreateWikiPage(ctx context.Context, page *entities.WikiPage) (*entities.WikiPage, error) {
+// userDiscordID is used for ACL check on duplicate detection (empty = admin)
+func (s *WikiService) CreateWikiPage(ctx context.Context, page *entities.WikiPage, userDiscordID string) (*entities.WikiPage, error) {
 	// Check for duplicate title in guild - keeps explicit error message
-	existing, err := s.wikiRepo.GetByGuildAndSlug(ctx, page.GuildID, page.Title)
+	existing, err := s.wikiRepo.GetByGuildAndSlug(ctx, page.GuildID, page.Title, userDiscordID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for duplicate: %w", err)
 	}
@@ -62,8 +63,9 @@ func (s *WikiService) CreateWikiPage(ctx context.Context, page *entities.WikiPag
 }
 
 // GetWikiPage retrieves a wiki page by ID
-func (s *WikiService) GetWikiPage(ctx context.Context, id string) (*entities.WikiPage, error) {
-	page, err := s.wikiRepo.GetByID(ctx, id)
+// userDiscordID filters by guild membership (empty = admin)
+func (s *WikiService) GetWikiPage(ctx context.Context, id string, userDiscordID string) (*entities.WikiPage, error) {
+	page, err := s.wikiRepo.GetByID(ctx, id, userDiscordID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wiki page: %w", err)
 	}
@@ -71,7 +73,8 @@ func (s *WikiService) GetWikiPage(ctx context.Context, id string) (*entities.Wik
 }
 
 // UpdateWikiPage updates an existing wiki page
-func (s *WikiService) UpdateWikiPage(ctx context.Context, page *entities.WikiPage) (*entities.WikiPage, error) {
+// userDiscordID filters by guild membership (empty = admin)
+func (s *WikiService) UpdateWikiPage(ctx context.Context, page *entities.WikiPage, userDiscordID string) (*entities.WikiPage, error) {
 	if err := s.wikiRepo.Update(ctx, page); err != nil {
 		return nil, fmt.Errorf("failed to update wiki page: %w", err)
 	}
@@ -80,13 +83,14 @@ func (s *WikiService) UpdateWikiPage(ctx context.Context, page *entities.WikiPag
 	s.titlesCache.Delete(page.GuildID)
 
 	// Fetch updated page
-	return s.wikiRepo.GetByID(ctx, page.ID)
+	return s.wikiRepo.GetByID(ctx, page.ID, userDiscordID)
 }
 
 // UpsertWikiPage creates a new wiki page or updates an existing one with the same title
-func (s *WikiService) UpsertWikiPage(ctx context.Context, page *entities.WikiPage) (*entities.WikiPage, bool, error) {
+// userDiscordID filters by guild membership (empty = admin)
+func (s *WikiService) UpsertWikiPage(ctx context.Context, page *entities.WikiPage, userDiscordID string) (*entities.WikiPage, bool, error) {
 	// Check if a page with this title already exists in the guild
-	existing, err := s.wikiRepo.GetByGuildAndSlug(ctx, page.GuildID, page.Title)
+	existing, err := s.wikiRepo.GetByGuildAndSlug(ctx, page.GuildID, page.Title, userDiscordID)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to check for existing page: %w", err)
 	}
@@ -105,7 +109,7 @@ func (s *WikiService) UpsertWikiPage(ctx context.Context, page *entities.WikiPag
 		s.titlesCache.Delete(page.GuildID)
 
 		// Fetch updated page
-		updated, err := s.wikiRepo.GetByID(ctx, page.ID)
+		updated, err := s.wikiRepo.GetByID(ctx, page.ID, userDiscordID)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to fetch updated page: %w", err)
 		}
@@ -124,9 +128,10 @@ func (s *WikiService) UpsertWikiPage(ctx context.Context, page *entities.WikiPag
 }
 
 // DeleteWikiPage soft-deletes a wiki page
-func (s *WikiService) DeleteWikiPage(ctx context.Context, id string) error {
-	// Fetch the page to get its guild ID
-	page, err := s.wikiRepo.GetByID(ctx, id)
+// userDiscordID filters by guild membership (empty = admin)
+func (s *WikiService) DeleteWikiPage(ctx context.Context, id string, userDiscordID string) error {
+	// Fetch the page to get its guild ID (with ACL check)
+	page, err := s.wikiRepo.GetByID(ctx, id, userDiscordID)
 	if err != nil {
 		return fmt.Errorf("failed to get wiki page: %w", err)
 	}
@@ -142,8 +147,9 @@ func (s *WikiService) DeleteWikiPage(ctx context.Context, id string) error {
 }
 
 // ListWikiPages lists wiki pages in a guild
-func (s *WikiService) ListWikiPages(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool) ([]*entities.WikiPage, int, error) {
-	pages, total, err := s.wikiRepo.List(ctx, guildID, limit, offset, orderBy, ascending)
+// userDiscordID filters to only guilds where user is a member (empty = admin)
+func (s *WikiService) ListWikiPages(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.WikiPage, int, error) {
+	pages, total, err := s.wikiRepo.List(ctx, guildID, limit, offset, orderBy, ascending, userDiscordID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list wiki pages: %w", err)
 	}
@@ -151,8 +157,9 @@ func (s *WikiService) ListWikiPages(ctx context.Context, guildID string, limit, 
 }
 
 // SearchWikiPages searches wiki pages in a guild
-func (s *WikiService) SearchWikiPages(ctx context.Context, guildID, query string, tags []string, limit, offset int) ([]*entities.WikiPage, int, error) {
-	pages, total, err := s.wikiRepo.Search(ctx, guildID, query, tags, limit, offset)
+// userDiscordID filters to only guilds where user is a member (empty = admin)
+func (s *WikiService) SearchWikiPages(ctx context.Context, guildID, query string, tags []string, limit, offset int, userDiscordID string) ([]*entities.WikiPage, int, error) {
+	pages, total, err := s.wikiRepo.Search(ctx, guildID, query, tags, limit, offset, userDiscordID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to search wiki pages: %w", err)
 	}
@@ -160,8 +167,9 @@ func (s *WikiService) SearchWikiPages(ctx context.Context, guildID, query string
 }
 
 // GetWikiPageByTitle retrieves a wiki page by guild ID and slug (normalized for lookup)
-func (s *WikiService) GetWikiPageByTitle(ctx context.Context, guildID, slug string) (*entities.WikiPage, error) {
-	page, err := s.wikiRepo.GetByGuildAndSlug(ctx, guildID, slug)
+// userDiscordID filters by guild membership (empty = admin)
+func (s *WikiService) GetWikiPageByTitle(ctx context.Context, guildID, slug string, userDiscordID string) (*entities.WikiPage, error) {
+	page, err := s.wikiRepo.GetByGuildAndSlug(ctx, guildID, slug, userDiscordID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wiki page by title: %w", err)
 	}
@@ -233,17 +241,18 @@ func (s *WikiService) getWikiTitlesForGuild(ctx context.Context, guildID string)
 	return titles, nil
 }
 
-// MergeWikiPages merges source wiki page into target wiki page
-// - Appends source body to target body (with separator)
-// - Merges tags (union, deduplicated)
+// MergeWikiPages merges sourcePageID into targetPageID:
+// - Appends source body to target body
+// - Converts source's canonical title to an alias pointing to target
+// - Transfers all other source aliases to point to target
 // - Transfers all message references from source to target
 // - Soft-deletes source page
-// - Creates alias title for source page pointing to target
 // - Flattens any existing aliases pointing to source (redirects them to target)
 // - Invalidates title cache for guild
+// Note: No ACL check needed - merge is an admin-only operation
 func (s *WikiService) MergeWikiPages(ctx context.Context, sourcePageID, targetPageID, mergedByUserID string) (*entities.WikiPage, error) {
-	// Fetch both pages
-	sourcePage, err := s.wikiRepo.GetByID(ctx, sourcePageID)
+	// Fetch both pages (no ACL filter - admin operation)
+	sourcePage, err := s.wikiRepo.GetByID(ctx, sourcePageID, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch source page: %w", err)
 	}
@@ -251,7 +260,7 @@ func (s *WikiService) MergeWikiPages(ctx context.Context, sourcePageID, targetPa
 		return nil, fmt.Errorf("source page not found: %s", sourcePageID)
 	}
 
-	targetPage, err := s.wikiRepo.GetByID(ctx, targetPageID)
+	targetPage, err := s.wikiRepo.GetByID(ctx, targetPageID, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch target page: %w", err)
 	}

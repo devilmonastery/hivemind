@@ -16,6 +16,21 @@ service DiscordService {
 
   // GetGuild retrieves guild information
   rpc GetGuild(GetGuildRequest) returns (GetGuildResponse);
+
+  // UpsertGuildMember creates or updates a guild member record
+  rpc UpsertGuildMember(UpsertGuildMemberRequest) returns (UpsertGuildMemberResponse);
+
+  // UpsertGuildMembersBatch efficiently inserts/updates multiple members
+  rpc UpsertGuildMembersBatch(UpsertGuildMembersBatchRequest) returns (UpsertGuildMembersBatchResponse);
+
+  // RemoveGuildMember removes a member record (when they leave)
+  rpc RemoveGuildMember(RemoveGuildMemberRequest) returns (RemoveGuildMemberResponse);
+
+  // CheckGuildMembership checks if a user is a member of a guild
+  rpc CheckGuildMembership(CheckGuildMembershipRequest) returns (CheckGuildMembershipResponse);
+
+  // ListUserGuilds returns all guilds a user is a member of
+  rpc ListUserGuilds(ListUserGuildsRequest) returns (ListUserGuildsResponse);
 }
 
 // Guild represents a Discord server
@@ -54,4 +69,68 @@ message GetGuildRequest {
 
 message GetGuildResponse {
   Guild guild = 1;
+}
+
+// GuildMember represents a Discord user's membership in a guild
+message GuildMember {
+  string guild_id = 1;
+  string discord_id = 2;
+  string guild_nick = 3; // Server nickname (optional)
+  string guild_avatar_hash = 4; // Server avatar hash (optional)
+  repeated string roles = 5; // Role IDs
+  google.protobuf.Timestamp joined_at = 6;
+  google.protobuf.Timestamp synced_at = 7;
+  google.protobuf.Timestamp last_seen = 8; // Last bot interaction (optional)
+
+  // Discord user info (for batch upsert to ensure user exists)
+  string discord_username = 9;
+  string discord_global_name = 10;
+  string avatar_url = 11;
+}
+
+message UpsertGuildMemberRequest {
+  string guild_id = 1;
+  string discord_id = 2;
+  string guild_nick = 3;
+  string guild_avatar_hash = 4;
+  repeated string roles = 5;
+  google.protobuf.Timestamp joined_at = 6;
+}
+
+message UpsertGuildMemberResponse {
+  bool success = 1;
+}
+
+message UpsertGuildMembersBatchRequest {
+  repeated GuildMember members = 1;
+}
+
+message UpsertGuildMembersBatchResponse {
+  int32 count = 1; // Number of members upserted
+}
+
+message RemoveGuildMemberRequest {
+  string guild_id = 1;
+  string discord_id = 2;
+}
+
+message RemoveGuildMemberResponse {
+  bool success = 1;
+}
+
+message CheckGuildMembershipRequest {
+  string guild_id = 1;
+  string discord_id = 2;
+}
+
+message CheckGuildMembershipResponse {
+  bool is_member = 1;
+}
+
+message ListUserGuildsRequest {
+  string discord_id = 1;
+}
+
+message ListUserGuildsResponse {
+  repeated string guild_ids = 1;
 }

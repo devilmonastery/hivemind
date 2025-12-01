@@ -47,6 +47,42 @@ type DiscordGuildRepository interface {
 	// List retrieves all guilds (optionally filtered by enabled status)
 	List(ctx context.Context, enabledOnly bool) ([]*entities.DiscordGuild, error)
 
+	// UpdateMemberSyncTime updates the last_member_sync timestamp
+	UpdateMemberSyncTime(ctx context.Context, guildID string) error
+
 	// Delete removes a guild record
 	Delete(ctx context.Context, guildID string) error
+}
+
+// GuildMemberRepository handles Discord guild membership data persistence
+type GuildMemberRepository interface {
+	// Upsert creates or updates a guild member record
+	Upsert(ctx context.Context, member *entities.GuildMember) error
+
+	// UpsertBatch efficiently inserts/updates multiple members in a transaction
+	UpsertBatch(ctx context.Context, members []*entities.GuildMember) error
+
+	// IsMember checks if a Discord user is a member of a guild
+	IsMember(ctx context.Context, guildID, discordID string) (bool, error)
+
+	// GetMember retrieves a guild member record
+	GetMember(ctx context.Context, guildID, discordID string) (*entities.GuildMember, error)
+
+	// ListGuildMembers retrieves all members for a guild
+	ListGuildMembers(ctx context.Context, guildID string) ([]*entities.GuildMember, error)
+
+	// ListUserGuilds retrieves all guild IDs a user is a member of
+	ListUserGuilds(ctx context.Context, discordID string) ([]string, error)
+
+	// UpdateLastSeen updates the last_seen timestamp for a guild member
+	UpdateLastSeen(ctx context.Context, guildID, discordID string) error
+
+	// DeleteMember removes a member record (when they leave)
+	DeleteMember(ctx context.Context, guildID, discordID string) error
+
+	// DeleteAllGuildMembers removes all members for a guild (when bot leaves guild)
+	DeleteAllGuildMembers(ctx context.Context, guildID string) error
+
+	// CountGuildMembers returns the number of members in a guild
+	CountGuildMembers(ctx context.Context, guildID string) (int, error)
 }

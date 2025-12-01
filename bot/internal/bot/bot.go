@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	discordpb "github.com/devilmonastery/hivemind/api/generated/go/discordpb"
 	"github.com/devilmonastery/hivemind/bot/internal/bot/handlers"
@@ -25,6 +26,10 @@ type Bot struct {
 
 	// Autocomplete cache
 	titlesCache *handlers.TitlesCache
+
+	// Sync context for background jobs
+	syncCtx    context.Context
+	syncCancel context.CancelFunc
 }
 
 // New creates a new Bot instance
@@ -52,12 +57,17 @@ func New(cfg *config.Config, log *slog.Logger) (*Bot, error) {
 		slog.Int("port", cfg.Backend.GRPCPort),
 	)
 
+	// Create context for background sync jobs
+	syncCtx, syncCancel := context.WithCancel(context.Background())
+
 	bot := &Bot{
 		config:      cfg,
 		log:         log,
 		session:     session,
 		grpcClient:  grpcClient,
 		titlesCache: handlers.NewTitlesCache(1 * time.Minute),
+		syncCtx:     syncCtx,
+		syncCancel:  syncCancel,
 	}
 
 	// Register handlers
@@ -75,6 +85,11 @@ func (b *Bot) registerHandlers() {
 	b.session.AddHandler(b.onGuildCreate)
 	b.session.AddHandler(b.onGuildDelete)
 
+	// Member events (for real-time membership sync)
+	b.session.AddHandler(b.onGuildMemberAdd)
+	b.session.AddHandler(b.onGuildMemberUpdate)
+	b.session.AddHandler(b.onGuildMemberRemove)
+
 	// Interaction handlers
 	b.session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		handlers.HandleInteraction(s, i, b.config, b.log, b.grpcClient, b.titlesCache)
@@ -86,11 +101,20 @@ func (b *Bot) Start() error {
 	if err := b.session.Open(); err != nil {
 		return fmt.Errorf("failed to open Discord connection: %w", err)
 	}
+
+	// Start background member sync job
+	go b.StartMemberSync(b.syncCtx)
+
 	return nil
 }
 
 // Stop gracefully closes the Discord connection
 func (b *Bot) Stop(ctx context.Context) error {
+	// Cancel sync context to stop background jobs
+	if b.syncCancel != nil {
+		b.syncCancel()
+	}
+
 	// Close gRPC connection
 	if b.grpcClient != nil {
 		if err := b.grpcClient.Close(); err != nil {
@@ -174,5 +198,94 @@ func (b *Bot) onGuildDelete(s *discordgo.Session, event *discordgo.GuildDelete) 
 	} else {
 		b.log.Info("guild disabled in database",
 			slog.String("guild_id", event.ID))
+	}
+}
+
+// onGuildMemberAdd is called when a member joins a guild
+func (b *Bot) onGuildMemberAdd(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
+	b.log.Info("member joined guild",
+		slog.String("guild_id", event.GuildID),
+		slog.String("discord_id", event.User.ID),
+		slog.String("username", event.User.Username))
+
+	ctx := context.Background()
+	discordClient := discordpb.NewDiscordServiceClient(b.grpcClient.Conn())
+
+	// Prepare guild member data
+	req := &discordpb.UpsertGuildMemberRequest{
+		GuildId:   event.GuildID,
+		DiscordId: event.User.ID,
+		JoinedAt:  timestamppb.New(event.JoinedAt),
+		Roles:     event.Roles,
+	}
+
+	if event.Nick != "" {
+		req.GuildNick = event.Nick
+	}
+	if event.Avatar != "" {
+		req.GuildAvatarHash = event.Avatar
+	}
+
+	_, err := discordClient.UpsertGuildMember(ctx, req)
+	if err != nil {
+		b.log.Error("failed to upsert guild member",
+			slog.String("guild_id", event.GuildID),
+			slog.String("discord_id", event.User.ID),
+			slog.String("error", err.Error()))
+	}
+}
+
+// onGuildMemberUpdate is called when a member's data changes (nickname, roles, avatar)
+func (b *Bot) onGuildMemberUpdate(s *discordgo.Session, event *discordgo.GuildMemberUpdate) {
+	b.log.Debug("member updated in guild",
+		slog.String("guild_id", event.GuildID),
+		slog.String("discord_id", event.User.ID))
+
+	ctx := context.Background()
+	discordClient := discordpb.NewDiscordServiceClient(b.grpcClient.Conn())
+
+	// Prepare updated member data
+	req := &discordpb.UpsertGuildMemberRequest{
+		GuildId:   event.GuildID,
+		DiscordId: event.User.ID,
+		JoinedAt:  timestamppb.New(event.JoinedAt),
+		Roles:     event.Roles,
+	}
+
+	if event.Nick != "" {
+		req.GuildNick = event.Nick
+	}
+	if event.Avatar != "" {
+		req.GuildAvatarHash = event.Avatar
+	}
+
+	_, err := discordClient.UpsertGuildMember(ctx, req)
+	if err != nil {
+		b.log.Error("failed to update guild member",
+			slog.String("guild_id", event.GuildID),
+			slog.String("discord_id", event.User.ID),
+			slog.String("error", err.Error()))
+	}
+}
+
+// onGuildMemberRemove is called when a member leaves or is kicked from a guild
+func (b *Bot) onGuildMemberRemove(s *discordgo.Session, event *discordgo.GuildMemberRemove) {
+	b.log.Info("member left guild",
+		slog.String("guild_id", event.GuildID),
+		slog.String("discord_id", event.User.ID),
+		slog.String("username", event.User.Username))
+
+	ctx := context.Background()
+	discordClient := discordpb.NewDiscordServiceClient(b.grpcClient.Conn())
+
+	_, err := discordClient.RemoveGuildMember(ctx, &discordpb.RemoveGuildMemberRequest{
+		GuildId:   event.GuildID,
+		DiscordId: event.User.ID,
+	})
+	if err != nil {
+		b.log.Error("failed to remove guild member",
+			slog.String("guild_id", event.GuildID),
+			slog.String("discord_id", event.User.ID),
+			slog.String("error", err.Error()))
 	}
 }

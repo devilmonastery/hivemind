@@ -206,6 +206,7 @@ func runServer(configPath string, forceVersion int) error {
 	auditRepo = postgres.NewAuditRepository(pgConn.DB)
 	discordUserRepo := postgres.NewDiscordUserRepository(pgConn.DB)
 	discordGuildRepo := postgres.NewDiscordGuildRepository(pgConn.DB)
+	guildMemberRepo := postgres.NewGuildMemberRepository(pgConn.DB)
 	wikiTitleRepo := postgres.NewWikiTitleRepository(pgConn.DB.DB)
 	wikiPageRepo := postgres.NewWikiPageRepository(pgConn.DB.DB, wikiTitleRepo)
 	noteRepo := postgres.NewNoteRepository(pgConn.DB.DB)
@@ -227,7 +228,7 @@ func runServer(configPath string, forceVersion int) error {
 	// Initialize services
 	userService := services.NewUserService(userRepo, auditRepo)
 	tokenService := services.NewTokenService(tokenRepo, userRepo, auditRepo)
-	discordService := services.NewDiscordService(discordUserRepo, discordGuildRepo, userRepo, logger)
+	discordService := services.NewDiscordService(discordUserRepo, discordGuildRepo, guildMemberRepo, userRepo, logger)
 	wikiService := services.NewWikiService(wikiPageRepo, wikiMessageRefRepo, wikiTitleRepo)
 	noteService := services.NewNoteService(noteRepo, noteMessageRefRepo)
 	quoteService := services.NewQuoteService(quoteRepo)
@@ -240,9 +241,9 @@ func runServer(configPath string, forceVersion int) error {
 	adminHandler := handlers.NewAdminHandler(userService)
 	tokenHandler := handlers.NewTokenHandler(tokenService)
 	discordHandler := handlers.NewDiscordHandler(discordService)
-	wikiHandler := handlers.NewWikiHandler(wikiService, discordService, logger)
-	noteHandler := handlers.NewNoteHandler(noteService)
-	quoteHandler := handlers.NewQuoteHandler(quoteService)
+	wikiHandler := handlers.NewWikiHandler(wikiService, discordService, guildMemberRepo, discordUserRepo, logger)
+	noteHandler := handlers.NewNoteHandler(noteService, discordUserRepo)
+	quoteHandler := handlers.NewQuoteHandler(quoteService, discordUserRepo)
 
 	// Create gRPC server with interceptors and keepalive
 	grpcServer := grpc.NewServer(

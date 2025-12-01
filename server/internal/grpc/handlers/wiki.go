@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	commonpb "github.com/devilmonastery/hivemind/api/generated/go/commonpb"
 	wikipb "github.com/devilmonastery/hivemind/api/generated/go/wikipb"
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
+	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/domain/services"
 	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 	"github.com/devilmonastery/hivemind/server/internal/grpc/interceptors"
@@ -19,17 +21,21 @@ import (
 
 type wikiHandler struct {
 	wikipb.UnimplementedWikiServiceServer
-	wikiService    *services.WikiService
-	discordService *services.DiscordService
-	log            *slog.Logger
+	wikiService     *services.WikiService
+	discordService  *services.DiscordService
+	guildMemberRepo repositories.GuildMemberRepository
+	discordUserRepo repositories.DiscordUserRepository
+	log             *slog.Logger
 }
 
 // NewWikiHandler creates a new wiki gRPC handler
-func NewWikiHandler(wikiService *services.WikiService, discordService *services.DiscordService, logger *slog.Logger) wikipb.WikiServiceServer {
+func NewWikiHandler(wikiService *services.WikiService, discordService *services.DiscordService, guildMemberRepo repositories.GuildMemberRepository, discordUserRepo repositories.DiscordUserRepository, logger *slog.Logger) wikipb.WikiServiceServer {
 	return &wikiHandler{
-		wikiService:    wikiService,
-		discordService: discordService,
-		log:            logger.With(slog.String("handler", "wiki")),
+		wikiService:     wikiService,
+		discordService:  discordService,
+		guildMemberRepo: guildMemberRepo,
+		discordUserRepo: discordUserRepo,
+		log:             logger.With(slog.String("handler", "wiki")),
 	}
 }
 
@@ -40,6 +46,8 @@ func (h *wikiHandler) CreateWikiPage(ctx context.Context, req *wikipb.CreateWiki
 		return nil, err
 	}
 
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
+
 	page := &entities.WikiPage{
 		Title:     req.Title,
 		Body:      req.Body,
@@ -49,7 +57,7 @@ func (h *wikiHandler) CreateWikiPage(ctx context.Context, req *wikipb.CreateWiki
 		Tags:      req.Tags,
 	}
 
-	created, err := h.wikiService.CreateWikiPage(ctx, page)
+	created, err := h.wikiService.CreateWikiPage(ctx, page, userDiscordID)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +72,9 @@ func (h *wikiHandler) GetWikiPage(ctx context.Context, req *wikipb.GetWikiPageRe
 		return nil, err
 	}
 
-	page, err := h.wikiService.GetWikiPage(ctx, req.Id)
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
+
+	page, err := h.wikiService.GetWikiPage(ctx, req.Id, userDiscordID)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +88,9 @@ func (h *wikiHandler) GetWikiPageByTitle(ctx context.Context, req *wikipb.GetWik
 		return nil, err
 	}
 
-	page, err := h.wikiService.GetWikiPageByTitle(ctx, req.GuildId, req.Title)
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
+
+	page, err := h.wikiService.GetWikiPageByTitle(ctx, req.GuildId, req.Title, userDiscordID)
 	if err != nil {
 		return nil, err
 	}
@@ -87,12 +99,19 @@ func (h *wikiHandler) GetWikiPageByTitle(ctx context.Context, req *wikipb.GetWik
 }
 
 func (h *wikiHandler) SearchWikiPages(ctx context.Context, req *wikipb.SearchWikiPagesRequest) (*wikipb.SearchWikiPagesResponse, error) {
+	userCtx, err := interceptors.GetUserFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
+
 	limit := int(req.Limit)
 	if limit <= 0 {
 		limit = 10
 	}
 
-	pages, total, err := h.wikiService.SearchWikiPages(ctx, req.GuildId, req.Query, req.Tags, limit, int(req.Offset))
+	pages, total, err := h.wikiService.SearchWikiPages(ctx, req.GuildId, req.Query, req.Tags, limit, int(req.Offset), userDiscordID)
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +134,8 @@ func (h *wikiHandler) UpdateWikiPage(ctx context.Context, req *wikipb.UpdateWiki
 		return nil, err
 	}
 
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
+
 	page := &entities.WikiPage{
 		ID:    req.Id,
 		Title: req.Title,
@@ -122,7 +143,7 @@ func (h *wikiHandler) UpdateWikiPage(ctx context.Context, req *wikipb.UpdateWiki
 		Tags:  req.Tags,
 	}
 
-	updated, err := h.wikiService.UpdateWikiPage(ctx, page)
+	updated, err := h.wikiService.UpdateWikiPage(ctx, page, userDiscordID)
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +157,8 @@ func (h *wikiHandler) UpsertWikiPage(ctx context.Context, req *wikipb.UpsertWiki
 	if err != nil {
 		return nil, err
 	}
+
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
 
 	// Validate title is not empty
 	if strings.TrimSpace(req.Title) == "" {
@@ -156,7 +179,7 @@ func (h *wikiHandler) UpsertWikiPage(ctx context.Context, req *wikipb.UpsertWiki
 		Tags:      req.Tags,
 	}
 
-	upserted, created, err := h.wikiService.UpsertWikiPage(ctx, page)
+	upserted, created, err := h.wikiService.UpsertWikiPage(ctx, page, userDiscordID)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +192,14 @@ func (h *wikiHandler) UpsertWikiPage(ctx context.Context, req *wikipb.UpsertWiki
 }
 
 func (h *wikiHandler) DeleteWikiPage(ctx context.Context, req *wikipb.DeleteWikiPageRequest) (*commonpb.SuccessResponse, error) {
-	if err := h.wikiService.DeleteWikiPage(ctx, req.Id); err != nil {
+	userCtx, err := interceptors.GetUserFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
+
+	if err := h.wikiService.DeleteWikiPage(ctx, req.Id, userDiscordID); err != nil {
 		return nil, err
 	}
 
@@ -180,10 +210,12 @@ func (h *wikiHandler) DeleteWikiPage(ctx context.Context, req *wikipb.DeleteWiki
 }
 
 func (h *wikiHandler) ListWikiPages(ctx context.Context, req *wikipb.ListWikiPagesRequest) (*wikipb.ListWikiPagesResponse, error) {
-	_, err := interceptors.GetUserFromContext(ctx)
+	userCtx, err := interceptors.GetUserFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	userDiscordID := h.getUserDiscordID(ctx, userCtx)
 
 	limit := int(req.Limit)
 	if limit <= 0 {
@@ -195,7 +227,7 @@ func (h *wikiHandler) ListWikiPages(ctx context.Context, req *wikipb.ListWikiPag
 		orderBy = "created_at"
 	}
 
-	pages, total, err := h.wikiService.ListWikiPages(ctx, req.GuildId, limit, int(req.Offset), orderBy, req.Ascending)
+	pages, total, err := h.wikiService.ListWikiPages(ctx, req.GuildId, limit, int(req.Offset), orderBy, req.Ascending, userDiscordID)
 	if err != nil {
 		return nil, err
 	}
@@ -242,6 +274,32 @@ func (h *wikiHandler) getUsernameForAuthor(ctx context.Context, authorID string)
 	}
 	// Fallback to author ID if username not found
 	return authorID
+}
+
+// getUserDiscordID extracts Discord ID from context for ACL filtering
+// Returns empty string for admin users (no ACL filtering)
+func (h *wikiHandler) getUserDiscordID(ctx context.Context, userCtx *interceptors.UserContext) string {
+	log.Printf("[WikiHandler.getUserDiscordID] UserID: %s, Role: %s", userCtx.UserID, userCtx.Role)
+
+	// Admin bypass: empty string means no ACL filtering
+	if userCtx.Role == "admin" {
+		log.Printf("[WikiHandler.getUserDiscordID] Admin bypass - no ACL filtering")
+		return ""
+	}
+
+	// Get user's Discord ID for ACL filtering
+	discordUser, err := h.discordUserRepo.GetByUserID(ctx, userCtx.UserID)
+	if err != nil {
+		log.Printf("[WikiHandler.getUserDiscordID] Error getting Discord user: %v", err)
+		return ""
+	}
+	if discordUser == nil {
+		log.Printf("[WikiHandler.getUserDiscordID] No Discord user found for UserID %s", userCtx.UserID)
+		return ""
+	}
+
+	log.Printf("[WikiHandler.getUserDiscordID] Found Discord ID: %s", discordUser.DiscordID)
+	return discordUser.DiscordID
 }
 
 func (h *wikiHandler) AddWikiMessageReference(ctx context.Context, req *wikipb.AddWikiMessageReferenceRequest) (*wikipb.WikiMessageReference, error) {

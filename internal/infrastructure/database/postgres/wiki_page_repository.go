@@ -65,21 +65,41 @@ func (r *wikiPageRepository) Create(ctx context.Context, page *entities.WikiPage
 	return r.titleRepo.Create(ctx, wikiTitle)
 }
 
-func (r *wikiPageRepository) GetByID(ctx context.Context, id string) (*entities.WikiPage, error) {
+func (r *wikiPageRepository) GetByID(ctx context.Context, id string, userDiscordID string) (*entities.WikiPage, error) {
+	// Build query with optional ACL check via guild_members JOIN
 	query := `
-		SELECT id, title, body, author_id, guild_id, channel_id, tags, created_at, updated_at, deleted_at
-		FROM wiki_pages
-		WHERE id = $1 AND deleted_at IS NULL
+		SELECT wp.id, wp.title, wp.body, wp.author_id, wp.guild_id, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wp.deleted_at
+		FROM wiki_pages wp
 	`
+
+	// Add ACL check if userDiscordID provided (non-admin)
+	if userDiscordID != "" {
+		query += `
+			INNER JOIN guild_members gm ON wp.guild_id = gm.guild_id AND gm.discord_id = $2
+		`
+	}
+
+	query += `
+		WHERE wp.id = $1 AND wp.deleted_at IS NULL
+	`
+
 	page := &entities.WikiPage{}
 	var tags pq.StringArray
 	var channelID sql.NullString
 	var deletedAt sql.NullTime
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
-		&channelID, &tags, &page.CreatedAt, &page.UpdatedAt, &deletedAt,
-	)
+	var err error
+	if userDiscordID != "" {
+		err = r.db.QueryRowContext(ctx, query, id, userDiscordID).Scan(
+			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
+			&channelID, &tags, &page.CreatedAt, &page.UpdatedAt, &deletedAt,
+		)
+	} else {
+		err = r.db.QueryRowContext(ctx, query, id).Scan(
+			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
+			&channelID, &tags, &page.CreatedAt, &page.UpdatedAt, &deletedAt,
+		)
+	}
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("wiki page not found: %s", id)
 	}
@@ -97,7 +117,7 @@ func (r *wikiPageRepository) GetByID(ctx context.Context, id string) (*entities.
 	return page, nil
 }
 
-func (r *wikiPageRepository) GetByGuildAndSlug(ctx context.Context, guildID, pageSlug string) (*entities.WikiPage, error) {
+func (r *wikiPageRepository) GetByGuildAndSlug(ctx context.Context, guildID, pageSlug string, userDiscordID string) (*entities.WikiPage, error) {
 	// Normalize slug for lookup
 	titleSlug := slug.Make(pageSlug)
 
@@ -110,8 +130,8 @@ func (r *wikiPageRepository) GetByGuildAndSlug(ctx context.Context, guildID, pag
 		return nil, nil // Title not found
 	}
 
-	// Get the page by ID
-	page, err := r.GetByID(ctx, wikiTitle.PageID)
+	// Get the page by ID (with ACL check)
+	page, err := r.GetByID(ctx, wikiTitle.PageID, userDiscordID)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +203,7 @@ func (r *wikiPageRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool) ([]*entities.WikiPage, int, error) {
+func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.WikiPage, int, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -203,23 +223,31 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 		direction = "ASC"
 	}
 
-	// Build WHERE clause - if guildID is empty, get from all guilds
+	// Build WHERE clause and FROM clause
+	fromClause := "wiki_pages wp"
 	whereClause := "wp.deleted_at IS NULL"
 	args := []interface{}{}
+	argCount := 0
+
+	// Add ACL filter if userDiscordID provided (non-admin)
+	if userDiscordID != "" {
+		fromClause += " INNER JOIN guild_members gm ON wp.guild_id = gm.guild_id"
+		argCount++
+		whereClause += fmt.Sprintf(" AND gm.discord_id = $%d", argCount)
+		args = append(args, userDiscordID)
+	}
+
+	// Add guild filter if specified
 	if guildID != "" {
-		whereClause = "wp.guild_id = $1 AND wp.deleted_at IS NULL"
+		argCount++
+		whereClause += fmt.Sprintf(" AND wp.guild_id = $%d", argCount)
 		args = append(args, guildID)
 	}
 
 	// Get total count
 	var total int
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM wiki_pages wp WHERE %s", whereClause)
-	var err error
-	if guildID != "" {
-		err = r.db.QueryRowContext(ctx, countQuery, guildID).Scan(&total)
-	} else {
-		err = r.db.QueryRowContext(ctx, countQuery).Scan(&total)
-	}
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
+	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -227,13 +255,13 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 	// Get pages with canonical slug from wiki_titles
 	query := fmt.Sprintf(`
 		SELECT wp.id, wt.display_title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wt.page_slug
-		FROM wiki_pages wp
+		FROM %s
 		LEFT JOIN discord_guilds dg ON wp.guild_id = dg.guild_id
 		LEFT JOIN wiki_titles wt ON wp.id = wt.page_id AND wt.is_canonical = TRUE
 		WHERE %s
 		ORDER BY wp.%s %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, orderBy, direction, len(args)+1, len(args)+2)
+	`, fromClause, whereClause, orderBy, direction, argCount+1, argCount+2)
 
 	args = append(args, limit, offset)
 	rows, err := r.db.QueryContext(ctx, query, args...)
@@ -272,15 +300,31 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 	return pages, total, nil
 }
 
-func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, tags []string, limit, offset int) ([]*entities.WikiPage, int, error) {
+func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, tags []string, limit, offset int, userDiscordID string) ([]*entities.WikiPage, int, error) {
 	if limit <= 0 {
 		limit = 10
 	}
 
-	// Build search conditions
-	conditions := []string{"wp.guild_id = $1", "wp.deleted_at IS NULL"}
-	args := []interface{}{guildID}
-	argCount := 1
+	// Build FROM clause and search conditions
+	fromClause := "wiki_pages wp"
+	conditions := []string{"wp.deleted_at IS NULL"}
+	args := []interface{}{}
+	argCount := 0
+
+	// Add ACL filter if userDiscordID provided (non-admin)
+	if userDiscordID != "" {
+		fromClause += " INNER JOIN guild_members gm ON wp.guild_id = gm.guild_id"
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("gm.discord_id = $%d", argCount))
+		args = append(args, userDiscordID)
+	}
+
+	// Add guild filter if specified
+	if guildID != "" {
+		argCount++
+		conditions = append(conditions, fmt.Sprintf("wp.guild_id = $%d", argCount))
+		args = append(args, guildID)
+	}
 
 	// Full-text search on title and body
 	if query != "" {
@@ -301,22 +345,34 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 
 	// Get total count
 	var total int
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM wiki_pages wp WHERE %s", whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	// Get pages with ranking and canonical slug from wiki_titles
+	// Use query text for ranking if provided
+	orderByClause := "wp.created_at DESC"
+	if query != "" {
+		// Find the query parameter position
+		for i, arg := range args {
+			if s, ok := arg.(string); ok && s == query {
+				orderByClause = fmt.Sprintf("ts_rank(wp.search_vector, websearch_to_tsquery('english', $%d)) DESC", i+1)
+				break
+			}
+		}
+	}
+
 	searchQuery := fmt.Sprintf(`
 		SELECT wp.id, wt.display_title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wt.page_slug
-		FROM wiki_pages wp
+		FROM %s
 		LEFT JOIN discord_guilds dg ON wp.guild_id = dg.guild_id
 		LEFT JOIN wiki_titles wt ON wp.id = wt.page_id AND wt.is_canonical = TRUE
 		WHERE %s
-		ORDER BY ts_rank(wp.search_vector, websearch_to_tsquery('english', $%d)) DESC
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, argCount, argCount+1, argCount+2)
+	`, fromClause, whereClause, orderByClause, argCount+1, argCount+2)
 
 	args = append(args, limit, offset)
 

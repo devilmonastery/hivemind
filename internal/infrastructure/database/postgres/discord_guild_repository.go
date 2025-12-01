@@ -132,6 +132,31 @@ func (r *DiscordGuildRepository) UpdateLastActivity(ctx context.Context, guildID
 	return nil
 }
 
+// UpdateMemberSyncTime updates the last_member_sync timestamp for a guild
+func (r *DiscordGuildRepository) UpdateMemberSyncTime(ctx context.Context, guildID string) error {
+	query := `
+		UPDATE discord_guilds
+		SET last_member_sync = $2
+		WHERE guild_id = $1
+	`
+
+	result, err := r.db.ExecContext(ctx, query, guildID, time.Now())
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return repositories.ErrDiscordGuildNotFound
+	}
+
+	return nil
+}
+
 // List retrieves all Discord guilds, optionally filtering by enabled status
 func (r *DiscordGuildRepository) List(ctx context.Context, enabledOnly bool) ([]*entities.DiscordGuild, error) {
 	query := `

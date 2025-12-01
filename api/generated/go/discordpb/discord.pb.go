@@ -403,6 +403,628 @@ func (x *GetGuildResponse) GetGuild() *Guild {
 	return nil
 }
 
+// GuildMember represents a Discord user's membership in a guild
+type GuildMember struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	GuildId         string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	DiscordId       string                 `protobuf:"bytes,2,opt,name=discord_id,json=discordId,proto3" json:"discord_id,omitempty"`
+	GuildNick       string                 `protobuf:"bytes,3,opt,name=guild_nick,json=guildNick,proto3" json:"guild_nick,omitempty"`                     // Server nickname (optional)
+	GuildAvatarHash string                 `protobuf:"bytes,4,opt,name=guild_avatar_hash,json=guildAvatarHash,proto3" json:"guild_avatar_hash,omitempty"` // Server avatar hash (optional)
+	Roles           []string               `protobuf:"bytes,5,rep,name=roles,proto3" json:"roles,omitempty"`                                              // Role IDs
+	JoinedAt        *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
+	SyncedAt        *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=synced_at,json=syncedAt,proto3" json:"synced_at,omitempty"`
+	LastSeen        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"` // Last bot interaction (optional)
+	// Discord user info (for batch upsert to ensure user exists)
+	DiscordUsername   string `protobuf:"bytes,9,opt,name=discord_username,json=discordUsername,proto3" json:"discord_username,omitempty"`
+	DiscordGlobalName string `protobuf:"bytes,10,opt,name=discord_global_name,json=discordGlobalName,proto3" json:"discord_global_name,omitempty"`
+	AvatarUrl         string `protobuf:"bytes,11,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GuildMember) Reset() {
+	*x = GuildMember{}
+	mi := &file_discord_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GuildMember) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GuildMember) ProtoMessage() {}
+
+func (x *GuildMember) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GuildMember.ProtoReflect.Descriptor instead.
+func (*GuildMember) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GuildMember) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *GuildMember) GetDiscordId() string {
+	if x != nil {
+		return x.DiscordId
+	}
+	return ""
+}
+
+func (x *GuildMember) GetGuildNick() string {
+	if x != nil {
+		return x.GuildNick
+	}
+	return ""
+}
+
+func (x *GuildMember) GetGuildAvatarHash() string {
+	if x != nil {
+		return x.GuildAvatarHash
+	}
+	return ""
+}
+
+func (x *GuildMember) GetRoles() []string {
+	if x != nil {
+		return x.Roles
+	}
+	return nil
+}
+
+func (x *GuildMember) GetJoinedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.JoinedAt
+	}
+	return nil
+}
+
+func (x *GuildMember) GetSyncedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SyncedAt
+	}
+	return nil
+}
+
+func (x *GuildMember) GetLastSeen() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSeen
+	}
+	return nil
+}
+
+func (x *GuildMember) GetDiscordUsername() string {
+	if x != nil {
+		return x.DiscordUsername
+	}
+	return ""
+}
+
+func (x *GuildMember) GetDiscordGlobalName() string {
+	if x != nil {
+		return x.DiscordGlobalName
+	}
+	return ""
+}
+
+func (x *GuildMember) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
+}
+
+type UpsertGuildMemberRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	GuildId         string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	DiscordId       string                 `protobuf:"bytes,2,opt,name=discord_id,json=discordId,proto3" json:"discord_id,omitempty"`
+	GuildNick       string                 `protobuf:"bytes,3,opt,name=guild_nick,json=guildNick,proto3" json:"guild_nick,omitempty"`
+	GuildAvatarHash string                 `protobuf:"bytes,4,opt,name=guild_avatar_hash,json=guildAvatarHash,proto3" json:"guild_avatar_hash,omitempty"`
+	Roles           []string               `protobuf:"bytes,5,rep,name=roles,proto3" json:"roles,omitempty"`
+	JoinedAt        *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UpsertGuildMemberRequest) Reset() {
+	*x = UpsertGuildMemberRequest{}
+	mi := &file_discord_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpsertGuildMemberRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertGuildMemberRequest) ProtoMessage() {}
+
+func (x *UpsertGuildMemberRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertGuildMemberRequest.ProtoReflect.Descriptor instead.
+func (*UpsertGuildMemberRequest) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UpsertGuildMemberRequest) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *UpsertGuildMemberRequest) GetDiscordId() string {
+	if x != nil {
+		return x.DiscordId
+	}
+	return ""
+}
+
+func (x *UpsertGuildMemberRequest) GetGuildNick() string {
+	if x != nil {
+		return x.GuildNick
+	}
+	return ""
+}
+
+func (x *UpsertGuildMemberRequest) GetGuildAvatarHash() string {
+	if x != nil {
+		return x.GuildAvatarHash
+	}
+	return ""
+}
+
+func (x *UpsertGuildMemberRequest) GetRoles() []string {
+	if x != nil {
+		return x.Roles
+	}
+	return nil
+}
+
+func (x *UpsertGuildMemberRequest) GetJoinedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.JoinedAt
+	}
+	return nil
+}
+
+type UpsertGuildMemberResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpsertGuildMemberResponse) Reset() {
+	*x = UpsertGuildMemberResponse{}
+	mi := &file_discord_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpsertGuildMemberResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertGuildMemberResponse) ProtoMessage() {}
+
+func (x *UpsertGuildMemberResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertGuildMemberResponse.ProtoReflect.Descriptor instead.
+func (*UpsertGuildMemberResponse) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UpsertGuildMemberResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+type UpsertGuildMembersBatchRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Members       []*GuildMember         `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpsertGuildMembersBatchRequest) Reset() {
+	*x = UpsertGuildMembersBatchRequest{}
+	mi := &file_discord_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpsertGuildMembersBatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertGuildMembersBatchRequest) ProtoMessage() {}
+
+func (x *UpsertGuildMembersBatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertGuildMembersBatchRequest.ProtoReflect.Descriptor instead.
+func (*UpsertGuildMembersBatchRequest) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *UpsertGuildMembersBatchRequest) GetMembers() []*GuildMember {
+	if x != nil {
+		return x.Members
+	}
+	return nil
+}
+
+type UpsertGuildMembersBatchResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Count         int32                  `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"` // Number of members upserted
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpsertGuildMembersBatchResponse) Reset() {
+	*x = UpsertGuildMembersBatchResponse{}
+	mi := &file_discord_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpsertGuildMembersBatchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertGuildMembersBatchResponse) ProtoMessage() {}
+
+func (x *UpsertGuildMembersBatchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertGuildMembersBatchResponse.ProtoReflect.Descriptor instead.
+func (*UpsertGuildMembersBatchResponse) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UpsertGuildMembersBatchResponse) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+type RemoveGuildMemberRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GuildId       string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	DiscordId     string                 `protobuf:"bytes,2,opt,name=discord_id,json=discordId,proto3" json:"discord_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveGuildMemberRequest) Reset() {
+	*x = RemoveGuildMemberRequest{}
+	mi := &file_discord_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveGuildMemberRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveGuildMemberRequest) ProtoMessage() {}
+
+func (x *RemoveGuildMemberRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveGuildMemberRequest.ProtoReflect.Descriptor instead.
+func (*RemoveGuildMemberRequest) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *RemoveGuildMemberRequest) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *RemoveGuildMemberRequest) GetDiscordId() string {
+	if x != nil {
+		return x.DiscordId
+	}
+	return ""
+}
+
+type RemoveGuildMemberResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveGuildMemberResponse) Reset() {
+	*x = RemoveGuildMemberResponse{}
+	mi := &file_discord_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveGuildMemberResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveGuildMemberResponse) ProtoMessage() {}
+
+func (x *RemoveGuildMemberResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveGuildMemberResponse.ProtoReflect.Descriptor instead.
+func (*RemoveGuildMemberResponse) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *RemoveGuildMemberResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+type CheckGuildMembershipRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GuildId       string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	DiscordId     string                 `protobuf:"bytes,2,opt,name=discord_id,json=discordId,proto3" json:"discord_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckGuildMembershipRequest) Reset() {
+	*x = CheckGuildMembershipRequest{}
+	mi := &file_discord_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckGuildMembershipRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckGuildMembershipRequest) ProtoMessage() {}
+
+func (x *CheckGuildMembershipRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckGuildMembershipRequest.ProtoReflect.Descriptor instead.
+func (*CheckGuildMembershipRequest) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *CheckGuildMembershipRequest) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *CheckGuildMembershipRequest) GetDiscordId() string {
+	if x != nil {
+		return x.DiscordId
+	}
+	return ""
+}
+
+type CheckGuildMembershipResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IsMember      bool                   `protobuf:"varint,1,opt,name=is_member,json=isMember,proto3" json:"is_member,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckGuildMembershipResponse) Reset() {
+	*x = CheckGuildMembershipResponse{}
+	mi := &file_discord_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckGuildMembershipResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckGuildMembershipResponse) ProtoMessage() {}
+
+func (x *CheckGuildMembershipResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckGuildMembershipResponse.ProtoReflect.Descriptor instead.
+func (*CheckGuildMembershipResponse) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *CheckGuildMembershipResponse) GetIsMember() bool {
+	if x != nil {
+		return x.IsMember
+	}
+	return false
+}
+
+type ListUserGuildsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DiscordId     string                 `protobuf:"bytes,1,opt,name=discord_id,json=discordId,proto3" json:"discord_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUserGuildsRequest) Reset() {
+	*x = ListUserGuildsRequest{}
+	mi := &file_discord_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUserGuildsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUserGuildsRequest) ProtoMessage() {}
+
+func (x *ListUserGuildsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUserGuildsRequest.ProtoReflect.Descriptor instead.
+func (*ListUserGuildsRequest) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ListUserGuildsRequest) GetDiscordId() string {
+	if x != nil {
+		return x.DiscordId
+	}
+	return ""
+}
+
+type ListUserGuildsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GuildIds      []string               `protobuf:"bytes,1,rep,name=guild_ids,json=guildIds,proto3" json:"guild_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUserGuildsResponse) Reset() {
+	*x = ListUserGuildsResponse{}
+	mi := &file_discord_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUserGuildsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUserGuildsResponse) ProtoMessage() {}
+
+func (x *ListUserGuildsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUserGuildsResponse.ProtoReflect.Descriptor instead.
+func (*ListUserGuildsResponse) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ListUserGuildsResponse) GetGuildIds() []string {
+	if x != nil {
+		return x.GuildIds
+	}
+	return nil
+}
+
 var File_discord_proto protoreflect.FileDescriptor
 
 const file_discord_proto_rawDesc = "" +
@@ -432,11 +1054,64 @@ const file_discord_proto_rawDesc = "" +
 	"\x0fGetGuildRequest\x12\x19\n" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\"A\n" +
 	"\x10GetGuildResponse\x12-\n" +
-	"\x05guild\x18\x01 \x01(\v2\x17.hivemind.discord.GuildR\x05guild2\x9e\x02\n" +
+	"\x05guild\x18\x01 \x01(\v2\x17.hivemind.discord.GuildR\x05guild\"\xcd\x03\n" +
+	"\vGuildMember\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x1d\n" +
+	"\n" +
+	"discord_id\x18\x02 \x01(\tR\tdiscordId\x12\x1d\n" +
+	"\n" +
+	"guild_nick\x18\x03 \x01(\tR\tguildNick\x12*\n" +
+	"\x11guild_avatar_hash\x18\x04 \x01(\tR\x0fguildAvatarHash\x12\x14\n" +
+	"\x05roles\x18\x05 \x03(\tR\x05roles\x127\n" +
+	"\tjoined_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\x127\n" +
+	"\tsynced_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\bsyncedAt\x127\n" +
+	"\tlast_seen\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\x12)\n" +
+	"\x10discord_username\x18\t \x01(\tR\x0fdiscordUsername\x12.\n" +
+	"\x13discord_global_name\x18\n" +
+	" \x01(\tR\x11discordGlobalName\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\v \x01(\tR\tavatarUrl\"\xee\x01\n" +
+	"\x18UpsertGuildMemberRequest\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x1d\n" +
+	"\n" +
+	"discord_id\x18\x02 \x01(\tR\tdiscordId\x12\x1d\n" +
+	"\n" +
+	"guild_nick\x18\x03 \x01(\tR\tguildNick\x12*\n" +
+	"\x11guild_avatar_hash\x18\x04 \x01(\tR\x0fguildAvatarHash\x12\x14\n" +
+	"\x05roles\x18\x05 \x03(\tR\x05roles\x127\n" +
+	"\tjoined_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"5\n" +
+	"\x19UpsertGuildMemberResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"Y\n" +
+	"\x1eUpsertGuildMembersBatchRequest\x127\n" +
+	"\amembers\x18\x01 \x03(\v2\x1d.hivemind.discord.GuildMemberR\amembers\"7\n" +
+	"\x1fUpsertGuildMembersBatchResponse\x12\x14\n" +
+	"\x05count\x18\x01 \x01(\x05R\x05count\"T\n" +
+	"\x18RemoveGuildMemberRequest\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x1d\n" +
+	"\n" +
+	"discord_id\x18\x02 \x01(\tR\tdiscordId\"5\n" +
+	"\x19RemoveGuildMemberResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"W\n" +
+	"\x1bCheckGuildMembershipRequest\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x1d\n" +
+	"\n" +
+	"discord_id\x18\x02 \x01(\tR\tdiscordId\";\n" +
+	"\x1cCheckGuildMembershipResponse\x12\x1b\n" +
+	"\tis_member\x18\x01 \x01(\bR\bisMember\"6\n" +
+	"\x15ListUserGuildsRequest\x12\x1d\n" +
+	"\n" +
+	"discord_id\x18\x01 \x01(\tR\tdiscordId\"5\n" +
+	"\x16ListUserGuildsResponse\x12\x1b\n" +
+	"\tguild_ids\x18\x01 \x03(\tR\bguildIds2\xd6\x06\n" +
 	"\x0eDiscordService\x12Z\n" +
 	"\vUpsertGuild\x12$.hivemind.discord.UpsertGuildRequest\x1a%.hivemind.discord.UpsertGuildResponse\x12]\n" +
 	"\fDisableGuild\x12%.hivemind.discord.DisableGuildRequest\x1a&.hivemind.discord.DisableGuildResponse\x12Q\n" +
-	"\bGetGuild\x12!.hivemind.discord.GetGuildRequest\x1a\".hivemind.discord.GetGuildResponseB?Z=github.com/devilmonastery/hivemind/api/generated/go/discordpbb\x06proto3"
+	"\bGetGuild\x12!.hivemind.discord.GetGuildRequest\x1a\".hivemind.discord.GetGuildResponse\x12l\n" +
+	"\x11UpsertGuildMember\x12*.hivemind.discord.UpsertGuildMemberRequest\x1a+.hivemind.discord.UpsertGuildMemberResponse\x12~\n" +
+	"\x17UpsertGuildMembersBatch\x120.hivemind.discord.UpsertGuildMembersBatchRequest\x1a1.hivemind.discord.UpsertGuildMembersBatchResponse\x12l\n" +
+	"\x11RemoveGuildMember\x12*.hivemind.discord.RemoveGuildMemberRequest\x1a+.hivemind.discord.RemoveGuildMemberResponse\x12u\n" +
+	"\x14CheckGuildMembership\x12-.hivemind.discord.CheckGuildMembershipRequest\x1a..hivemind.discord.CheckGuildMembershipResponse\x12c\n" +
+	"\x0eListUserGuilds\x12'.hivemind.discord.ListUserGuildsRequest\x1a(.hivemind.discord.ListUserGuildsResponseB?Z=github.com/devilmonastery/hivemind/api/generated/go/discordpbb\x06proto3"
 
 var (
 	file_discord_proto_rawDescOnce sync.Once
@@ -450,33 +1125,59 @@ func file_discord_proto_rawDescGZIP() []byte {
 	return file_discord_proto_rawDescData
 }
 
-var file_discord_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_discord_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_discord_proto_goTypes = []any{
-	(*Guild)(nil),                 // 0: hivemind.discord.Guild
-	(*UpsertGuildRequest)(nil),    // 1: hivemind.discord.UpsertGuildRequest
-	(*UpsertGuildResponse)(nil),   // 2: hivemind.discord.UpsertGuildResponse
-	(*DisableGuildRequest)(nil),   // 3: hivemind.discord.DisableGuildRequest
-	(*DisableGuildResponse)(nil),  // 4: hivemind.discord.DisableGuildResponse
-	(*GetGuildRequest)(nil),       // 5: hivemind.discord.GetGuildRequest
-	(*GetGuildResponse)(nil),      // 6: hivemind.discord.GetGuildResponse
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*Guild)(nil),                           // 0: hivemind.discord.Guild
+	(*UpsertGuildRequest)(nil),              // 1: hivemind.discord.UpsertGuildRequest
+	(*UpsertGuildResponse)(nil),             // 2: hivemind.discord.UpsertGuildResponse
+	(*DisableGuildRequest)(nil),             // 3: hivemind.discord.DisableGuildRequest
+	(*DisableGuildResponse)(nil),            // 4: hivemind.discord.DisableGuildResponse
+	(*GetGuildRequest)(nil),                 // 5: hivemind.discord.GetGuildRequest
+	(*GetGuildResponse)(nil),                // 6: hivemind.discord.GetGuildResponse
+	(*GuildMember)(nil),                     // 7: hivemind.discord.GuildMember
+	(*UpsertGuildMemberRequest)(nil),        // 8: hivemind.discord.UpsertGuildMemberRequest
+	(*UpsertGuildMemberResponse)(nil),       // 9: hivemind.discord.UpsertGuildMemberResponse
+	(*UpsertGuildMembersBatchRequest)(nil),  // 10: hivemind.discord.UpsertGuildMembersBatchRequest
+	(*UpsertGuildMembersBatchResponse)(nil), // 11: hivemind.discord.UpsertGuildMembersBatchResponse
+	(*RemoveGuildMemberRequest)(nil),        // 12: hivemind.discord.RemoveGuildMemberRequest
+	(*RemoveGuildMemberResponse)(nil),       // 13: hivemind.discord.RemoveGuildMemberResponse
+	(*CheckGuildMembershipRequest)(nil),     // 14: hivemind.discord.CheckGuildMembershipRequest
+	(*CheckGuildMembershipResponse)(nil),    // 15: hivemind.discord.CheckGuildMembershipResponse
+	(*ListUserGuildsRequest)(nil),           // 16: hivemind.discord.ListUserGuildsRequest
+	(*ListUserGuildsResponse)(nil),          // 17: hivemind.discord.ListUserGuildsResponse
+	(*timestamppb.Timestamp)(nil),           // 18: google.protobuf.Timestamp
 }
 var file_discord_proto_depIdxs = []int32{
-	7, // 0: hivemind.discord.Guild.added_at:type_name -> google.protobuf.Timestamp
-	7, // 1: hivemind.discord.Guild.last_activity:type_name -> google.protobuf.Timestamp
-	0, // 2: hivemind.discord.UpsertGuildResponse.guild:type_name -> hivemind.discord.Guild
-	0, // 3: hivemind.discord.GetGuildResponse.guild:type_name -> hivemind.discord.Guild
-	1, // 4: hivemind.discord.DiscordService.UpsertGuild:input_type -> hivemind.discord.UpsertGuildRequest
-	3, // 5: hivemind.discord.DiscordService.DisableGuild:input_type -> hivemind.discord.DisableGuildRequest
-	5, // 6: hivemind.discord.DiscordService.GetGuild:input_type -> hivemind.discord.GetGuildRequest
-	2, // 7: hivemind.discord.DiscordService.UpsertGuild:output_type -> hivemind.discord.UpsertGuildResponse
-	4, // 8: hivemind.discord.DiscordService.DisableGuild:output_type -> hivemind.discord.DisableGuildResponse
-	6, // 9: hivemind.discord.DiscordService.GetGuild:output_type -> hivemind.discord.GetGuildResponse
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	18, // 0: hivemind.discord.Guild.added_at:type_name -> google.protobuf.Timestamp
+	18, // 1: hivemind.discord.Guild.last_activity:type_name -> google.protobuf.Timestamp
+	0,  // 2: hivemind.discord.UpsertGuildResponse.guild:type_name -> hivemind.discord.Guild
+	0,  // 3: hivemind.discord.GetGuildResponse.guild:type_name -> hivemind.discord.Guild
+	18, // 4: hivemind.discord.GuildMember.joined_at:type_name -> google.protobuf.Timestamp
+	18, // 5: hivemind.discord.GuildMember.synced_at:type_name -> google.protobuf.Timestamp
+	18, // 6: hivemind.discord.GuildMember.last_seen:type_name -> google.protobuf.Timestamp
+	18, // 7: hivemind.discord.UpsertGuildMemberRequest.joined_at:type_name -> google.protobuf.Timestamp
+	7,  // 8: hivemind.discord.UpsertGuildMembersBatchRequest.members:type_name -> hivemind.discord.GuildMember
+	1,  // 9: hivemind.discord.DiscordService.UpsertGuild:input_type -> hivemind.discord.UpsertGuildRequest
+	3,  // 10: hivemind.discord.DiscordService.DisableGuild:input_type -> hivemind.discord.DisableGuildRequest
+	5,  // 11: hivemind.discord.DiscordService.GetGuild:input_type -> hivemind.discord.GetGuildRequest
+	8,  // 12: hivemind.discord.DiscordService.UpsertGuildMember:input_type -> hivemind.discord.UpsertGuildMemberRequest
+	10, // 13: hivemind.discord.DiscordService.UpsertGuildMembersBatch:input_type -> hivemind.discord.UpsertGuildMembersBatchRequest
+	12, // 14: hivemind.discord.DiscordService.RemoveGuildMember:input_type -> hivemind.discord.RemoveGuildMemberRequest
+	14, // 15: hivemind.discord.DiscordService.CheckGuildMembership:input_type -> hivemind.discord.CheckGuildMembershipRequest
+	16, // 16: hivemind.discord.DiscordService.ListUserGuilds:input_type -> hivemind.discord.ListUserGuildsRequest
+	2,  // 17: hivemind.discord.DiscordService.UpsertGuild:output_type -> hivemind.discord.UpsertGuildResponse
+	4,  // 18: hivemind.discord.DiscordService.DisableGuild:output_type -> hivemind.discord.DisableGuildResponse
+	6,  // 19: hivemind.discord.DiscordService.GetGuild:output_type -> hivemind.discord.GetGuildResponse
+	9,  // 20: hivemind.discord.DiscordService.UpsertGuildMember:output_type -> hivemind.discord.UpsertGuildMemberResponse
+	11, // 21: hivemind.discord.DiscordService.UpsertGuildMembersBatch:output_type -> hivemind.discord.UpsertGuildMembersBatchResponse
+	13, // 22: hivemind.discord.DiscordService.RemoveGuildMember:output_type -> hivemind.discord.RemoveGuildMemberResponse
+	15, // 23: hivemind.discord.DiscordService.CheckGuildMembership:output_type -> hivemind.discord.CheckGuildMembershipResponse
+	17, // 24: hivemind.discord.DiscordService.ListUserGuilds:output_type -> hivemind.discord.ListUserGuildsResponse
+	17, // [17:25] is the sub-list for method output_type
+	9,  // [9:17] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_discord_proto_init() }
@@ -490,7 +1191,7 @@ func file_discord_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_discord_proto_rawDesc), len(file_discord_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

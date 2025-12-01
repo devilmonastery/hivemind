@@ -15,6 +15,7 @@ import (
 type DiscordService struct {
 	discordUserRepo  repositories.DiscordUserRepository
 	discordGuildRepo repositories.DiscordGuildRepository
+	guildMemberRepo  repositories.GuildMemberRepository
 	userRepo         repositories.UserRepository
 	logger           *slog.Logger
 }
@@ -23,12 +24,14 @@ type DiscordService struct {
 func NewDiscordService(
 	discordUserRepo repositories.DiscordUserRepository,
 	discordGuildRepo repositories.DiscordGuildRepository,
+	guildMemberRepo repositories.GuildMemberRepository,
 	userRepo repositories.UserRepository,
 	logger *slog.Logger,
 ) *DiscordService {
 	return &DiscordService{
 		discordUserRepo:  discordUserRepo,
 		discordGuildRepo: discordGuildRepo,
+		guildMemberRepo:  guildMemberRepo,
 		userRepo:         userRepo,
 		logger:           logger,
 	}
@@ -54,7 +57,10 @@ func (s *DiscordService) GetOrCreateUserFromDiscord(
 		}
 
 		// Get the Hivemind user
-		user, getUserErr := s.userRepo.GetByID(ctx, discordUser.UserID)
+		if discordUser.UserID == nil {
+			return nil, fmt.Errorf("discord user %s has no linked Hivemind account", discordID)
+		}
+		user, getUserErr := s.userRepo.GetByID(ctx, *discordUser.UserID)
 		if getUserErr != nil {
 			return nil, fmt.Errorf("failed to get user: %w", getUserErr)
 		}
@@ -94,9 +100,10 @@ func (s *DiscordService) GetOrCreateUserFromDiscord(
 
 	// Create Discord user mapping
 	now := time.Now()
+	userIDPtr := user.ID
 	discordUser = &entities.DiscordUser{
 		DiscordID:         discordID,
-		UserID:            user.ID,
+		UserID:            &userIDPtr,
 		DiscordUsername:   discordUsername,
 		DiscordGlobalName: discordGlobalName,
 		AvatarURL:         avatarURL,
@@ -298,4 +305,106 @@ func (s *DiscordService) GetDiscordUserByHivemindID(ctx context.Context, userID 
 		return nil, fmt.Errorf("failed to get discord user: %w", err)
 	}
 	return discordUser, nil
+}
+
+// UpsertGuildMember creates or updates a guild member record
+func (s *DiscordService) UpsertGuildMember(
+	ctx context.Context,
+	member *entities.GuildMember,
+) error {
+	return s.guildMemberRepo.Upsert(ctx, member)
+}
+
+// UpsertDiscordUsersBatch efficiently upserts multiple Discord users
+func (s *DiscordService) UpsertDiscordUsersBatch(
+	ctx context.Context,
+	discordUsers []*entities.DiscordUser,
+) error {
+	if len(discordUsers) == 0 {
+		return nil
+	}
+
+	for _, du := range discordUsers {
+		if err := s.discordUserRepo.Upsert(ctx, du); err != nil {
+			return fmt.Errorf("failed to upsert discord user %s: %w", du.DiscordID, err)
+		}
+	}
+
+	s.logger.Info("batch upserted discord users",
+		slog.Int("count", len(discordUsers)))
+
+	return nil
+}
+
+// UpsertGuildMembersBatch efficiently upserts multiple members
+func (s *DiscordService) UpsertGuildMembersBatch(
+	ctx context.Context,
+	members []*entities.GuildMember,
+) error {
+	if len(members) == 0 {
+		return nil
+	}
+
+	err := s.guildMemberRepo.UpsertBatch(ctx, members)
+	if err != nil {
+		return fmt.Errorf("failed to batch upsert members: %w", err)
+	}
+
+	s.logger.Info("batch upserted guild members",
+		slog.Int("count", len(members)),
+		slog.String("guild_id", members[0].GuildID))
+
+	return nil
+}
+
+// RemoveGuildMember removes a member record
+func (s *DiscordService) RemoveGuildMember(
+	ctx context.Context,
+	guildID string,
+	discordID string,
+) error {
+	err := s.guildMemberRepo.DeleteMember(ctx, guildID, discordID)
+	if err != nil && err != repositories.ErrGuildMemberNotFound {
+		return fmt.Errorf("failed to remove guild member: %w", err)
+	}
+
+	s.logger.Info("guild member removed",
+		slog.String("guild_id", guildID),
+		slog.String("discord_id", discordID))
+
+	return nil
+}
+
+// CheckGuildMembership checks if a user is a member of a guild
+func (s *DiscordService) CheckGuildMembership(
+	ctx context.Context,
+	guildID string,
+	discordID string,
+) (bool, error) {
+	return s.guildMemberRepo.IsMember(ctx, guildID, discordID)
+}
+
+// ListUserGuilds returns all guild IDs a user is a member of
+func (s *DiscordService) ListUserGuilds(
+	ctx context.Context,
+	discordID string,
+) ([]string, error) {
+	return s.guildMemberRepo.ListUserGuilds(ctx, discordID)
+}
+
+// UpdateMemberLastSeen updates the last_seen timestamp for a guild member
+func (s *DiscordService) UpdateMemberLastSeen(
+	ctx context.Context,
+	guildID string,
+	discordID string,
+) error {
+	err := s.guildMemberRepo.UpdateLastSeen(ctx, guildID, discordID)
+	if err != nil && err != repositories.ErrGuildMemberNotFound {
+		// Log warning but don't fail - member might not be synced yet
+		s.logger.Warn("failed to update member last seen",
+			slog.String("guild_id", guildID),
+			slog.String("discord_id", discordID),
+			slog.String("error", err.Error()))
+	}
+	return nil
 }

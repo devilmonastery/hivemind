@@ -29,8 +29,8 @@ func (s *QuoteService) CreateQuote(ctx context.Context, quote *entities.Quote) (
 }
 
 // GetQuote retrieves a quote by ID
-func (s *QuoteService) GetQuote(ctx context.Context, id string) (*entities.Quote, error) {
-	quote, err := s.quoteRepo.GetByID(ctx, id)
+func (s *QuoteService) GetQuote(ctx context.Context, id string, userDiscordID string) (*entities.Quote, error) {
+	quote, err := s.quoteRepo.GetByID(ctx, id, userDiscordID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get quote: %w", err)
 	}
@@ -46,13 +46,13 @@ func (s *QuoteService) DeleteQuote(ctx context.Context, id string) error {
 }
 
 // UpdateQuote updates a quote's body and tags
-func (s *QuoteService) UpdateQuote(ctx context.Context, id, body string, tags []string) (*entities.Quote, error) {
+func (s *QuoteService) UpdateQuote(ctx context.Context, id, body string, tags []string, userDiscordID string) (*entities.Quote, error) {
 	if err := s.quoteRepo.Update(ctx, id, body, tags); err != nil {
 		return nil, fmt.Errorf("failed to update quote: %w", err)
 	}
 
 	// Fetch and return the updated quote
-	quote, err := s.quoteRepo.GetByID(ctx, id)
+	quote, err := s.quoteRepo.GetByID(ctx, id, userDiscordID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get updated quote: %w", err)
 	}
@@ -60,8 +60,8 @@ func (s *QuoteService) UpdateQuote(ctx context.Context, id, body string, tags []
 }
 
 // ListQuotes lists quotes in a guild
-func (s *QuoteService) ListQuotes(ctx context.Context, guildID, authorDiscordID string, tags []string, limit, offset int, orderBy string, ascending bool) ([]*entities.Quote, int, error) {
-	quotes, total, err := s.quoteRepo.List(ctx, guildID, authorDiscordID, tags, limit, offset, orderBy, ascending)
+func (s *QuoteService) ListQuotes(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.Quote, int, error) {
+	quotes, total, err := s.quoteRepo.List(ctx, guildID, limit, offset, orderBy, ascending, userDiscordID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list quotes: %w", err)
 	}
@@ -69,8 +69,8 @@ func (s *QuoteService) ListQuotes(ctx context.Context, guildID, authorDiscordID 
 }
 
 // SearchQuotes searches quotes by full-text query
-func (s *QuoteService) SearchQuotes(ctx context.Context, guildID, query string, tags []string, limit, offset int) ([]*entities.Quote, int, error) {
-	quotes, total, err := s.quoteRepo.Search(ctx, guildID, query, tags, limit, offset)
+func (s *QuoteService) SearchQuotes(ctx context.Context, guildID, query string, tags []string, limit, offset int, userDiscordID string) ([]*entities.Quote, int, error) {
+	quotes, total, err := s.quoteRepo.Search(ctx, guildID, query, tags, limit, offset, userDiscordID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to search quotes: %w", err)
 	}

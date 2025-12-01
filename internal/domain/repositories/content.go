@@ -12,10 +12,12 @@ type WikiPageRepository interface {
 	Create(ctx context.Context, page *entities.WikiPage) error
 
 	// GetByID retrieves a wiki page by ID
-	GetByID(ctx context.Context, id string) (*entities.WikiPage, error)
+	// userDiscordID filters by guild membership (empty string = admin, no filter)
+	GetByID(ctx context.Context, id string, userDiscordID string) (*entities.WikiPage, error)
 
 	// GetByGuildAndSlug retrieves a wiki page by guild ID and slug (normalized for lookup)
-	GetByGuildAndSlug(ctx context.Context, guildID, slug string) (*entities.WikiPage, error)
+	// userDiscordID filters by guild membership (empty string = admin, no filter)
+	GetByGuildAndSlug(ctx context.Context, guildID, slug string, userDiscordID string) (*entities.WikiPage, error)
 
 	// Update updates an existing wiki page
 	Update(ctx context.Context, page *entities.WikiPage) error
@@ -24,10 +26,12 @@ type WikiPageRepository interface {
 	Delete(ctx context.Context, id string) error
 
 	// List lists wiki pages in a guild with pagination
-	List(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool) ([]*entities.WikiPage, int, error)
+	// userDiscordID filters to only guilds where user is a member (empty string = admin, no filter)
+	List(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.WikiPage, int, error)
 
 	// Search performs full-text search on wiki pages
-	Search(ctx context.Context, guildID, query string, tags []string, limit, offset int) ([]*entities.WikiPage, int, error)
+	// userDiscordID filters to only guilds where user is a member (empty string = admin, no filter)
+	Search(ctx context.Context, guildID, query string, tags []string, limit, offset int, userDiscordID string) ([]*entities.WikiPage, int, error)
 
 	// GetTitlesForGuild retrieves only the ID, title, and slug of all wiki pages in a guild
 	GetTitlesForGuild(ctx context.Context, guildID string) ([]struct {
@@ -64,7 +68,8 @@ type NoteRepository interface {
 	Create(ctx context.Context, note *entities.Note) error
 
 	// GetByID retrieves a note by ID
-	GetByID(ctx context.Context, id string) (*entities.Note, error)
+	// userDiscordID filters by guild membership (empty string = admin, no filter)
+	GetByID(ctx context.Context, id string, userDiscordID string) (*entities.Note, error)
 
 	// Update updates an existing note
 	Update(ctx context.Context, note *entities.Note) error
@@ -73,10 +78,12 @@ type NoteRepository interface {
 	Delete(ctx context.Context, id string) error
 
 	// List lists notes for a user with optional filtering
-	List(ctx context.Context, authorID, guildID string, tags []string, limit, offset int, orderBy string, ascending bool) ([]*entities.Note, int, error)
+	// userDiscordID filters to only guilds where user is a member (empty string = admin, no filter)
+	List(ctx context.Context, authorID, guildID string, tags []string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.Note, int, error)
 
 	// Search performs full-text search on notes
-	Search(ctx context.Context, authorID string, query, guildID string, tags []string, limit, offset int) ([]*entities.Note, int, error)
+	// userDiscordID filters to only guilds where user is a member (empty string = admin, no filter)
+	Search(ctx context.Context, authorID string, query, guildID string, tags []string, limit, offset int, userDiscordID string) ([]*entities.Note, int, error)
 
 	// GetTitlesForUser retrieves only the ID and title of all notes for a user in a guild
 	GetTitlesForUser(ctx context.Context, authorID, guildID string) ([]struct {
@@ -91,7 +98,8 @@ type QuoteRepository interface {
 	Create(ctx context.Context, quote *entities.Quote) error
 
 	// GetByID retrieves a quote by ID
-	GetByID(ctx context.Context, id string) (*entities.Quote, error)
+	// userDiscordID filters by guild membership (empty string = admin, no filter)
+	GetByID(ctx context.Context, id string, userDiscordID string) (*entities.Quote, error)
 
 	// Delete soft-deletes a quote
 	Delete(ctx context.Context, id string) error
@@ -100,10 +108,12 @@ type QuoteRepository interface {
 	Update(ctx context.Context, id, body string, tags []string) error
 
 	// List lists quotes in a guild with pagination
-	List(ctx context.Context, guildID string, authorDiscordID string, tags []string, limit, offset int, orderBy string, ascending bool) ([]*entities.Quote, int, error)
+	// userDiscordID filters to only guilds where user is a member (empty string = admin, no filter)
+	List(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.Quote, int, error)
 
 	// Search performs full-text search on quotes
-	Search(ctx context.Context, guildID, query string, tags []string, limit, offset int) ([]*entities.Quote, int, error)
+	// userDiscordID filters to only guilds where user is a member (empty string = admin, no filter)
+	Search(ctx context.Context, guildID, query string, tags []string, limit, offset int, userDiscordID string) ([]*entities.Quote, int, error)
 
 	// GetRandom retrieves a random quote from a guild
 	GetRandom(ctx context.Context, guildID string, tags []string) (*entities.Quote, error)

@@ -25,6 +25,9 @@ var (
 	// ErrDiscordGuildNotFound is returned when a Discord guild cannot be found
 	ErrDiscordGuildNotFound = errors.New("discord guild not found")
 
+	// ErrGuildMemberNotFound is returned when a guild member record cannot be found
+	ErrGuildMemberNotFound = errors.New("guild member not found")
+
 	// ErrAuditLogNotFound is returned when an audit log cannot be found
 	ErrAuditLogNotFound = errors.New("audit log not found")
 )

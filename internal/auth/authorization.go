@@ -6,6 +6,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 )
 
 var (
@@ -69,7 +71,7 @@ func CanWriteSnippet(ctx context.Context, targetUserID string) error {
 
 	// Users can only write their own notes
 	if user.UserID != targetUserID {
-			return status.Errorf(codes.PermissionDenied, "you can only modify your own notes")
+		return status.Errorf(codes.PermissionDenied, "you can only modify your own notes")
 	}
 
 	return nil
@@ -83,7 +85,45 @@ func RequireAdmin(ctx context.Context) error {
 	}
 
 	if user.Role != "admin" {
-		return status.Errorf(codes.PermissionDenied, "admin access required")
+		return status.Error(codes.PermissionDenied, "admin access required")
+	}
+
+	return nil
+}
+
+// CanAccessGuildContent checks if the authenticated user can access content from a specific guild
+// Users must be members of the guild to access guild-restricted content (wikis, quotes, notes)
+// Admin users can access any guild content regardless of membership
+func CanAccessGuildContent(
+	ctx context.Context,
+	guildMemberRepo repositories.GuildMemberRepository,
+	discordUserRepo repositories.DiscordUserRepository,
+	guildID string,
+) error {
+	user, err := GetUserFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Admins can access any guild content
+	if user.Role == "admin" {
+		return nil
+	}
+
+	// Get user's Discord ID
+	discordUser, err := discordUserRepo.GetByUserID(ctx, user.UserID)
+	if err != nil {
+		return status.Errorf(codes.PermissionDenied, "Discord account not linked - you must link your Discord account to access guild content")
+	}
+
+	// Check guild membership
+	isMember, err := guildMemberRepo.IsMember(ctx, guildID, discordUser.DiscordID)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to check guild membership: %v", err)
+	}
+
+	if !isMember {
+		return status.Error(codes.PermissionDenied, "you must be a member of this Discord server to access its content")
 	}
 
 	return nil
