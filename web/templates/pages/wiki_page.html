@@ -5,30 +5,40 @@
 {{define "title"}}{{.Page.Title}} - Hivemind{{end}}
 
 {{define "content"}}
-<div class="max-w-4xl mx-auto">
+<div id="wiki-content" class="max-w-4xl mx-auto">
   <!-- Wiki Page Header -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-cyan-400 mb-2">{{.Page.Title}}</h1>
-    <div class="flex items-center gap-4 text-sm text-gray-400">
-      <span>By {{.Page.AuthorUsername}}</span>
-      <span>•</span>
-      <span>{{.Page.CreatedAt | formatDate}}</span>
-      {{if .Page.GuildName}}
-      <span>•</span>
-      <a href="https://discord.com/channels/{{.Page.GuildId}}" target="_blank" class="text-cyan-400 hover:text-cyan-300 hover:underline">
-        {{.Page.GuildName}}
-      </a>
-      {{else}}
-      <span>guild: {{.Page.GuildId}}</span>
+  <div class="mb-6 flex items-start justify-between">
+    <div class="flex-1">
+      <h1 class="text-3xl font-bold text-cyan-400 mb-2">{{.Page.Title}}</h1>
+      <div class="flex items-center gap-4 text-sm text-gray-400">
+        <span>By {{.Page.AuthorUsername}}</span>
+        <span>•</span>
+        <span>{{.Page.CreatedAt | formatDate}}</span>
+        {{if .Page.GuildName}}
+        <span>•</span>
+        <a href="https://discord.com/channels/{{.Page.GuildId}}" target="_blank" class="text-cyan-400 hover:text-cyan-300 hover:underline">
+          {{.Page.GuildName}}
+        </a>
+        {{else}}
+        <span>guild: {{.Page.GuildId}}</span>
+        {{end}}
+      </div>
+      {{if .Page.Tags}}
+      <div class="mt-2 flex flex-wrap gap-2">
+        {{range .Page.Tags}}
+        <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded">#{{.}}</span>
+        {{end}}
+      </div>
       {{end}}
     </div>
-    {{if .Page.Tags}}
-    <div class="mt-2 flex flex-wrap gap-2">
-      {{range .Page.Tags}}
-      <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded">#{{.}}</span>
-      {{end}}
-    </div>
-    {{end}}
+    <button 
+      class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded transition-colors"
+      hx-get="/wiki/edit?slug={{.Page.Slug}}&guild_id={{.Page.GuildId}}"
+      hx-target="#wiki-content"
+      hx-swap="innerHTML"
+    >
+      Edit
+    </button>
   </div>
 
   <!-- Wiki Page Body -->

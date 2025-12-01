@@ -1,0 +1,105 @@
+{{define "wiki_editor"}}
+{{template "base" .}}
+{{end}}
+
+{{define "title"}}Edit {{.Page.Title}} - Hivemind{{end}}
+
+{{define "content"}}
+<div id="wiki-content" class="max-w-6xl mx-auto">
+  <!-- Editor Header -->
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-cyan-400 mb-2">Edit Wiki Page</h1>
+    <div class="text-sm text-gray-400">
+      <span>{{.Page.Title}}</span>
+      {{if .Page.GuildName}}
+      <span class="mx-2">•</span>
+      <span>{{.Page.GuildName}}</span>
+      {{end}}
+    </div>
+  </div>
+
+  <!-- Editor Form -->
+  <div x-data="{ activeTab: 'edit' }" class="border-2 border-cyan-500/30 rounded-lg p-6 bg-gray-900/50">
+    <!-- Tabs -->
+    <div class="editor-tabs">
+      <button 
+        type="button"
+        class="editor-tab"
+        :class="{ 'active': activeTab === 'edit' }"
+        @click="activeTab = 'edit'"
+      >
+        Edit
+      </button>
+      <button 
+        type="button"
+        class="editor-tab"
+        :class="{ 'active': activeTab === 'preview' }"
+        @click="activeTab = 'preview'; if (activeTab === 'preview') { htmx.trigger('#preview-trigger', 'click'); }"
+      >
+        Preview
+      </button>
+    </div>
+
+    <form 
+      id="editor-form"
+      hx-post="/wiki/save?slug={{.Page.Slug}}&guild_id={{.Page.GuildId}}"
+      hx-target="#wiki-content"
+      hx-swap="innerHTML"
+    >
+      <!-- Edit Tab -->
+      <div x-show="activeTab === 'edit'" class="editor-content">
+        <textarea 
+          name="body" 
+          id="editor-body"
+          class="editor-textarea"
+          placeholder="Write your wiki content here using Markdown. Use #hashtags to add tags."
+        >{{.Page.Body}}</textarea>
+        
+        <div class="mt-4 text-xs text-gray-500 font-mono">
+          <p>Markdown supported: **bold**, *italic*, `code`, [links](url), # headings, - lists</p>
+          <p>Add tags with #hashtags anywhere in your content</p>
+        </div>
+      </div>
+
+      <!-- Preview Tab -->
+      <div x-show="activeTab === 'preview'" class="editor-content">
+        <div id="preview-content" class="preview-pane">
+          <div class="text-gray-500 text-center py-8">
+            Click Preview to render your content
+          </div>
+        </div>
+      </div>
+
+      <!-- Hidden trigger for HTMX preview -->
+      <button 
+        id="preview-trigger"
+        type="button"
+        class="hidden"
+        hx-post="/wiki/preview"
+        hx-include="[name='body']"
+        hx-target="#preview-content"
+        hx-swap="innerHTML"
+      ></button>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-3 mt-6">
+        <button 
+          type="submit"
+          class="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded transition-colors"
+        >
+          Save Changes
+        </button>
+        <button 
+          type="button"
+          class="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold rounded transition-colors"
+          hx-get="/wiki?slug={{.Page.Slug}}&guild_id={{.Page.GuildId}}"
+          hx-target="#wiki-content"
+          hx-swap="innerHTML"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}

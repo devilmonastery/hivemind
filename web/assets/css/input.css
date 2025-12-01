@@ -25,3 +25,37 @@
 }
 
 /* Custom styles can go here */
+
+/* Wiki Editor Styles */
+.editor-tabs {
+  @apply flex gap-2 border-b border-cyan-500/30 mb-4;
+}
+
+.editor-tab {
+  @apply px-4 py-2 font-mono text-sm transition-colors;
+  @apply text-cyan-400/60 hover:text-cyan-400 hover:bg-cyan-500/10;
+  @apply border-b-2 border-transparent;
+  @apply cursor-pointer;
+}
+
+.editor-tab.active {
+  @apply text-cyan-400 border-cyan-500 bg-cyan-500/5;
+}
+
+.editor-content {
+  @apply min-h-[500px];
+}
+
+.editor-textarea {
+  @apply w-full h-full min-h-[500px] p-4;
+  @apply bg-gray-900 text-gray-100 border border-cyan-500/30;
+  @apply font-mono text-base leading-relaxed;
+  @apply focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500;
+  @apply resize-y;
+  font-size: 16px; /* Prevent iOS zoom */
+}
+
+.preview-pane {
+  @apply p-4 border border-cyan-500/30 bg-gray-900/50 rounded;
+  @apply min-h-[500px] overflow-y-auto;
+}
