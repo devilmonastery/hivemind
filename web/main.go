@@ -177,6 +177,9 @@ func createRouter(h *handlers.Handler, authMw *middleware.AuthMiddleware) http.H
 	// Wiki routes (auth required)
 	router.Handle("/wikis", authMw.RequireAuth(http.HandlerFunc(h.WikiListPage))).Methods("GET")
 	router.Handle("/wiki", authMw.RequireAuth(http.HandlerFunc(h.WikiPage))).Methods("GET")
+	router.Handle("/wiki/edit", authMw.RequireAuth(http.HandlerFunc(h.WikiEdit))).Methods("GET")
+	router.Handle("/wiki/preview", authMw.RequireAuth(http.HandlerFunc(h.WikiPreview))).Methods("POST")
+	router.Handle("/wiki/save", authMw.RequireAuth(http.HandlerFunc(h.WikiSave))).Methods("POST")
 
 	// Notes routes (auth required)
 	router.Handle("/notes", authMw.RequireAuth(http.HandlerFunc(h.NotesListPage))).Methods("GET")
