@@ -189,18 +189,29 @@ func (s *AuthHandler) ExchangeAuthCode(
 	var user *entities.User
 	var isNewUser bool
 
-	log := s.log.With(slog.String("flow", "oauth"), slog.String("provider", req.Provider))
-	log.Info("checking if discord_users record exists", slog.String("discord_id", claims.Subject))
+	log := s.log.With(
+		slog.String("flow", "oauth"),
+		slog.String("provider", req.Provider),
+		slog.String("discord_id", claims.Subject),
+		slog.String("discord_username", claims.Name),
+	)
+	log.Info("starting oauth authentication",
+		slog.String("email", claims.Email),
+		slog.Bool("email_verified", claims.EmailVerified))
+
+	log.Debug("checking if discord_users record exists")
 	discordUser, err := s.discordUserRepo.GetByDiscordID(ctx, claims.Subject)
 
-	if err == nil && discordUser != nil {
-		// User exists - get and potentially update email
-		if discordUser.UserID == nil {
-			return nil, status.Error(codes.FailedPrecondition, "discord user has no linked account")
-		}
-		log.Info("found existing discord_users record", slog.String("user_id", *discordUser.UserID))
+	if err == nil && discordUser != nil && discordUser.UserID != nil {
+		// User exists with linked account - get and potentially update email
+		log.Info("found existing discord_users record with linked account",
+			slog.String("user_id", *discordUser.UserID),
+			slog.Time("linked_at", discordUser.LinkedAt))
 		user, err = s.userRepo.GetByID(ctx, *discordUser.UserID)
 		if err != nil {
+			log.Error("failed to get user by id",
+				slog.String("user_id", *discordUser.UserID),
+				slog.String("error", err.Error()))
 			return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 		}
 
@@ -216,9 +227,20 @@ func (s *AuthHandler) ExchangeAuthCode(
 		// Update last seen
 		_ = s.discordUserRepo.UpdateLastSeen(ctx, claims.Subject)
 	} else {
-		// New user - create user and discord_users record
-		log.Info("no existing Discord user, checking auto-provision")
+		// New user or Discord user without linked account - create user and link
+		if err == nil && discordUser != nil && discordUser.UserID == nil {
+			log.Info("found discord_users record with no linked account, will provision and link",
+				slog.String("discord_username", discordUser.DiscordUsername),
+				slog.Time("discord_user_created", discordUser.LinkedAt))
+		} else if err != nil {
+			log.Info("no existing discord_users record found, will create new user",
+				slog.String("lookup_error", err.Error()))
+		} else {
+			log.Info("no existing discord_users record found, will create new user")
+		}
+
 		if !providerConfig.AutoProvision {
+			log.Warn("auto-provisioning is disabled, rejecting authentication")
 			return nil, status.Error(codes.PermissionDenied, "auto-provisioning not enabled")
 		}
 
@@ -233,9 +255,15 @@ func (s *AuthHandler) ExchangeAuthCode(
 		}
 
 		if err := s.userRepo.Create(ctx, user); err != nil {
+			log.Error("failed to create user in database",
+				slog.String("email", user.Email),
+				slog.String("error", err.Error()))
 			return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
 		}
-		log.Info("user created successfully", slog.String("user_id", user.ID))
+		log.Info("user created successfully",
+			slog.String("user_id", user.ID),
+			slog.String("email", user.Email),
+			slog.String("display_name", user.DisplayName))
 
 		// Create discord_users record
 		userIDPtr := user.ID
@@ -249,9 +277,12 @@ func (s *AuthHandler) ExchangeAuthCode(
 		}
 
 		if err := s.discordUserRepo.Upsert(ctx, newDiscordUser); err != nil {
-			log.Warn("failed to upsert discord_users record", slog.String("error", err.Error()))
+			log.Error("failed to upsert discord_users record",
+				slog.String("user_id", user.ID),
+				slog.String("error", err.Error()))
 		} else {
-			log.Info("discord_users record created successfully")
+			log.Info("discord_users record linked successfully",
+				slog.String("user_id", user.ID))
 		}
 
 		isNewUser = true
@@ -863,21 +894,35 @@ func (s *AuthHandler) LoginWithOIDC(
 	}
 
 	// Try to get existing Discord user (Discord-only app)
+	log := s.log.With(
+		slog.String("flow", "oidc_login"),
+		slog.String("provider", req.Provider),
+		slog.String("discord_id", claims.Subject),
+		slog.String("discord_username", claims.Name),
+	)
+	log.Info("starting OIDC authentication",
+		slog.String("email", claims.Email),
+		slog.Bool("email_verified", claims.EmailVerified))
+
 	discordUser, err := s.discordUserRepo.GetByDiscordID(ctx, claims.Subject)
 
 	var user *entities.User
 	var isNewUser bool
 
-	if err == nil && discordUser != nil {
-		// Discord user exists, get the associated user
-		if discordUser.UserID == nil {
-			return nil, status.Error(codes.FailedPrecondition, "discord user has no linked account")
-		}
+	if err == nil && discordUser != nil && discordUser.UserID != nil {
+		// Discord user exists with linked account, get the associated user
+		log.Info("found existing discord_users record with linked account",
+			slog.String("user_id", *discordUser.UserID))
 		user, err = s.userRepo.GetByID(ctx, *discordUser.UserID)
 		if err != nil {
+			log.Error("failed to get user by id",
+				slog.String("user_id", *discordUser.UserID),
+				slog.String("error", err.Error()))
 			return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 		}
 		if user == nil {
+			log.Error("user not found in database despite discord_users link",
+				slog.String("user_id", *discordUser.UserID))
 			return nil, status.Error(codes.NotFound, "user not found")
 		}
 
@@ -890,7 +935,18 @@ func (s *AuthHandler) LoginWithOIDC(
 		// Update last seen
 		_ = s.discordUserRepo.UpdateLastSeen(ctx, claims.Subject)
 	} else {
-		// Discord user doesn't exist - create new user and discord_users record
+		// Discord user doesn't exist or has no linked account - create new user and link
+		if err == nil && discordUser != nil && discordUser.UserID == nil {
+			log.Info("found discord_users record with no linked account, will provision and link",
+				slog.String("discord_username", discordUser.DiscordUsername),
+				slog.Time("discord_user_created", discordUser.LinkedAt))
+		} else if err != nil {
+			log.Info("no existing discord_users record found, will create new user",
+				slog.String("lookup_error", err.Error()))
+		} else {
+			log.Info("no existing discord_users record found, will create new user")
+		}
+
 		user = &entities.User{
 			ID:          idgen.GenerateID(),
 			Email:       claims.Email,
@@ -903,8 +959,15 @@ func (s *AuthHandler) LoginWithOIDC(
 		}
 
 		if err := s.userRepo.Create(ctx, user); err != nil {
+			log.Error("failed to create user in database",
+				slog.String("email", user.Email),
+				slog.String("error", err.Error()))
 			return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
 		}
+		log.Info("user created successfully",
+			slog.String("user_id", user.ID),
+			slog.String("email", user.Email),
+			slog.String("display_name", user.DisplayName))
 
 		// Create discord_users record
 		userIDPtr := user.ID
@@ -918,16 +981,27 @@ func (s *AuthHandler) LoginWithOIDC(
 		}
 
 		if err := s.discordUserRepo.Upsert(ctx, newDiscordUser); err != nil {
+			log.Error("failed to upsert discord_users record",
+				slog.String("user_id", user.ID),
+				slog.String("error", err.Error()))
 			return nil, status.Errorf(codes.Internal, "failed to create discord user: %v", err)
 		}
+		log.Info("discord_users record linked successfully",
+			slog.String("user_id", user.ID))
 
 		isNewUser = true
 	}
 
 	// Check if user is active
 	if !user.IsActive {
+		log.Warn("authentication rejected - user account is inactive",
+			slog.String("user_id", user.ID))
 		return nil, status.Error(codes.PermissionDenied, "user account is not active")
 	}
+
+	log.Info("authentication successful",
+		slog.String("user_id", user.ID),
+		slog.Bool("is_new_user", isNewUser))
 
 	// Generate token ID
 	tokenID, err := auth.GenerateTokenID()
