@@ -388,7 +388,7 @@ func handleContextNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate
 	refs := fetchNoteMessageReferences(ctx, noteClient, resp.Id, log)
 
 	// Show standard note embed
-	embed, components := createNoteEmbed(resp, refs, cfg)
+	embed, components := createNoteEmbed(resp, refs, cfg, log)
 	embed.Title = "✅ Note Created\n\n" + embed.Title
 
 	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
@@ -997,7 +997,7 @@ func handleContextMenuViewNotesForUser(s *discordgo.Session, i *discordgo.Intera
 	for idx, note := range resp.Notes {
 		// Fetch message references for each note
 		refs := fetchNoteMessageReferences(ctx, noteClient, note.Id, log)
-		embed, components := createNoteEmbed(note, refs, cfg)
+		embed, components := createNoteEmbed(note, refs, cfg, log)
 
 		// Add note number to embed title
 		if idx == 0 {
@@ -1153,7 +1153,7 @@ func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, c
 	// Success response - show standard note embed
 	// Fetch message references
 	refs := fetchNoteMessageReferences(ctx, noteClient, resultNote.Id, log)
-	embed, components := createNoteEmbed(resultNote, refs, cfg)
+	embed, components := createNoteEmbed(resultNote, refs, cfg, log)
 
 	// Add action text to title
 	if actionText == "updated" {
