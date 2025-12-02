@@ -69,6 +69,8 @@ make run-bot
 
 ### 5. Register Commands
 
+**Important**: Commands must be registered separately and are NOT auto-registered on bot startup.
+
 For testing (instant, guild-specific):
 ```bash
 ./bin/hivemind-bot register --config configs/dev-bot.yaml --guild YOUR_GUILD_ID
@@ -78,6 +80,45 @@ For production (global, takes up to 1 hour):
 ```bash
 ./bin/hivemind-bot register --config configs/dev-bot.yaml --global
 ```
+
+**Fixing Duplicate Commands:**
+
+If you see duplicate commands in Discord, it's because commands were registered both globally AND for a specific guild. To fix:
+
+```bash
+# Remove guild-specific duplicates
+./bin/hivemind-bot register --config configs/dev-bot.yaml --guild YOUR_GUILD_ID --cleanup
+
+# Or remove global commands
+./bin/hivemind-bot register --config configs/dev-bot.yaml --global --cleanup
+
+# Then re-register in your preferred scope
+./bin/hivemind-bot register --config configs/dev-bot.yaml --global
+```
+
+The register command uses bulk overwrite, so running it multiple times is safe and won't create duplicates.
+
+**Troubleshooting: HTTP 403 "Missing Access" Error**
+
+If you get this error when running `--cleanup` or `register`:
+```
+Error: failed to remove guild commands: HTTP 403 Forbidden, {"message": "Missing Access", "code": 50001}
+```
+
+This means the bot doesn't have the `applications.commands` scope in that guild. This happens when:
+- The bot was invited before `applications.commands` was added to your OAuth URL
+- The bot was invited with incomplete scopes
+
+**Solution:** Re-invite the bot with the correct scopes:
+1. Generate a new invite URL with BOTH scopes:
+   - Go to Discord Developer Portal → Your App → OAuth2 → URL Generator
+   - Select scopes: `bot` **AND** `applications.commands`
+   - Select required permissions (Read Messages, Send Messages, Embed Links, etc.)
+2. Visit the generated URL
+3. Select the same server (Discord will update the bot's scopes)
+4. Try the cleanup/register command again
+
+You don't need to kick the bot first - re-inviting with the correct scopes will update its permissions.
 
 ### 6. Test
 
