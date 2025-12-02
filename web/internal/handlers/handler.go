@@ -29,13 +29,13 @@ type Handler struct {
 }
 
 // New creates a new handler with dependencies
-func New(serverAddress string, sessionManager *session.Manager, templates *render.TemplateSet, redirectURI string, logger *slog.Logger) *Handler {
+func New(serverAddress string, sessionManager *session.Manager, templates *render.TemplateSet, redirectURI string) *Handler {
 	h := &Handler{
 		serverAddress:  serverAddress,
 		sessionManager: sessionManager,
 		templates:      templates,
 		redirectURI:    redirectURI,
-		log:            logger.With(slog.String("component", "web_handler")),
+		log:            slog.Default().With(slog.String("component", "web_handler")),
 	}
 
 	// Fetch Discord install URLs at startup (cached for lifetime of handler)

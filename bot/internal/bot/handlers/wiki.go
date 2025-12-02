@@ -58,6 +58,8 @@ func fetchWikiMessageReferences(ctx context.Context, wikiClient wikipb.WikiServi
 // showWikiDetailEmbed creates the detailed embed and action buttons for a wiki page
 func showWikiDetailEmbed(s *discordgo.Session, page *wikipb.WikiPage, references []*wikipb.WikiMessageReference, cfg *config.Config, query string, showBackButton bool) (*discordgo.MessageEmbed, []discordgo.MessageComponent) {
 	// Get channel name
+	slog.Default().Debug("fetching channel for wiki page from Discord API",
+		"channel_id", page.ChannelId)
 	channel, _ := s.Channel(page.ChannelId)
 	channelName := page.ChannelId
 	if channel != nil {
@@ -1020,6 +1022,9 @@ func handleWikiActionButton(s *discordgo.Session, i *discordgo.InteractionCreate
 
 		// Create embed for posting (reuse the embed function, discard components)
 		embed, _ := showWikiDetailEmbed(s, page, refs, cfg, "", false) // Send as new message in channel
+		log.Debug("sending wiki page embed to Discord",
+			"channel_id", i.ChannelID,
+			"page_id", page.Id)
 		_, err = s.ChannelMessageSendEmbed(i.ChannelID, embed)
 		if err != nil {
 			log.Error("failed to post wiki to channel", slog.String("error", err.Error()))
@@ -1072,6 +1077,9 @@ func handleWikiUnifiedSelect(s *discordgo.Session, i *discordgo.InteractionCreat
 	log.Info("handleWikiUnifiedSelect called", "messageID", messageID, "selectedValue", selectedValue)
 
 	// Fetch the original message
+	log.Debug("fetching message for adding to wiki from Discord API",
+		"channel_id", i.ChannelID,
+		"message_id", messageID)
 	message, err := s.ChannelMessage(i.ChannelID, messageID)
 	if err != nil {
 		log.Error("Failed to fetch message", "error", err, "messageID", messageID, "channelID", i.ChannelID)

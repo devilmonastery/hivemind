@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -15,12 +15,16 @@ import (
 
 // DiscordUserRepository implements repositories.DiscordUserRepository for PostgreSQL
 type DiscordUserRepository struct {
-	db *sqlx.DB
+	db  *sqlx.DB
+	log *slog.Logger
 }
 
 // NewDiscordUserRepository creates a new Discord user repository
 func NewDiscordUserRepository(db *sqlx.DB) repositories.DiscordUserRepository {
-	return &DiscordUserRepository{db: db}
+	return &DiscordUserRepository{
+		db:  db,
+		log: slog.Default().With(slog.String("repo", "discord_user")),
+	}
 }
 
 // Create creates a new Discord user record
@@ -133,8 +137,9 @@ func (r *DiscordUserRepository) Update(ctx context.Context, discordUser *entitie
 		WHERE discord_id = $1
 	`
 
-	fmt.Printf("[DiscordUserRepository.Update] discord_id=%s user_id=%v\n",
-		discordUser.DiscordID, discordUser.UserID)
+	r.log.Debug("updating discord user",
+		slog.String("discord_id", discordUser.DiscordID),
+		slog.Any("user_id", discordUser.UserID))
 
 	result, err := r.db.ExecContext(ctx, query,
 		discordUser.DiscordID,
@@ -145,12 +150,12 @@ func (r *DiscordUserRepository) Update(ctx context.Context, discordUser *entitie
 		discordUser.LastSeen,
 	)
 	if err != nil {
-		fmt.Printf("[DiscordUserRepository.Update] ERROR: %v\n", err)
+		r.log.Debug("discord user update error", slog.String("error", err.Error()))
 		return err
 	}
 
 	rows, _ := result.RowsAffected()
-	fmt.Printf("[DiscordUserRepository.Update] rows affected: %d\n", rows)
+	r.log.Debug("discord user updated", slog.Int64("rows_affected", rows))
 
 	return nil
 }

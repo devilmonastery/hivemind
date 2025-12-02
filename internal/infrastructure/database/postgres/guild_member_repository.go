@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -15,16 +16,24 @@ import (
 
 // GuildMemberRepository implements repositories.GuildMemberRepository for PostgreSQL
 type GuildMemberRepository struct {
-	db *sqlx.DB
+	db  *sqlx.DB
+	log *slog.Logger
 }
 
 // NewGuildMemberRepository creates a new guild member repository
 func NewGuildMemberRepository(db *sqlx.DB) repositories.GuildMemberRepository {
-	return &GuildMemberRepository{db: db}
+	return &GuildMemberRepository{
+		db:  db,
+		log: slog.Default().With(slog.String("repo", "guild_member")),
+	}
 }
 
 // Upsert creates or updates a guild member record
 func (r *GuildMemberRepository) Upsert(ctx context.Context, member *entities.GuildMember) error {
+	r.log.Debug("upserting guild member",
+		slog.String("guild_id", member.GuildID),
+		slog.String("discord_id", member.DiscordID))
+
 	query := `
 		INSERT INTO guild_members (
 			guild_id, discord_id, guild_nick, guild_avatar_hash,
@@ -56,6 +65,10 @@ func (r *GuildMemberRepository) UpsertBatch(ctx context.Context, members []*enti
 	if len(members) == 0 {
 		return nil
 	}
+
+	r.log.Debug("upserting batch of guild members",
+		slog.Int("count", len(members)),
+		slog.String("guild_id", members[0].GuildID))
 
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
@@ -103,6 +116,10 @@ func (r *GuildMemberRepository) UpsertBatch(ctx context.Context, members []*enti
 
 // IsMember checks if a Discord user is a member of a guild
 func (r *GuildMemberRepository) IsMember(ctx context.Context, guildID, discordID string) (bool, error) {
+	r.log.Debug("checking guild membership",
+		slog.String("guild_id", guildID),
+		slog.String("discord_id", discordID))
+
 	query := `
 		SELECT EXISTS(
 			SELECT 1 FROM guild_members
@@ -117,6 +134,10 @@ func (r *GuildMemberRepository) IsMember(ctx context.Context, guildID, discordID
 
 // GetMember retrieves a guild member record
 func (r *GuildMemberRepository) GetMember(ctx context.Context, guildID, discordID string) (*entities.GuildMember, error) {
+	r.log.Debug("getting guild member",
+		slog.String("guild_id", guildID),
+		slog.String("discord_id", discordID))
+
 	query := `
 		SELECT guild_id, discord_id, guild_nick, guild_avatar_hash,
 		       roles, joined_at, synced_at, last_seen
@@ -201,6 +222,10 @@ func (r *GuildMemberRepository) UpdateLastSeen(ctx context.Context, guildID, dis
 
 // DeleteMember removes a member record (when they leave)
 func (r *GuildMemberRepository) DeleteMember(ctx context.Context, guildID, discordID string) error {
+	r.log.Debug("deleting guild member",
+		slog.String("guild_id", guildID),
+		slog.String("discord_id", discordID))
+
 	query := `
 		DELETE FROM guild_members
 		WHERE guild_id = $1 AND discord_id = $2
@@ -225,6 +250,8 @@ func (r *GuildMemberRepository) DeleteMember(ctx context.Context, guildID, disco
 
 // DeleteAllGuildMembers removes all members for a guild (when bot leaves guild)
 func (r *GuildMemberRepository) DeleteAllGuildMembers(ctx context.Context, guildID string) error {
+	r.log.Debug("deleting all guild members", slog.String("guild_id", guildID))
+
 	query := `
 		DELETE FROM guild_members
 		WHERE guild_id = $1

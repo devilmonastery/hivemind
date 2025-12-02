@@ -13,7 +13,7 @@ Discord bot for managing collaborative knowledge bases (wikis, notes, and quotes
 5. Under "Token", click "Reset Token" and copy it
 6. Under "Privileged Gateway Intents", enable:
    - Server Members Intent
-   - Message Content Intent (if needed)
+   - Message Content Intent
 
 ### 2. Configure Bot
 

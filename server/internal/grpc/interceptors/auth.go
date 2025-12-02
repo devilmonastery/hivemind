@@ -59,19 +59,13 @@ type AuthInterceptor struct {
 }
 
 // NewAuthInterceptor creates a new auth interceptor
-func NewAuthInterceptor(
-	jwtManager *auth.JWTManager,
-	tokenRepo repositories.TokenRepository,
-	discordService *services.DiscordService,
-	devBotToken string, // Optional: dev-only bot token
-	logger *slog.Logger,
-) *AuthInterceptor {
+func NewAuthInterceptor(jwtManager *auth.JWTManager, tokenRepo repositories.TokenRepository, discordService *services.DiscordService, devBotToken string) *AuthInterceptor {
 	return &AuthInterceptor{
 		jwtManager:     jwtManager,
 		tokenRepo:      tokenRepo,
 		discordService: discordService,
 		devBotToken:    devBotToken,
-		log:            logger.With(slog.String("component", "auth_interceptor")),
+		log:            slog.Default().With(slog.String("component", "auth_interceptor")),
 		publicMethods: map[string]bool{
 			"/hivemind.auth.v1.AuthService/AuthenticateLocal": true,
 			"/hivemind.auth.v1.AuthService/GetOAuthConfig":    true,

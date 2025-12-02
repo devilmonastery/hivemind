@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -16,12 +16,16 @@ import (
 )
 
 type quoteRepository struct {
-	db *sql.DB
+	db  *sql.DB
+	log *slog.Logger
 }
 
 // NewQuoteRepository creates a new PostgreSQL quote repository
 func NewQuoteRepository(db *sql.DB) repositories.QuoteRepository {
-	return &quoteRepository{db: db}
+	return &quoteRepository{
+		db:  db,
+		log: slog.Default().With(slog.String("repo", "quote")),
+	}
 }
 
 func (r *quoteRepository) Create(ctx context.Context, quote *entities.Quote) error {
@@ -202,13 +206,10 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 	// Get total count
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %s WHERE %s", baseFrom, whereClause)
-	log.Printf("[QuoteRepo.List] Count Query: %s", countQuery)
-	log.Printf("[QuoteRepo.List] Args: %v (userDiscordID=%q, guildID=%q)", args, userDiscordID, guildID)
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
-	log.Printf("[QuoteRepo.List] Total count: %d", total)
 
 	// Get quotes
 	query := fmt.Sprintf(`
@@ -220,7 +221,10 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
 	`, baseFrom, whereClause, orderClause, argCount+1, argCount+2)
-	log.Printf("[QuoteRepo.List] Select Query: %s", query)
+
+	r.log.Debug("executing select query",
+		slog.String("query", query),
+		slog.Any("args", args))
 
 	args = append(args, limit, offset)
 

@@ -71,6 +71,11 @@ func (b *Bot) syncGuildMembers(ctx context.Context, discordClient discordpb.Disc
 
 	// Paginate through all members (Discord limit is 1000 per request)
 	for {
+		b.log.Debug("fetching guild members from Discord API",
+			slog.String("guild_id", guildID),
+			slog.String("after", after),
+			slog.Int("limit", 1000))
+
 		members, err := b.session.GuildMembers(guildID, after, 1000)
 		if err != nil {
 			return err
