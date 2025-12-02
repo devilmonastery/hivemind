@@ -27,8 +27,14 @@ func buildQuoteEmbed(quote *quotespb.Quote) *discordgo.MessageEmbed {
 		quoteText += "> " + line + "\n"
 	}
 
-	// Add footer with added by and original message link (de-emphasized with italics)
+	// Add footer with timestamp, added by, and original message link (de-emphasized with italics)
 	footer := []string{}
+
+	// Add timestamp if available
+	if quote.SourceMsgTimestamp != nil {
+		footer = append(footer, fmt.Sprintf("_<t:%d:D>_", quote.SourceMsgTimestamp.Seconds))
+	}
+
 	if quote.AuthorUsername != "" {
 		footer = append(footer, fmt.Sprintf("_added by %s_", quote.AuthorUsername))
 	}
@@ -112,76 +118,12 @@ func handleQuote(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog
 	subcommand := options[0]
 
 	switch subcommand.Name {
-	case "add":
-		handleQuoteAdd(s, i, subcommand, log, grpcClient)
 	case "random":
 		handleQuoteRandom(s, i, subcommand, log, grpcClient)
 	case "search":
 		handleQuoteSearch(s, i, subcommand, log, grpcClient)
 	default:
 		respondError(s, i, "Unknown quote subcommand", log)
-	}
-}
-
-// handleQuoteAdd adds a new quote
-func handleQuoteAdd(s *discordgo.Session, i *discordgo.InteractionCreate, subcommand *discordgo.ApplicationCommandInteractionDataOption, log *slog.Logger, grpcClient *client.Client) {
-	var text string
-	for _, opt := range subcommand.Options {
-		if opt.Name == "text" {
-			text = opt.StringValue()
-		}
-	}
-
-	if text == "" {
-		respondError(s, i, "Quote text is required", log)
-		return
-	}
-
-	// Extract hashtags from text
-	tags := extractHashtags(text)
-
-	// Defer response to avoid timeout
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Flags: discordgo.MessageFlagsEphemeral,
-		},
-	})
-	if err != nil {
-		log.Error("Failed to defer response", "error", err)
-		return
-	}
-
-	quoteClient := quotespb.NewQuoteServiceClient(grpcClient.Conn())
-	ctx := discordContextFor(i)
-
-	req := &quotespb.CreateQuoteRequest{
-		Body:    text,
-		Tags:    tags,
-		GuildId: i.GuildID,
-		// Note: source message fields would be filled if quoting a specific message
-	}
-
-	resp, err := quoteClient.CreateQuote(ctx, req)
-	if err != nil {
-		log.Error("Failed to create quote", "error", err)
-		_, _ = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Content: fmt.Sprintf("❌ Failed to create quote: %v", err),
-			Flags:   discordgo.MessageFlagsEphemeral,
-		})
-		return
-	}
-
-	// Show the created quote with standard embed
-	embed := buildQuoteEmbed(resp)
-	embed.Title = "✅ Quote Added"
-
-	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Embeds: []*discordgo.MessageEmbed{embed},
-		Flags:  discordgo.MessageFlagsEphemeral,
-	})
-	if err != nil {
-		log.Error("Failed to send followup", "error", err)
 	}
 }
 

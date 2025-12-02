@@ -44,9 +44,10 @@ type Quote struct {
 	// Metadata
 	Tags []string `protobuf:"bytes,13,rep,name=tags,proto3" json:"tags,omitempty"`
 	// Timestamps
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	SourceMsgTimestamp *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=source_msg_timestamp,json=sourceMsgTimestamp,proto3" json:"source_msg_timestamp,omitempty"` // When the original Discord message was sent
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Quote) Reset() {
@@ -184,17 +185,25 @@ func (x *Quote) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Quote) GetSourceMsgTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SourceMsgTimestamp
+	}
+	return nil
+}
+
 type CreateQuoteRequest struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Body    string                 `protobuf:"bytes,1,opt,name=body,proto3" json:"body,omitempty"`
 	GuildId string                 `protobuf:"bytes,2,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
 	// Source message information (from Discord context)
-	SourceMsgId              string   `protobuf:"bytes,3,opt,name=source_msg_id,json=sourceMsgId,proto3" json:"source_msg_id,omitempty"`
-	SourceChannelId          string   `protobuf:"bytes,4,opt,name=source_channel_id,json=sourceChannelId,proto3" json:"source_channel_id,omitempty"`
-	SourceMsgAuthorDiscordId string   `protobuf:"bytes,5,opt,name=source_msg_author_discord_id,json=sourceMsgAuthorDiscordId,proto3" json:"source_msg_author_discord_id,omitempty"`
-	SourceMsgAuthorUsername  string   `protobuf:"bytes,6,opt,name=source_msg_author_username,json=sourceMsgAuthorUsername,proto3" json:"source_msg_author_username,omitempty"`
-	Tags                     []string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
-	SourceChannelName        string   `protobuf:"bytes,8,opt,name=source_channel_name,json=sourceChannelName,proto3" json:"source_channel_name,omitempty"`
+	SourceMsgId              string                 `protobuf:"bytes,3,opt,name=source_msg_id,json=sourceMsgId,proto3" json:"source_msg_id,omitempty"`
+	SourceChannelId          string                 `protobuf:"bytes,4,opt,name=source_channel_id,json=sourceChannelId,proto3" json:"source_channel_id,omitempty"`
+	SourceMsgAuthorDiscordId string                 `protobuf:"bytes,5,opt,name=source_msg_author_discord_id,json=sourceMsgAuthorDiscordId,proto3" json:"source_msg_author_discord_id,omitempty"`
+	SourceMsgAuthorUsername  string                 `protobuf:"bytes,6,opt,name=source_msg_author_username,json=sourceMsgAuthorUsername,proto3" json:"source_msg_author_username,omitempty"`
+	Tags                     []string               `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
+	SourceChannelName        string                 `protobuf:"bytes,8,opt,name=source_channel_name,json=sourceChannelName,proto3" json:"source_channel_name,omitempty"`
+	SourceMsgTimestamp       *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=source_msg_timestamp,json=sourceMsgTimestamp,proto3" json:"source_msg_timestamp,omitempty"` // When the original message was sent
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -283,6 +292,13 @@ func (x *CreateQuoteRequest) GetSourceChannelName() string {
 		return x.SourceChannelName
 	}
 	return ""
+}
+
+func (x *CreateQuoteRequest) GetSourceMsgTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SourceMsgTimestamp
+	}
+	return nil
 }
 
 type GetQuoteRequest struct {
@@ -761,7 +777,7 @@ var File_quotes_proto protoreflect.FileDescriptor
 
 const file_quotes_proto_rawDesc = "" +
 	"\n" +
-	"\fquotes.proto\x12\x0fhivemind.quotes\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd1\x04\n" +
+	"\fquotes.proto\x12\x0fhivemind.quotes\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9f\x05\n" +
 	"\x05Quote\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1b\n" +
@@ -780,7 +796,8 @@ const file_quotes_proto_rawDesc = "" +
 	"\x12mentioned_user_ids\x18\f \x03(\tR\x10mentionedUserIds\x12\x12\n" +
 	"\x04tags\x18\r \x03(\tR\x04tags\x129\n" +
 	"\n" +
-	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xd4\x02\n" +
+	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12L\n" +
+	"\x14source_msg_timestamp\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\x12sourceMsgTimestamp\"\xa2\x03\n" +
 	"\x12CreateQuoteRequest\x12\x12\n" +
 	"\x04body\x18\x01 \x01(\tR\x04body\x12\x19\n" +
 	"\bguild_id\x18\x02 \x01(\tR\aguildId\x12\"\n" +
@@ -789,7 +806,8 @@ const file_quotes_proto_rawDesc = "" +
 	"\x1csource_msg_author_discord_id\x18\x05 \x01(\tR\x18sourceMsgAuthorDiscordId\x12;\n" +
 	"\x1asource_msg_author_username\x18\x06 \x01(\tR\x17sourceMsgAuthorUsername\x12\x12\n" +
 	"\x04tags\x18\a \x03(\tR\x04tags\x12.\n" +
-	"\x13source_channel_name\x18\b \x01(\tR\x11sourceChannelName\"!\n" +
+	"\x13source_channel_name\x18\b \x01(\tR\x11sourceChannelName\x12L\n" +
+	"\x14source_msg_timestamp\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x12sourceMsgTimestamp\"!\n" +
 	"\x0fGetQuoteRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\xe9\x01\n" +
 	"\x11ListQuotesRequest\x12\x19\n" +
@@ -860,27 +878,29 @@ var file_quotes_proto_goTypes = []any{
 }
 var file_quotes_proto_depIdxs = []int32{
 	10, // 0: hivemind.quotes.Quote.created_at:type_name -> google.protobuf.Timestamp
-	0,  // 1: hivemind.quotes.ListQuotesResponse.quotes:type_name -> hivemind.quotes.Quote
-	0,  // 2: hivemind.quotes.SearchQuotesResponse.quotes:type_name -> hivemind.quotes.Quote
-	1,  // 3: hivemind.quotes.QuoteService.CreateQuote:input_type -> hivemind.quotes.CreateQuoteRequest
-	2,  // 4: hivemind.quotes.QuoteService.GetQuote:input_type -> hivemind.quotes.GetQuoteRequest
-	3,  // 5: hivemind.quotes.QuoteService.ListQuotes:input_type -> hivemind.quotes.ListQuotesRequest
-	5,  // 6: hivemind.quotes.QuoteService.DeleteQuote:input_type -> hivemind.quotes.DeleteQuoteRequest
-	6,  // 7: hivemind.quotes.QuoteService.UpdateQuote:input_type -> hivemind.quotes.UpdateQuoteRequest
-	7,  // 8: hivemind.quotes.QuoteService.SearchQuotes:input_type -> hivemind.quotes.SearchQuotesRequest
-	9,  // 9: hivemind.quotes.QuoteService.GetRandomQuote:input_type -> hivemind.quotes.GetRandomQuoteRequest
-	0,  // 10: hivemind.quotes.QuoteService.CreateQuote:output_type -> hivemind.quotes.Quote
-	0,  // 11: hivemind.quotes.QuoteService.GetQuote:output_type -> hivemind.quotes.Quote
-	4,  // 12: hivemind.quotes.QuoteService.ListQuotes:output_type -> hivemind.quotes.ListQuotesResponse
-	11, // 13: hivemind.quotes.QuoteService.DeleteQuote:output_type -> hivemind.common.v1.SuccessResponse
-	0,  // 14: hivemind.quotes.QuoteService.UpdateQuote:output_type -> hivemind.quotes.Quote
-	8,  // 15: hivemind.quotes.QuoteService.SearchQuotes:output_type -> hivemind.quotes.SearchQuotesResponse
-	0,  // 16: hivemind.quotes.QuoteService.GetRandomQuote:output_type -> hivemind.quotes.Quote
-	10, // [10:17] is the sub-list for method output_type
-	3,  // [3:10] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	10, // 1: hivemind.quotes.Quote.source_msg_timestamp:type_name -> google.protobuf.Timestamp
+	10, // 2: hivemind.quotes.CreateQuoteRequest.source_msg_timestamp:type_name -> google.protobuf.Timestamp
+	0,  // 3: hivemind.quotes.ListQuotesResponse.quotes:type_name -> hivemind.quotes.Quote
+	0,  // 4: hivemind.quotes.SearchQuotesResponse.quotes:type_name -> hivemind.quotes.Quote
+	1,  // 5: hivemind.quotes.QuoteService.CreateQuote:input_type -> hivemind.quotes.CreateQuoteRequest
+	2,  // 6: hivemind.quotes.QuoteService.GetQuote:input_type -> hivemind.quotes.GetQuoteRequest
+	3,  // 7: hivemind.quotes.QuoteService.ListQuotes:input_type -> hivemind.quotes.ListQuotesRequest
+	5,  // 8: hivemind.quotes.QuoteService.DeleteQuote:input_type -> hivemind.quotes.DeleteQuoteRequest
+	6,  // 9: hivemind.quotes.QuoteService.UpdateQuote:input_type -> hivemind.quotes.UpdateQuoteRequest
+	7,  // 10: hivemind.quotes.QuoteService.SearchQuotes:input_type -> hivemind.quotes.SearchQuotesRequest
+	9,  // 11: hivemind.quotes.QuoteService.GetRandomQuote:input_type -> hivemind.quotes.GetRandomQuoteRequest
+	0,  // 12: hivemind.quotes.QuoteService.CreateQuote:output_type -> hivemind.quotes.Quote
+	0,  // 13: hivemind.quotes.QuoteService.GetQuote:output_type -> hivemind.quotes.Quote
+	4,  // 14: hivemind.quotes.QuoteService.ListQuotes:output_type -> hivemind.quotes.ListQuotesResponse
+	11, // 15: hivemind.quotes.QuoteService.DeleteQuote:output_type -> hivemind.common.v1.SuccessResponse
+	0,  // 16: hivemind.quotes.QuoteService.UpdateQuote:output_type -> hivemind.quotes.Quote
+	8,  // 17: hivemind.quotes.QuoteService.SearchQuotes:output_type -> hivemind.quotes.SearchQuotesResponse
+	0,  // 18: hivemind.quotes.QuoteService.GetRandomQuote:output_type -> hivemind.quotes.Quote
+	12, // [12:19] is the sub-list for method output_type
+	5,  // [5:12] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_quotes_proto_init() }

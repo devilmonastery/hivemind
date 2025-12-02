@@ -116,6 +116,11 @@ func (h *NoteHandler) GetNote(ctx context.Context, req *notespb.GetNoteRequest) 
 		return nil, status.Errorf(codes.Internal, "failed to get note: %v", err)
 	}
 
+	// Verify ownership - users can only access their own notes
+	if note.AuthorID != userCtx.UserID {
+		return nil, status.Error(codes.PermissionDenied, "you can only view your own notes")
+	}
+
 	return noteToProto(note), nil
 }
 

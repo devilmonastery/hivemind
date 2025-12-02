@@ -214,6 +214,7 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 	// Extract message ID from custom ID
 	// Format: "context_quote_modal:MESSAGE_ID"
 	var sourceMessageID, sourceChannelID, sourceChannelName, sourceAuthorDiscordID, sourceAuthorUsername string
+	var sourceMessageTimestamp *timestamppb.Timestamp
 	customID := data.CustomID
 	parts := strings.Split(customID, ":")
 	if len(parts) == 2 {
@@ -229,6 +230,7 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 			sourceChannelID = message.ChannelID
 			sourceAuthorDiscordID = message.Author.ID
 			sourceAuthorUsername = message.Author.Username
+			sourceMessageTimestamp = timestamppb.New(message.Timestamp)
 
 			// Fetch channel name
 			log.Debug("fetching channel from Discord API",
@@ -251,6 +253,7 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 		SourceChannelName:        sourceChannelName,
 		SourceMsgAuthorDiscordId: sourceAuthorDiscordID,
 		SourceMsgAuthorUsername:  sourceAuthorUsername,
+		SourceMsgTimestamp:       sourceMessageTimestamp,
 	}
 
 	resp, err := quoteClient.CreateQuote(ctx, req)
