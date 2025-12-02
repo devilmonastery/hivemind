@@ -44,10 +44,19 @@ backend:
   # The command will output a JWT token that you should set here.
   # See example_server.yaml for details.
   service_token: ""
+  
+  # Metrics server port (optional, defaults to 9100)
+  metrics_port: 9100
 
 logging:
   level: "info"      # debug, info, warn, error
   format: "json"     # json or text
+
+# Metrics and health endpoints
+# The bot automatically serves metrics on port 9100
+# Available endpoints:
+#   /metrics - Prometheus metrics
+#   /health  - Health check
   output: "stdout"   # stdout or file path
 
 features:

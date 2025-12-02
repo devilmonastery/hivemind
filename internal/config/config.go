@@ -40,8 +40,9 @@ type PostgresConfig struct {
 
 // GRPCConfig holds gRPC server configuration
 type GRPCConfig struct {
-	Host string `yaml:"host" default:"localhost"`
-	Port int    `yaml:"port" default:"9091"`
+	Host        string `yaml:"host" default:"localhost"`
+	Port        int    `yaml:"port" default:"9091"`
+	MetricsPort int    `yaml:"metrics_port" default:"0"` // 0 means Port+10
 }
 
 // AuthConfig holds authentication configuration
