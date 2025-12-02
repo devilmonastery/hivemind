@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/gosimple/slug"
@@ -13,12 +14,16 @@ import (
 )
 
 type wikiTitleRepository struct {
-	db *sql.DB
+	db  *sql.DB
+	log *slog.Logger
 }
 
 // NewWikiTitleRepository creates a new PostgreSQL wiki title repository
 func NewWikiTitleRepository(db *sql.DB) repositories.WikiTitleRepository {
-	return &wikiTitleRepository{db: db}
+	return &wikiTitleRepository{
+		db:  db,
+		log: slog.Default().With(slog.String("repo", "wiki_title")),
+	}
 }
 
 func (r *wikiTitleRepository) Create(ctx context.Context, title *entities.WikiTitle) error {
@@ -28,6 +33,12 @@ func (r *wikiTitleRepository) Create(ctx context.Context, title *entities.WikiTi
 	if title.CreatedAt.IsZero() {
 		title.CreatedAt = time.Now()
 	}
+
+	r.log.Debug("creating wiki title",
+		slog.String("display_title", title.DisplayTitle),
+		slog.String("page_slug", title.PageSlug),
+		slog.String("page_id", title.PageID),
+		slog.Bool("is_canonical", title.IsCanonical))
 
 	query := `
 		INSERT INTO wiki_titles (id, guild_id, display_title, page_slug, page_id, is_canonical, created_at, created_by_user_id, created_by_merge)
@@ -50,6 +61,11 @@ func (r *wikiTitleRepository) Create(ctx context.Context, title *entities.WikiTi
 func (r *wikiTitleRepository) GetByGuildAndSlug(ctx context.Context, guildID, inputSlug string) (*entities.WikiTitle, error) {
 	// Normalize slug for lookup
 	normalizedSlug := slug.Make(inputSlug)
+
+	r.log.Debug("getting wiki title by guild and slug",
+		slog.String("guild_id", guildID),
+		slog.String("input_slug", inputSlug),
+		slog.String("normalized_slug", normalizedSlug))
 
 	query := `
 		SELECT id, guild_id, display_title, page_slug, page_id, is_canonical, created_at, created_by_user_id, created_by_merge
@@ -85,6 +101,8 @@ func (r *wikiTitleRepository) GetByGuildAndSlug(ctx context.Context, guildID, in
 }
 
 func (r *wikiTitleRepository) GetCanonicalTitle(ctx context.Context, pageID string) (*entities.WikiTitle, error) {
+	r.log.Debug("getting canonical title", slog.String("page_id", pageID))
+
 	query := `
 		SELECT id, guild_id, display_title, page_slug, page_id, is_canonical, created_at, created_by_user_id, created_by_merge
 		FROM wiki_titles
@@ -119,6 +137,8 @@ func (r *wikiTitleRepository) GetCanonicalTitle(ctx context.Context, pageID stri
 }
 
 func (r *wikiTitleRepository) ListByPageID(ctx context.Context, pageID string) ([]*entities.WikiTitle, error) {
+	r.log.Debug("listing titles by page id", slog.String("page_id", pageID))
+
 	query := `
 		SELECT id, guild_id, display_title, page_slug, page_id, is_canonical, created_at, created_by_user_id, created_by_merge
 		FROM wiki_titles
@@ -163,6 +183,10 @@ func (r *wikiTitleRepository) ListByPageID(ctx context.Context, pageID string) (
 }
 
 func (r *wikiTitleRepository) UpdatePageID(ctx context.Context, oldPageID, newPageID string) (int, error) {
+	r.log.Debug("updating page id for non-canonical titles",
+		slog.String("old_page_id", oldPageID),
+		slog.String("new_page_id", newPageID))
+
 	// Update all non-canonical titles pointing to old page (flattening)
 	query := `
 		UPDATE wiki_titles
@@ -184,6 +208,10 @@ func (r *wikiTitleRepository) UpdatePageID(ctx context.Context, oldPageID, newPa
 }
 
 func (r *wikiTitleRepository) ConvertToAlias(ctx context.Context, oldPageID, newPageID string) (int, error) {
+	r.log.Debug("converting canonical title to alias",
+		slog.String("old_page_id", oldPageID),
+		slog.String("new_page_id", newPageID))
+
 	// Convert canonical title to alias pointing to new page
 	// This is used during merge to redirect the old page name to the merged page
 	query := `

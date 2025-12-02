@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
+	"log/slog"
 
 	"github.com/devilmonastery/hivemind/api/generated/go/commonpb"
 	"github.com/devilmonastery/hivemind/api/generated/go/quotespb"
@@ -22,6 +22,7 @@ type QuoteHandler struct {
 	quotespb.UnimplementedQuoteServiceServer
 	quoteService    *services.QuoteService
 	discordUserRepo repositories.DiscordUserRepository
+	log             *slog.Logger
 }
 
 // NewQuoteHandler creates a new quote handler
@@ -29,32 +30,35 @@ func NewQuoteHandler(quoteService *services.QuoteService, discordUserRepo reposi
 	return &QuoteHandler{
 		quoteService:    quoteService,
 		discordUserRepo: discordUserRepo,
+		log:             slog.Default().With(slog.String("handler", "quote")),
 	}
 }
 
 // getUserDiscordID extracts Discord ID from context for ACL filtering
 // Returns empty string for admin users (no ACL filtering)
 func (h *QuoteHandler) getUserDiscordID(ctx context.Context, userCtx *interceptors.UserContext) string {
-	log.Printf("[QuoteHandler.getUserDiscordID] UserID: %s, Role: %s", userCtx.UserID, userCtx.Role)
+	h.log.Debug("getting user discord ID for ACL",
+		slog.String("user_id", userCtx.UserID),
+		slog.String("role", userCtx.Role))
 
 	// Admin bypass: empty string means no ACL filtering
 	if userCtx.Role == "admin" {
-		log.Printf("[QuoteHandler.getUserDiscordID] Admin bypass - no ACL filtering")
+		h.log.Debug("admin bypass - no ACL filtering")
 		return ""
 	}
 
 	// Get user's Discord ID for ACL filtering
 	discordUser, err := h.discordUserRepo.GetByUserID(ctx, userCtx.UserID)
 	if err != nil {
-		log.Printf("[QuoteHandler.getUserDiscordID] Error getting Discord user: %v", err)
+		h.log.Debug("error getting discord user", slog.String("error", err.Error()))
 		return ""
 	}
 	if discordUser == nil {
-		log.Printf("[QuoteHandler.getUserDiscordID] No Discord user found for UserID %s", userCtx.UserID)
+		h.log.Debug("no discord user found", slog.String("user_id", userCtx.UserID))
 		return ""
 	}
 
-	log.Printf("[QuoteHandler.getUserDiscordID] Found Discord ID: %s", discordUser.DiscordID)
+	h.log.Debug("found discord ID", slog.String("discord_id", discordUser.DiscordID))
 	return discordUser.DiscordID
 }
 

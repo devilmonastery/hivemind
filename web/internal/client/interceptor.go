@@ -45,11 +45,11 @@ type AutoRefreshInterceptor struct {
 }
 
 // NewAutoRefreshInterceptor creates a new auto-refresh interceptor
-func NewAutoRefreshInterceptor(authClient authpb.AuthServiceClient, sessionManager SessionManager, logger *slog.Logger) *AutoRefreshInterceptor {
+func NewAutoRefreshInterceptor(authClient authpb.AuthServiceClient, sessionManager SessionManager) *AutoRefreshInterceptor {
 	return &AutoRefreshInterceptor{
 		authClient:     authClient,
 		sessionManager: sessionManager,
-		log:            logger.With(slog.String("component", "auto_refresh_interceptor")),
+		log:            slog.Default().With(slog.String("component", "auto_refresh_interceptor")),
 	}
 }
 

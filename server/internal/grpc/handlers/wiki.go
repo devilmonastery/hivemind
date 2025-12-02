@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"strings"
 
@@ -282,26 +281,28 @@ func (h *wikiHandler) getUsernameForAuthor(ctx context.Context, authorID string)
 // getUserDiscordID extracts Discord ID from context for ACL filtering
 // Returns empty string for admin users (no ACL filtering)
 func (h *wikiHandler) getUserDiscordID(ctx context.Context, userCtx *interceptors.UserContext) string {
-	log.Printf("[WikiHandler.getUserDiscordID] UserID: %s, Role: %s", userCtx.UserID, userCtx.Role)
+	h.log.Debug("getting user discord ID for ACL",
+		slog.String("user_id", userCtx.UserID),
+		slog.String("role", userCtx.Role))
 
 	// Admin bypass: empty string means no ACL filtering
 	if userCtx.Role == "admin" {
-		log.Printf("[WikiHandler.getUserDiscordID] Admin bypass - no ACL filtering")
+		h.log.Debug("admin bypass - no ACL filtering")
 		return ""
 	}
 
 	// Get user's Discord ID for ACL filtering
 	discordUser, err := h.discordUserRepo.GetByUserID(ctx, userCtx.UserID)
 	if err != nil {
-		log.Printf("[WikiHandler.getUserDiscordID] Error getting Discord user: %v", err)
+		h.log.Debug("error getting discord user", slog.String("error", err.Error()))
 		return ""
 	}
 	if discordUser == nil {
-		log.Printf("[WikiHandler.getUserDiscordID] No Discord user found for UserID %s", userCtx.UserID)
+		h.log.Debug("no discord user found", slog.String("user_id", userCtx.UserID))
 		return ""
 	}
 
-	log.Printf("[WikiHandler.getUserDiscordID] Found Discord ID: %s", discordUser.DiscordID)
+	h.log.Debug("found discord ID", slog.String("discord_id", discordUser.DiscordID))
 	return discordUser.DiscordID
 }
 

@@ -49,7 +49,6 @@ func NewAuthHandler(
 	discordUserRepo repositories.DiscordUserRepository,
 	jwtManager *auth.JWTManager,
 	cfg *config.Config,
-	logger *slog.Logger,
 ) *AuthHandler {
 	return &AuthHandler{
 		userRepo:        userRepo,
@@ -58,7 +57,7 @@ func NewAuthHandler(
 		discordUserRepo: discordUserRepo,
 		jwtManager:      jwtManager,
 		config:          cfg,
-		log:             logger.With(slog.String("handler", "auth")),
+		log:             slog.Default().With(slog.String("handler", "auth")),
 	}
 }
 

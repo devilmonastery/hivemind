@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -17,13 +18,15 @@ import (
 
 // AuditRepository implements the AuditRepository interface for SQLite
 type AuditRepository struct {
-	db *sqlx.DB
+	db  *sqlx.DB
+	log *slog.Logger
 }
 
 // NewAuditRepository creates a new SQLite audit repository
 func NewAuditRepository(db *sqlx.DB) repositories.AuditRepository {
 	return &AuditRepository{
-		db: db,
+		db:  db,
+		log: slog.Default().With(slog.String("repo", "audit")),
 	}
 }
 
@@ -118,6 +121,12 @@ func (r *AuditRepository) Create(ctx context.Context, log *entities.AuditLog) er
 	if log.CreatedAt.IsZero() {
 		log.CreatedAt = time.Now()
 	}
+
+	r.log.Debug("creating audit log",
+		slog.String("action", string(log.Action)),
+		slog.String("resource", string(log.Resource)),
+		slog.Any("resource_id", log.ResourceID),
+		slog.Any("user_id", log.UserID))
 
 	row, err := auditLogRowFromEntity(log)
 	if err != nil {

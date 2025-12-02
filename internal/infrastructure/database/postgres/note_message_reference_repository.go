@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
@@ -12,12 +13,16 @@ import (
 )
 
 type noteMessageReferenceRepository struct {
-	db *sql.DB
+	db  *sql.DB
+	log *slog.Logger
 }
 
 // NewNoteMessageReferenceRepository creates a new PostgreSQL note message reference repository
 func NewNoteMessageReferenceRepository(db *sql.DB) repositories.NoteMessageReferenceRepository {
-	return &noteMessageReferenceRepository{db: db}
+	return &noteMessageReferenceRepository{
+		db:  db,
+		log: slog.Default().With(slog.String("repo", "note_message_reference")),
+	}
 }
 
 func (r *noteMessageReferenceRepository) Create(ctx context.Context, ref *entities.NoteMessageReference) error {
@@ -25,6 +30,10 @@ func (r *noteMessageReferenceRepository) Create(ctx context.Context, ref *entiti
 		ref.ID = idgen.GenerateID()
 	}
 	ref.AddedAt = time.Now()
+
+	r.log.Debug("creating note message reference",
+		slog.String("note_id", ref.NoteID),
+		slog.String("message_id", ref.MessageID))
 
 	// Marshal attachments to JSON for JSONB column
 	var attachmentMetadata interface{}
@@ -72,6 +81,8 @@ func (r *noteMessageReferenceRepository) Create(ctx context.Context, ref *entiti
 }
 
 func (r *noteMessageReferenceRepository) GetByNoteID(ctx context.Context, noteID string) ([]*entities.NoteMessageReference, error) {
+	r.log.Debug("getting message references by note id", slog.String("note_id", noteID))
+
 	query := `
 		SELECT 
 			nmr.id, nmr.note_id, nmr.message_id, nmr.channel_id, nmr.guild_id,
@@ -177,6 +188,8 @@ func (r *noteMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 }
 
 func (r *noteMessageReferenceRepository) Delete(ctx context.Context, id string) error {
+	r.log.Debug("deleting note message reference", slog.String("id", id))
+
 	query := `DELETE FROM note_message_references WHERE id = $1`
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {

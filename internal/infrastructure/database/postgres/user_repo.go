@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -18,13 +19,15 @@ import (
 
 // UserRepository implements the UserRepository interface for PostgreSQL
 type UserRepository struct {
-	db *sqlx.DB
+	db  *sqlx.DB
+	log *slog.Logger
 }
 
 // NewUserRepository creates a new PostgreSQL user repository
 func NewUserRepository(db *sqlx.DB) repositories.UserRepository {
 	return &UserRepository{
-		db: db,
+		db:  db,
+		log: slog.Default().With(slog.String("repo", "user")),
 	}
 }
 
@@ -132,6 +135,11 @@ func (r *UserRepository) Create(ctx context.Context, user *entities.User) error 
 		user.ID = idgen.GenerateID()
 	}
 
+	r.log.Debug("creating user",
+		slog.String("id", user.ID),
+		slog.String("email", user.Email),
+		slog.String("role", string(user.Role)))
+
 	now := time.Now()
 	user.CreatedAt = now
 	user.UpdatedAt = now
@@ -233,6 +241,10 @@ func (r *UserRepository) GetByOIDCSubject(ctx context.Context, subject string) (
 
 // Update an existing user
 func (r *UserRepository) Update(ctx context.Context, user *entities.User) error {
+	r.log.Debug("updating user",
+		slog.String("id", user.ID),
+		slog.String("email", user.Email))
+
 	user.UpdatedAt = time.Now()
 
 	// Hash password if it's being updated and not already hashed
@@ -395,6 +407,10 @@ func (r *UserRepository) List(ctx context.Context, opts repositories.ListUsersOp
 
 // UpdateLastLogin updates the user's last login timestamp
 func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID string, loginTime time.Time) error {
+	r.log.Debug("updating user last login",
+		slog.String("user_id", userID),
+		slog.Time("login_time", loginTime))
+
 	query := `UPDATE users SET last_seen = $1, updated_at = $2 WHERE id = $3`
 
 	result, err := r.db.ExecContext(ctx, query, loginTime, time.Now(), userID)

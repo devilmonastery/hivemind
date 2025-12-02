@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/devilmonastery/hivemind/api/generated/go/commonpb"
@@ -24,6 +24,7 @@ type NoteHandler struct {
 	notespb.UnimplementedNoteServiceServer
 	noteService     *services.NoteService
 	discordUserRepo repositories.DiscordUserRepository
+	log             *slog.Logger
 }
 
 // NewNoteHandler creates a new note handler
@@ -31,32 +32,35 @@ func NewNoteHandler(noteService *services.NoteService, discordUserRepo repositor
 	return &NoteHandler{
 		noteService:     noteService,
 		discordUserRepo: discordUserRepo,
+		log:             slog.Default().With(slog.String("handler", "note")),
 	}
 }
 
 // getUserDiscordID extracts Discord ID from context for ACL filtering
 // Returns empty string for admin users (no ACL filtering)
 func (h *NoteHandler) getUserDiscordID(ctx context.Context, userCtx *interceptors.UserContext) string {
-	log.Printf("[NoteHandler.getUserDiscordID] UserID: %s, Role: %s", userCtx.UserID, userCtx.Role)
+	h.log.Debug("getting user discord ID for ACL",
+		slog.String("user_id", userCtx.UserID),
+		slog.String("role", userCtx.Role))
 
 	// Admin bypass: empty string means no ACL filtering
 	if userCtx.Role == "admin" {
-		log.Printf("[NoteHandler.getUserDiscordID] Admin bypass - no ACL filtering")
+		h.log.Debug("admin bypass - no ACL filtering")
 		return ""
 	}
 
 	// Get user's Discord ID for ACL filtering
 	discordUser, err := h.discordUserRepo.GetByUserID(ctx, userCtx.UserID)
 	if err != nil {
-		log.Printf("[NoteHandler.getUserDiscordID] Error getting Discord user: %v", err)
+		h.log.Debug("error getting discord user", slog.String("error", err.Error()))
 		return ""
 	}
 	if discordUser == nil {
-		log.Printf("[NoteHandler.getUserDiscordID] No Discord user found for UserID %s", userCtx.UserID)
+		h.log.Debug("no discord user found", slog.String("user_id", userCtx.UserID))
 		return ""
 	}
 
-	log.Printf("[NoteHandler.getUserDiscordID] Found Discord ID: %s", discordUser.DiscordID)
+	h.log.Debug("found discord ID", slog.String("discord_id", discordUser.DiscordID))
 	return discordUser.DiscordID
 }
 
@@ -201,8 +205,11 @@ func (h *NoteHandler) ListNotes(ctx context.Context, req *notespb.ListNotesReque
 
 	userDiscordID := h.getUserDiscordID(ctx, userCtx)
 
-	log.Printf("[NoteHandler.ListNotes] user_id=%s discord_id=%s guild_id=%s limit=%d",
-		userCtx.UserID, userDiscordID, req.GuildId, req.Limit)
+	h.log.Debug("listing notes",
+		slog.String("user_id", userCtx.UserID),
+		slog.String("discord_id", userDiscordID),
+		slog.String("guild_id", req.GuildId),
+		slog.Int("limit", int(req.Limit)))
 
 	limit := int(req.Limit)
 	if limit == 0 {
@@ -216,13 +223,17 @@ func (h *NoteHandler) ListNotes(ctx context.Context, req *notespb.ListNotesReque
 
 	notes, total, err := h.noteService.ListNotes(ctx, userCtx.UserID, req.GuildId, req.Tags, int(req.Limit), int(req.Offset), req.OrderBy, req.Ascending, userDiscordID)
 	if err != nil {
-		log.Printf("[NoteHandler.ListNotes] ERROR: %v author_id=%s guild_id=%s",
-			err, userCtx.UserID, req.GuildId)
+		h.log.Debug("list notes error",
+			slog.String("error", err.Error()),
+			slog.String("author_id", userCtx.UserID),
+			slog.String("guild_id", req.GuildId))
 		return nil, status.Errorf(codes.Internal, "failed to list notes: %v", err)
 	}
 
-	log.Printf("[NoteHandler.ListNotes] total=%d returned=%d author_id=%s",
-		total, len(notes), userCtx.UserID)
+	h.log.Debug("list notes result",
+		slog.Int("total", total),
+		slog.Int("returned", len(notes)),
+		slog.String("author_id", userCtx.UserID))
 
 	protoNotes := make([]*notespb.Note, len(notes))
 	for i, note := range notes {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -15,12 +16,16 @@ import (
 )
 
 type noteRepository struct {
-	db *sql.DB
+	db  *sql.DB
+	log *slog.Logger
 }
 
 // NewNoteRepository creates a new PostgreSQL note repository
 func NewNoteRepository(db *sql.DB) repositories.NoteRepository {
-	return &noteRepository{db: db}
+	return &noteRepository{
+		db:  db,
+		log: slog.Default().With(slog.String("repo", "note")),
+	}
 }
 
 func (r *noteRepository) Create(ctx context.Context, note *entities.Note) error {
@@ -177,13 +182,13 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 	// Get total count
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
-	fmt.Printf("[NoteRepository.List] COUNT query: %s args: %v\n", countQuery, args)
+	r.log.Debug("executing count query", slog.String("query", countQuery), slog.Any("args", args))
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
-		fmt.Printf("[NoteRepository.List] COUNT error: %v\n", err)
+		r.log.Debug("count query error", slog.String("error", err.Error()))
 		return nil, 0, err
 	}
-	fmt.Printf("[NoteRepository.List] COUNT result: %d\n", total)
+	r.log.Debug("count query result", slog.Int("total", total))
 
 	// Get notes
 	query := fmt.Sprintf(`
@@ -196,7 +201,7 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 	`, fromClause, whereClause, orderBy, direction, argCount+1, argCount+2)
 
 	args = append(args, limit, offset)
-	fmt.Printf("[NoteRepository.List] SELECT query: %s args: %v\n", query, args)
+	r.log.Debug("executing select query", slog.String("query", query), slog.Any("args", args))
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {

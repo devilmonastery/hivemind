@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 type wikiPageRepository struct {
 	db        *sql.DB
 	titleRepo repositories.WikiTitleRepository
+	log       *slog.Logger
 }
 
 // NewWikiPageRepository creates a new PostgreSQL wiki page repository
@@ -25,6 +27,7 @@ func NewWikiPageRepository(db *sql.DB, titleRepo repositories.WikiTitleRepositor
 	return &wikiPageRepository{
 		db:        db,
 		titleRepo: titleRepo,
+		log:       slog.Default().With(slog.String("repo", "wiki_page")),
 	}
 }
 
@@ -43,6 +46,11 @@ func (r *wikiPageRepository) Create(ctx context.Context, page *entities.WikiPage
 		INSERT INTO wiki_pages (id, title, body, author_id, guild_id, channel_id, channel_name, tags, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
+	r.log.Debug("creating wiki page",
+		slog.String("id", page.ID),
+		slog.String("title", page.Title),
+		slog.String("guild_id", page.GuildID),
+		slog.String("author_id", page.AuthorID))
 	_, err := r.db.ExecContext(ctx, query,
 		page.ID, page.Title, page.Body, page.AuthorID, page.GuildID,
 		nullString(page.ChannelID), "", pq.Array(page.Tags),
@@ -66,6 +74,10 @@ func (r *wikiPageRepository) Create(ctx context.Context, page *entities.WikiPage
 }
 
 func (r *wikiPageRepository) GetByID(ctx context.Context, id string, userDiscordID string) (*entities.WikiPage, error) {
+	r.log.Debug("getting wiki page by id",
+		slog.String("id", id),
+		slog.String("user_discord_id", userDiscordID))
+
 	// Build query with optional ACL check via guild_members JOIN
 	query := `
 		SELECT wp.id, wp.title, wp.body, wp.author_id, wp.guild_id, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wp.deleted_at
@@ -158,6 +170,10 @@ func (r *wikiPageRepository) GetByGuildAndSlug(ctx context.Context, guildID, pag
 func (r *wikiPageRepository) Update(ctx context.Context, page *entities.WikiPage) error {
 	page.UpdatedAt = time.Now()
 
+	r.log.Debug("updating wiki page",
+		slog.String("id", page.ID),
+		slog.String("title", page.Title))
+
 	query := `
 		UPDATE wiki_pages
 		SET title = $2, body = $3, tags = $4, updated_at = $5
@@ -182,6 +198,8 @@ func (r *wikiPageRepository) Update(ctx context.Context, page *entities.WikiPage
 }
 
 func (r *wikiPageRepository) Delete(ctx context.Context, id string) error {
+	r.log.Debug("deleting wiki page", slog.String("id", id))
+
 	query := `
 		UPDATE wiki_pages
 		SET deleted_at = $2
@@ -247,6 +265,10 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 	// Get total count
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
+	r.log.Debug("counting wiki pages for list",
+		slog.String("guild_id", guildID),
+		slog.String("user_discord_id", userDiscordID),
+		slog.String("query", countQuery))
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -264,6 +286,10 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 	`, fromClause, whereClause, orderBy, direction, argCount+1, argCount+2)
 
 	args = append(args, limit, offset)
+	r.log.Debug("selecting wiki pages for list",
+		slog.String("query", query),
+		slog.Int("limit", limit),
+		slog.Int("offset", offset))
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, 0, err
@@ -346,6 +372,12 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 	// Get total count
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
+	r.log.Debug("counting wiki pages for search",
+		slog.String("guild_id", guildID),
+		slog.String("user_discord_id", userDiscordID),
+		slog.String("search_query", query),
+		slog.Any("tags", tags),
+		slog.String("count_query", countQuery))
 	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -376,6 +408,10 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 
 	args = append(args, limit, offset)
 
+	r.log.Debug("selecting wiki pages for search",
+		slog.String("select_query", searchQuery),
+		slog.Int("limit", limit),
+		slog.Int("offset", offset))
 	rows, err := r.db.QueryContext(ctx, searchQuery, args...)
 	if err != nil {
 		return nil, 0, err
@@ -420,6 +456,8 @@ func (r *wikiPageRepository) GetTitlesForGuild(ctx context.Context, guildID stri
 	Slug  string
 }, error,
 ) {
+	r.log.Debug("getting titles for guild", slog.String("guild_id", guildID))
+
 	query := `
 		SELECT wp.id, wt.display_title, wt.page_slug
 		FROM wiki_pages wp

@@ -219,6 +219,9 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 	if len(parts) == 2 {
 		sourceMessageID = parts[1]
 		// Fetch the message to get channel and author details
+		log.Debug("fetching message from Discord API",
+			"channel_id", i.ChannelID,
+			"message_id", sourceMessageID)
 		message, msgErr := s.ChannelMessage(i.ChannelID, sourceMessageID)
 		if msgErr != nil {
 			log.Warn("Failed to fetch original message", "message_id", sourceMessageID, "error", msgErr)
@@ -228,6 +231,8 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 			sourceAuthorUsername = message.Author.Username
 
 			// Fetch channel name
+			log.Debug("fetching channel from Discord API",
+				"channel_id", sourceChannelID)
 			channel, chanErr := s.Channel(sourceChannelID)
 			if chanErr != nil {
 				log.Warn("Failed to fetch channel", "channel_id", sourceChannelID, "error", chanErr)
@@ -621,6 +626,9 @@ func handleContextWikiUnifiedModal(s *discordgo.Session, i *discordgo.Interactio
 	}
 
 	// Fetch the original message for reference
+	log.Debug("fetching message for creating wiki from Discord API",
+		"channel_id", i.ChannelID,
+		"message_id", messageID)
 	message, err := s.ChannelMessage(i.ChannelID, messageID)
 	if err != nil {
 		respondError(s, i, fmt.Sprintf("Failed to fetch message: %v", err), log)
@@ -1027,6 +1035,7 @@ func handleUserNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, c
 	noteID := parts[2]
 
 	// Get the target user
+	log.Debug("fetching user from Discord API", "user_id", targetUserID)
 	targetUser, err := s.User(targetUserID)
 	if err != nil {
 		respondError(s, i, "Failed to get user information", log)

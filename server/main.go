@@ -259,10 +259,10 @@ func runServer(configPath string, forceVersion int) error {
 	wikiService := services.NewWikiService(wikiPageRepo, wikiMessageRefRepo, wikiTitleRepo)
 	noteService := services.NewNoteService(noteRepo, noteMessageRefRepo)
 	quoteService := services.NewQuoteService(quoteRepo)
-	authHandler := handlers.NewAuthHandler(userRepo, tokenRepo, sessionRepo, discordUserRepo, jwtManager, cfg, logger)
+	authHandler := handlers.NewAuthHandler(userRepo, tokenRepo, sessionRepo, discordUserRepo, jwtManager, cfg)
 
 	// Initialize auth interceptor
-	authInterceptor := interceptors.NewAuthInterceptor(jwtManager, tokenRepo, discordService, cfg.Auth.DevBotToken, logger)
+	authInterceptor := interceptors.NewAuthInterceptor(jwtManager, tokenRepo, discordService, cfg.Auth.DevBotToken)
 
 	// Initialize gRPC handlers
 	adminHandler := handlers.NewAdminHandler(userService)

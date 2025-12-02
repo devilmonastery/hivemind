@@ -477,6 +477,9 @@ func handleQuoteAddToChat(s *discordgo.Session, i *discordgo.InteractionCreate, 
 
 	// Post the quote to the channel
 	embed := buildQuoteEmbed(quote)
+	log.Debug("sending quote message to Discord",
+		"channel_id", i.ChannelID,
+		"quote_id", quote.Id)
 	_, err = s.ChannelMessageSendComplex(i.ChannelID, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{embed},
 	})

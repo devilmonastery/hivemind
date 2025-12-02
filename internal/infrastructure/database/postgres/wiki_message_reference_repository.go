@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/lib/pq"
@@ -14,12 +15,16 @@ import (
 )
 
 type wikiMessageReferenceRepository struct {
-	db *sql.DB
+	db  *sql.DB
+	log *slog.Logger
 }
 
 // NewWikiMessageReferenceRepository creates a new PostgreSQL wiki message reference repository
 func NewWikiMessageReferenceRepository(db *sql.DB) repositories.WikiMessageReferenceRepository {
-	return &wikiMessageReferenceRepository{db: db}
+	return &wikiMessageReferenceRepository{
+		db:  db,
+		log: slog.Default().With(slog.String("repo", "wiki_message_reference")),
+	}
 }
 
 func (r *wikiMessageReferenceRepository) Create(ctx context.Context, ref *entities.WikiMessageReference) error {
@@ -27,6 +32,10 @@ func (r *wikiMessageReferenceRepository) Create(ctx context.Context, ref *entiti
 		ref.ID = idgen.GenerateID()
 	}
 	ref.AddedAt = time.Now()
+
+	r.log.Debug("creating wiki message reference",
+		slog.String("wiki_page_id", ref.WikiPageID),
+		slog.String("message_id", ref.MessageID))
 
 	// Marshal attachments to JSON for JSONB column
 	var attachmentMetadata interface{}
@@ -74,6 +83,8 @@ func (r *wikiMessageReferenceRepository) Create(ctx context.Context, ref *entiti
 }
 
 func (r *wikiMessageReferenceRepository) GetByPageID(ctx context.Context, pageID string) ([]*entities.WikiMessageReference, error) {
+	r.log.Debug("getting message references by page id", slog.String("page_id", pageID))
+
 	query := `
 		SELECT 
 			wmr.id, wmr.wiki_page_id, wmr.message_id, wmr.channel_id, wmr.guild_id,
@@ -170,6 +181,8 @@ func (r *wikiMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 }
 
 func (r *wikiMessageReferenceRepository) Delete(ctx context.Context, id string) error {
+	r.log.Debug("deleting wiki message reference", slog.String("id", id))
+
 	query := `DELETE FROM wiki_message_references WHERE id = $1`
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {

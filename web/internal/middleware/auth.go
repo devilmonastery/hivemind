@@ -15,10 +15,10 @@ type AuthMiddleware struct {
 }
 
 // NewAuthMiddleware creates a new auth middleware
-func NewAuthMiddleware(sessionManager *session.Manager, logger *slog.Logger) *AuthMiddleware {
+func NewAuthMiddleware(sessionManager *session.Manager) *AuthMiddleware {
 	return &AuthMiddleware{
 		sessionManager: sessionManager,
-		log:            logger.With(slog.String("component", "auth_middleware")),
+		log:            slog.Default().With(slog.String("component", "auth_middleware")),
 	}
 }
 

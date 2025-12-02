@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -14,16 +15,24 @@ import (
 
 // DiscordGuildRepository implements repositories.DiscordGuildRepository for PostgreSQL
 type DiscordGuildRepository struct {
-	db *sqlx.DB
+	db  *sqlx.DB
+	log *slog.Logger
 }
 
 // NewDiscordGuildRepository creates a new Discord guild repository
 func NewDiscordGuildRepository(db *sqlx.DB) repositories.DiscordGuildRepository {
-	return &DiscordGuildRepository{db: db}
+	return &DiscordGuildRepository{
+		db:  db,
+		log: slog.Default().With(slog.String("repo", "discord_guild")),
+	}
 }
 
 // Create creates a new Discord guild record
 func (r *DiscordGuildRepository) Create(ctx context.Context, guild *entities.DiscordGuild) error {
+	r.log.Debug("creating discord guild",
+		slog.String("guild_id", guild.GuildID),
+		slog.String("guild_name", guild.GuildName))
+
 	query := `
 		INSERT INTO discord_guilds (
 			guild_id, guild_name, icon_url, owner_discord_id,
@@ -71,6 +80,10 @@ func (r *DiscordGuildRepository) GetByID(ctx context.Context, guildID string) (*
 
 // Update updates an existing Discord guild record
 func (r *DiscordGuildRepository) Update(ctx context.Context, guild *entities.DiscordGuild) error {
+	r.log.Debug("updating discord guild",
+		slog.String("guild_id", guild.GuildID),
+		slog.String("guild_name", guild.GuildName))
+
 	query := `
 		UPDATE discord_guilds
 		SET guild_name = $2,
