@@ -25,8 +25,9 @@ type WebServerConfig struct {
 
 // HTTPServer holds HTTP server configuration
 type HTTPServer struct {
-	Host string `yaml:"host" default:"localhost"`
-	Port int    `yaml:"port" default:"8080"`
+	Host        string `yaml:"host" default:"localhost"`
+	Port        int    `yaml:"port" default:"8080"`
+	MetricsPort int    `yaml:"metrics_port" default:"0"` // 0 means Port+10
 }
 
 // GRPCTarget holds gRPC backend connection info

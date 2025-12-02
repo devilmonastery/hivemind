@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -85,12 +86,18 @@ func newRootCommand() *cobra.Command {
 			return setupServerLogging(logLevel, logFile, logToStderr, alsoLogStderr, logFormat)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runServer(configPath, forceVersion)
+			// Get metrics port flag if set
+			metricsPortFlag, _ := cmd.Flags().GetInt("metrics-port")
+			return runServer(configPath, forceVersion, metricsPortFlag)
 		},
 	}
 
 	cmd.Flags().IntVar(&forceVersion, "force-migration", -1, "Force migration version (use to fix dirty migration state)")
 	cmd.Flags().StringVar(&configPath, "config", "", "Path to config file (optional)")
+
+	// Add metrics port flag
+	var metricsPort int
+	cmd.Flags().IntVar(&metricsPort, "metrics-port", 0, "Metrics server port (default: grpc-port+10)")
 
 	// Add logging flags
 	cmd.Flags().StringVar(&logLevel, "log-level", "info", "Log level (debug, info, warn, error)")
@@ -132,7 +139,7 @@ func setupServerLogging(logLevel, logFile string, logToStderr, alsoLogStderr boo
 	return nil
 }
 
-func runServer(configPath string, forceVersion int) error {
+func runServer(configPath string, forceVersion int, metricsPortFlag int) error {
 	logger := slog.Default().With("component", "server")
 	logger.Info("Starting server initialization")
 
@@ -161,7 +168,8 @@ func runServer(configPath string, forceVersion int) error {
 	}
 
 	// Initialize OIDC providers from config
-	if err := oidc.InitializeProviders(cfg.Auth.Providers); err != nil {
+	err = oidc.InitializeProviders(cfg.Auth.Providers)
+	if err != nil {
 		return fmt.Errorf("failed to initialize OIDC providers: %w", err)
 	}
 	logger.Info("OIDC providers initialized")
@@ -187,7 +195,6 @@ func runServer(configPath string, forceVersion int) error {
 	retryDelay := 2 * time.Second
 
 	for i := 0; i < maxRetries; i++ {
-		var err error
 		pgConn, err = postgres.NewConnection(connString)
 		if err == nil {
 			logger.Info("Successfully connected to PostgreSQL")
@@ -214,7 +221,8 @@ func runServer(configPath string, forceVersion int) error {
 	// Handle force migration if requested
 	if forceVersion >= 0 {
 		logger.Info("Force setting migration version", "version", forceVersion)
-		if err := pgConn.ForceMigrationVersion(migrations.FS, forceVersion); err != nil {
+		err = pgConn.ForceMigrationVersion(migrations.FS, forceVersion)
+		if err != nil {
 			return fmt.Errorf("failed to force migration version: %w", err)
 		}
 		logger.Info("Migration version forced, exiting", "version", forceVersion)
@@ -222,7 +230,8 @@ func runServer(configPath string, forceVersion int) error {
 	}
 
 	// Run migrations
-	if err := pgConn.RunMigrations(migrations.FS); err != nil {
+	err = pgConn.RunMigrations(migrations.FS)
+	if err != nil {
 		return fmt.Errorf("failed to run PostgreSQL migrations: %w", err)
 	}
 
@@ -325,27 +334,29 @@ func runServer(configPath string, forceVersion int) error {
 		"database", cfg.Database.Postgres.Database,
 		"user", cfg.Database.Postgres.User)
 
-	// Start health server for snoodev probes
-	// Port can be configured via ADMIN_PORT environment variable (default: 6060)
+	// Start metrics and health server on gRPC port + 10
+	metricsPort := cfg.GRPC.MetricsPort
+	if metricsPortFlag > 0 {
+		metricsPort = metricsPortFlag
+	} else if metricsPort == 0 {
+		metricsPort = cfg.GRPC.Port + 10
+	}
 	go func() {
-		adminPort := os.Getenv("ADMIN_PORT")
-		if adminPort == "" {
-			adminPort = "6060"
-		}
-
-		healthMux := http.NewServeMux()
-		healthMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		metricsMux := http.NewServeMux()
+		metricsMux.Handle("/metrics", promhttp.Handler())
+		metricsMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 		})
-		healthMux.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {
+		metricsMux.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("READY"))
 		})
 
-		logger.Info("Starting health server", "port", adminPort)
-		if err := http.ListenAndServe(":"+adminPort, healthMux); err != nil {
-			logger.Error("Health server failed", "error", err)
+		metricsAddr := fmt.Sprintf(":%d", metricsPort)
+		logger.Info("Starting metrics and health server", "address", metricsAddr)
+		if err := http.ListenAndServe(metricsAddr, metricsMux); err != nil {
+			logger.Error("Metrics server failed", "error", err)
 		}
 	}()
 

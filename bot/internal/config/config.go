@@ -26,8 +26,9 @@ type BackendConfig struct {
 	GRPCHost     string `yaml:"grpc_host"`
 	GRPCPort     int    `yaml:"grpc_port"`
 	TLSEnabled   bool   `yaml:"tls_enabled"`
-	ServiceToken string `yaml:"service_token"` // Service account token for bot auth
-	WebBaseURL   string `yaml:"web_base_url"`  // Base URL for web interface links
+	ServiceToken string `yaml:"service_token"`               // Service account token for bot auth
+	WebBaseURL   string `yaml:"web_base_url"`                // Base URL for web interface links
+	MetricsPort  int    `yaml:"metrics_port" default:"9100"` // Metrics server port
 }
 
 // LoggingConfig holds logging configuration

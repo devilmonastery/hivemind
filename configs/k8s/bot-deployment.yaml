@@ -72,25 +72,27 @@ spec:
             memory: "256Mi"
             cpu: "500m"
         
-        # Liveness probe - bot should always be responsive
+        # Expose metrics port
+        ports:
+        - name: metrics
+          containerPort: 9100
+          protocol: TCP
+        
+        # Liveness probe - bot metrics server should be responsive
         livenessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - "pgrep -f hivemind-bot"
+          httpGet:
+            path: /health
+            port: metrics
           initialDelaySeconds: 30
           periodSeconds: 30
           timeoutSeconds: 5
           failureThreshold: 3
         
-        # Readiness probe - ensure bot is connected to Discord
+        # Readiness probe - bot metrics server should be responsive
         readinessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - "pgrep -f hivemind-bot"
+          httpGet:
+            path: /health
+            port: metrics
           initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 5

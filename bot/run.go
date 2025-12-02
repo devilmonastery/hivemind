@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
 	"github.com/devilmonastery/hivemind/bot/internal/bot"
@@ -16,9 +18,10 @@ import (
 
 func newRunCommand() *cobra.Command {
 	var (
-		configPath string
-		logLevel   string
-		logFormat  string
+		configPath  string
+		logLevel    string
+		logFormat   string
+		metricsPort int
 	)
 
 	cmd := &cobra.Command{
@@ -53,7 +56,21 @@ func newRunCommand() *cobra.Command {
 			// Set as global default logger so slog.Default() returns this configured logger
 			slog.SetDefault(log)
 
-			// Validate required configuration
+			// Start metrics server on port 9100
+			go func() {
+				metricsMux := http.NewServeMux()
+				metricsMux.Handle("/metrics", promhttp.Handler())
+				metricsMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+					w.Write([]byte("OK"))
+				})
+
+				metricsAddr := ":9100"
+				log.Info("starting metrics server", "address", metricsAddr)
+				if metricsErr := http.ListenAndServe(metricsAddr, metricsMux); metricsErr != nil {
+					log.Error("metrics server failed", "error", metricsErr)
+				}
+			}() // Validate required configuration
 			if cfg.Backend.ServiceToken == "" {
 				return fmt.Errorf("backend.service_token is required - the bot cannot authenticate with the server without it. See example_bot.yaml for instructions on generating a service token")
 			}
@@ -94,9 +111,10 @@ func newRunCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&configPath, "config", "c", "configs/dev-bot.yaml", "path to configuration file")
-	cmd.Flags().StringVar(&logLevel, "log-level", "info", "log level (debug, info, warn, error)")
-	cmd.Flags().StringVar(&logFormat, "log-format", "json", "log format (json, text)")
+	cmd.Flags().StringVar(&configPath, "config", "", "Path to config file")
+	cmd.Flags().StringVar(&logLevel, "log-level", "info", "Log level (debug, info, warn, error)")
+	cmd.Flags().StringVar(&logFormat, "log-format", "json", "Log format (text, json)")
+	cmd.Flags().IntVar(&metricsPort, "metrics-port", 0, "Metrics server port (default: 9100)")
 
 	return cmd
 }

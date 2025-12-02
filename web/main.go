@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/devilmonastery/hivemind/internal/pkg/logger"
 	"github.com/devilmonastery/hivemind/web/internal/config"
@@ -42,6 +43,7 @@ func setupWebLogging(logLevel, logFormat string) error {
 func main() {
 	// Parse command line flags
 	configPath := flag.String("config", "", "path to config file")
+	metricsPort := flag.Int("metrics-port", 0, "metrics server port (default: server-port+10)")
 	flag.Parse()
 
 	// Load web configuration
@@ -121,6 +123,28 @@ func main() {
 
 	// Create HTTP router
 	router := createRouter(h, authMw)
+
+	// Start metrics server on main port + 10
+	actualMetricsPort := cfg.Server.MetricsPort
+	if *metricsPort > 0 {
+		actualMetricsPort = *metricsPort
+	} else if actualMetricsPort == 0 {
+		actualMetricsPort = cfg.Server.Port + 10
+	}
+	go func() {
+		metricsMux := http.NewServeMux()
+		metricsMux.Handle("/metrics", promhttp.Handler())
+		metricsMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		})
+
+		metricsAddr := fmt.Sprintf(":%d", actualMetricsPort)
+		log.Info("starting metrics server", slog.String("address", metricsAddr))
+		if err := http.ListenAndServe(metricsAddr, metricsMux); err != nil {
+			log.Error("metrics server failed", slog.Any("error", err))
+		}
+	}()
 
 	// Start HTTP server
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
