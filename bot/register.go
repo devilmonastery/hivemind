@@ -17,6 +17,7 @@ func newRegisterCommand() *cobra.Command {
 		configPath string
 		guildID    string
 		global     bool
+		cleanup    bool
 	)
 
 	cmd := &cobra.Command{
@@ -24,7 +25,9 @@ func newRegisterCommand() *cobra.Command {
 		Short: "Register slash commands with Discord",
 		Long: `Register all slash commands with Discord API. 
 Use --guild for testing (instant), or --global for production (takes up to 1 hour to propagate).
-Automatically removes commands that are no longer in the registry.`,
+Use --cleanup to remove ALL commands without registering new ones (useful for fixing duplicates).
+
+Note: Using bulk overwrite to prevent duplicates. This replaces ALL commands atomically.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			log := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
@@ -40,75 +43,64 @@ Automatically removes commands that are no longer in the registry.`,
 				return fmt.Errorf("failed to create Discord session: %w", err)
 			}
 
+			// Cleanup mode: remove all commands
+			if cleanup {
+				if global {
+					log.Info("removing all global commands")
+					_, err := session.ApplicationCommandBulkOverwrite(cfg.Bot.ApplicationID, "", []*discordgo.ApplicationCommand{})
+					if err != nil {
+						return fmt.Errorf("failed to remove global commands: %w", err)
+					}
+					log.Info("all global commands removed")
+				} else {
+					if guildID == "" {
+						return fmt.Errorf("--guild is required when not using --global")
+					}
+					log.Info("removing all guild commands", slog.String("guild_id", guildID))
+					_, err := session.ApplicationCommandBulkOverwrite(cfg.Bot.ApplicationID, guildID, []*discordgo.ApplicationCommand{})
+					if err != nil {
+						return fmt.Errorf("failed to remove guild commands: %w", err)
+					}
+					log.Info("all guild commands removed", slog.String("guild_id", guildID))
+				}
+				return nil
+			}
+
 			// Get command definitions
 			commandDefs := commands.GetDefinitions()
 
-			// Create a map of desired command names for quick lookup
-			desiredCommands := make(map[string]bool)
-			for _, cmd := range commandDefs {
-				desiredCommands[cmd.Name] = true
-			}
-
-			// Fetch existing commands and delete ones not in registry
+			// Use bulk overwrite to atomically replace all commands (prevents duplicates)
 			if global {
-				log.Info("fetching existing global commands")
-				existingCmds, err := session.ApplicationCommands(cfg.Bot.ApplicationID, "")
+				log.Info("registering commands globally using bulk overwrite (may take up to 1 hour)",
+					slog.Int("command_count", len(commandDefs)))
+
+				registeredCmds, err := session.ApplicationCommandBulkOverwrite(cfg.Bot.ApplicationID, "", commandDefs)
 				if err != nil {
-					return fmt.Errorf("failed to fetch existing commands: %w", err)
+					return fmt.Errorf("failed to bulk register commands: %w", err)
 				}
-				for _, existingCmd := range existingCmds {
-					if !desiredCommands[existingCmd.Name] {
-						log.Info("deleting obsolete command", slog.String("name", existingCmd.Name))
-						err := session.ApplicationCommandDelete(cfg.Bot.ApplicationID, "", existingCmd.ID)
-						if err != nil {
-							log.Error("failed to delete command", slog.String("name", existingCmd.Name), slog.String("error", err.Error()))
-						}
-					}
+
+				for _, registeredCmd := range registeredCmds {
+					log.Info("registered command", slog.String("name", registeredCmd.Name))
 				}
 			} else {
 				if guildID == "" {
 					return fmt.Errorf("--guild is required when not using --global")
 				}
-				log.Info("fetching existing guild commands", slog.String("guild_id", guildID))
-				existingCmds, err := session.ApplicationCommands(cfg.Bot.ApplicationID, guildID)
+				log.Info("registering commands for guild using bulk overwrite",
+					slog.String("guild_id", guildID),
+					slog.Int("command_count", len(commandDefs)))
+
+				registeredCmds, err := session.ApplicationCommandBulkOverwrite(cfg.Bot.ApplicationID, guildID, commandDefs)
 				if err != nil {
-					return fmt.Errorf("failed to fetch existing commands: %w", err)
+					return fmt.Errorf("failed to bulk register commands: %w", err)
 				}
-				for _, existingCmd := range existingCmds {
-					if !desiredCommands[existingCmd.Name] {
-						log.Info("deleting obsolete command", slog.String("name", existingCmd.Name))
-						err := session.ApplicationCommandDelete(cfg.Bot.ApplicationID, guildID, existingCmd.ID)
-						if err != nil {
-							log.Error("failed to delete command", slog.String("name", existingCmd.Name), slog.String("error", err.Error()))
-						}
-					}
+
+				for _, registeredCmd := range registeredCmds {
+					log.Info("registered command", slog.String("name", registeredCmd.Name))
 				}
 			}
 
-			if global {
-				log.Info("registering commands globally (may take up to 1 hour)")
-				for _, cmd := range commandDefs {
-					_, err := session.ApplicationCommandCreate(cfg.Bot.ApplicationID, "", cmd)
-					if err != nil {
-						return fmt.Errorf("failed to register command %s: %w", cmd.Name, err)
-					}
-					log.Info("registered command", slog.String("name", cmd.Name))
-				}
-			} else {
-				if guildID == "" {
-					return fmt.Errorf("--guild is required when not using --global")
-				}
-				log.Info("registering commands for guild", slog.String("guild_id", guildID))
-				for _, cmd := range commandDefs {
-					_, err := session.ApplicationCommandCreate(cfg.Bot.ApplicationID, guildID, cmd)
-					if err != nil {
-						return fmt.Errorf("failed to register command %s: %w", cmd.Name, err)
-					}
-					log.Info("registered command", slog.String("name", cmd.Name), slog.String("guild", guildID))
-				}
-			}
-
-			log.Info("command registration complete")
+			log.Info("command registration complete - old commands automatically removed")
 			return nil
 		},
 	}
@@ -116,6 +108,7 @@ Automatically removes commands that are no longer in the registry.`,
 	cmd.Flags().StringVarP(&configPath, "config", "c", "configs/dev-bot.yaml", "path to configuration file")
 	cmd.Flags().StringVar(&guildID, "guild", "", "guild ID for guild-specific commands (instant, for testing)")
 	cmd.Flags().BoolVar(&global, "global", false, "register commands globally (slower, for production)")
+	cmd.Flags().BoolVar(&cleanup, "cleanup", false, "remove all commands without registering new ones")
 
 	return cmd
 }
