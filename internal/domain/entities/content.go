@@ -49,6 +49,7 @@ type Quote struct {
 	SourceChannelName        string     `json:"source_channel_name,omitempty"`
 	SourceMsgAuthorDiscordID string     `json:"source_msg_author_discord_id"`
 	SourceMsgAuthorUsername  string     `json:"source_msg_author_username,omitempty"`
+	SourceMsgTimestamp       time.Time  `json:"source_msg_timestamp"` // When the original message was sent
 	Tags                     []string   `json:"tags,omitempty"`
 	CreatedAt                time.Time  `json:"created_at"`
 	DeletedAt                *time.Time `json:"deleted_at,omitempty"`

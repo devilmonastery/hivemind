@@ -56,6 +56,7 @@ message Quote {
 
   // Timestamps
   google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp source_msg_timestamp = 16; // When the original Discord message was sent
 }
 
 message CreateQuoteRequest {
@@ -70,6 +71,7 @@ message CreateQuoteRequest {
 
   repeated string tags = 7;
   string source_channel_name = 8;
+  google.protobuf.Timestamp source_msg_timestamp = 9; // When the original message was sent
 }
 
 message GetQuoteRequest {

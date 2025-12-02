@@ -139,19 +139,6 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
-					Name:        "add",
-					Description: "Add a new quote",
-					Options: []*discordgo.ApplicationCommandOption{
-						{
-							Type:        discordgo.ApplicationCommandOptionString,
-							Name:        "text",
-							Description: "The quote text. Use #hashtags to add tags",
-							Required:    true,
-						},
-					},
-				},
-				{
-					Type:        discordgo.ApplicationCommandOptionSubCommand,
 					Name:        "random",
 					Description: "Get a random quote from this guild",
 					Options: []*discordgo.ApplicationCommandOption{

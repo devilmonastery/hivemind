@@ -38,7 +38,7 @@
       <div class="text-right">
         <div class="text-cyan-400 font-semibold text-lg">— {{.Quote.SourceMsgAuthorUsername}}</div>
         <div class="text-gray-500 text-sm">
-          {{formatDate .Quote.CreatedAt}}
+          {{formatDate .Quote.SourceMsgTimestamp}}
           {{if .Quote.GuildName}}
           <span class="mx-2">•</span>
           <span>{{.Quote.GuildName}}</span>

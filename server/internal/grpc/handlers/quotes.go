@@ -80,6 +80,7 @@ func (h *QuoteHandler) CreateQuote(ctx context.Context, req *quotespb.CreateQuot
 		SourceChannelName:        req.SourceChannelName,
 		SourceMsgAuthorDiscordID: req.SourceMsgAuthorDiscordId,
 		SourceMsgAuthorUsername:  req.SourceMsgAuthorUsername,
+		SourceMsgTimestamp:       req.SourceMsgTimestamp.AsTime(),
 	}
 
 	created, err := h.quoteService.CreateQuote(ctx, quote)
@@ -255,7 +256,7 @@ func (h *QuoteHandler) GetRandomQuote(ctx context.Context, req *quotespb.GetRand
 
 // quoteToProto converts a domain quote to protobuf
 func quoteToProto(quote *entities.Quote) *quotespb.Quote {
-	return &quotespb.Quote{
+	proto := &quotespb.Quote{
 		Id:                       quote.ID,
 		Body:                     quote.Body,
 		Tags:                     quote.Tags,
@@ -271,4 +272,8 @@ func quoteToProto(quote *entities.Quote) *quotespb.Quote {
 		SourceMsgAuthorUsername:  quote.SourceMsgAuthorUsername,
 		CreatedAt:                timestamppb.New(quote.CreatedAt),
 	}
+	if !quote.SourceMsgTimestamp.IsZero() {
+		proto.SourceMsgTimestamp = timestamppb.New(quote.SourceMsgTimestamp)
+	}
+	return proto
 }
