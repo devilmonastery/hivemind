@@ -289,6 +289,7 @@ func noteToProto(note *entities.Note) *notespb.Note {
 		Body:            note.Body,
 		Tags:            note.Tags,
 		AuthorId:        note.AuthorID,
+		AuthorUsername:  note.AuthorDisplayName, // Display name from user_display_names view
 		GuildId:         note.GuildID,
 		GuildName:       note.GuildName,
 		ChannelId:       note.ChannelID,

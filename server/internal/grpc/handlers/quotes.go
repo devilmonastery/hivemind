@@ -272,16 +272,16 @@ func quoteToProto(quote *entities.Quote) *quotespb.Quote {
 		Tags:                     quote.Tags,
 		AuthorId:                 quote.AuthorID,
 		AuthorDiscordId:          quote.AuthorDiscordID,
-		AuthorUsername:           quote.AuthorUsername,
-		AuthorGuildNick:          quote.AuthorGuildNick,
+		AuthorUsername:           quote.AuthorDisplayName, // Use display name from view
+		AuthorGuildNick:          quote.AuthorGuildNick,   // Keep for backward compatibility
 		GuildId:                  quote.GuildID,
 		GuildName:                quote.GuildName,
 		SourceMsgId:              quote.SourceMsgID,
 		SourceChannelId:          quote.SourceChannelID,
 		SourceChannelName:        quote.SourceChannelName,
 		SourceMsgAuthorDiscordId: quote.SourceMsgAuthorDiscordID,
-		SourceMsgAuthorUsername:  quote.SourceMsgAuthorUsername,
-		SourceMsgAuthorGuildNick: quote.SourceMsgAuthorGuildNick,
+		SourceMsgAuthorUsername:  quote.SourceMsgAuthorDisplayName, // Use display name from view
+		SourceMsgAuthorGuildNick: quote.SourceMsgAuthorGuildNick,   // Keep for backward compatibility
 		CreatedAt:                timestamppb.New(quote.CreatedAt),
 	}
 	if !quote.SourceMsgTimestamp.IsZero() {

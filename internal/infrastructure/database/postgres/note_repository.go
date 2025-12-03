@@ -51,20 +51,25 @@ func (r *noteRepository) GetByID(ctx context.Context, id string, userDiscordID s
 	// Notes are personal - no ACL check needed, just retrieve by ID
 	// Ownership verification happens at the service layer (author_id check)
 	query := `
-		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at, n.deleted_at
+		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at, n.deleted_at,
+		       udn.display_name
 		FROM notes n
+		LEFT JOIN users u ON n.author_id = u.id
+		LEFT JOIN discord_users du ON u.id = du.user_id
+		LEFT JOIN user_display_names udn ON du.discord_id = udn.discord_id AND n.guild_id = udn.guild_id
 		WHERE n.id = $1 AND n.deleted_at IS NULL
 	`
 
 	note := &entities.Note{}
 	var tags pq.StringArray
-	var title, guildID, channelID, sourceMsgID, sourceChannelID sql.NullString
+	var title, guildID, channelID, sourceMsgID, sourceChannelID, authorDisplayName sql.NullString
 	var deletedAt sql.NullTime
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&note.ID, &title, &note.Body, &note.AuthorID, &guildID,
 		&channelID, &sourceMsgID, &sourceChannelID, &tags,
 		&note.CreatedAt, &note.UpdatedAt, &deletedAt,
+		&authorDisplayName,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("note not found: %s", id)
@@ -78,6 +83,7 @@ func (r *noteRepository) GetByID(ctx context.Context, id string, userDiscordID s
 	note.ChannelID = channelID.String
 	note.SourceMsgID = sourceMsgID.String
 	note.SourceChannelID = sourceChannelID.String
+	note.AuthorDisplayName = authorDisplayName.String
 	note.Tags = tags
 	if deletedAt.Valid {
 		note.DeletedAt = &deletedAt.Time
@@ -192,9 +198,13 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 
 	// Get notes
 	query := fmt.Sprintf(`
-		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, dg.guild_name, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at
+		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, dg.guild_name, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at,
+		       udn.display_name
 		FROM %s
 		LEFT JOIN discord_guilds dg ON n.guild_id = dg.guild_id
+		LEFT JOIN users u ON n.author_id = u.id
+		LEFT JOIN discord_users du ON u.id = du.user_id
+		LEFT JOIN user_display_names udn ON du.discord_id = udn.discord_id AND n.guild_id = udn.guild_id
 		WHERE %s
 		ORDER BY n.%s %s
 		LIMIT $%d OFFSET $%d
@@ -213,12 +223,13 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 	for rows.Next() {
 		note := &entities.Note{}
 		var tags pq.StringArray
-		var title, guildID, guildName, channelID, sourceMsgID, sourceChannelID sql.NullString
+		var title, guildID, guildName, channelID, sourceMsgID, sourceChannelID, authorDisplayName sql.NullString
 
 		err := rows.Scan(
 			&note.ID, &title, &note.Body, &note.AuthorID, &guildID, &guildName,
 			&channelID, &sourceMsgID, &sourceChannelID, &tags,
 			&note.CreatedAt, &note.UpdatedAt,
+			&authorDisplayName,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -230,6 +241,7 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 		note.ChannelID = channelID.String
 		note.SourceMsgID = sourceMsgID.String
 		note.SourceChannelID = sourceChannelID.String
+		note.AuthorDisplayName = authorDisplayName.String
 		note.Tags = tags
 		notes = append(notes, note)
 	}
@@ -290,8 +302,12 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 
 	// Get notes (always order by created_at since we don't have search_vector for ranking)
 	searchQuery := fmt.Sprintf(`
-		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at
+		SELECT n.id, n.title, n.body, n.author_id, n.guild_id, n.channel_id, n.source_msg_id, n.source_channel_id, n.tags, n.created_at, n.updated_at,
+		       udn.display_name
 		FROM %s
+		LEFT JOIN users u ON n.author_id = u.id
+		LEFT JOIN discord_users du ON u.id = du.user_id
+		LEFT JOIN user_display_names udn ON du.discord_id = udn.discord_id AND n.guild_id = udn.guild_id
 		WHERE %s
 		ORDER BY n.created_at DESC
 		LIMIT $%d OFFSET $%d
@@ -309,12 +325,13 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 	for rows.Next() {
 		note := &entities.Note{}
 		var tagArray pq.StringArray
-		var title, guildID, channelID, sourceMsgID, sourceChannelID sql.NullString
+		var title, guildID, channelID, sourceMsgID, sourceChannelID, authorDisplayName sql.NullString
 
 		err := rows.Scan(
 			&note.ID, &title, &note.Body, &note.AuthorID, &guildID,
 			&channelID, &sourceMsgID, &sourceChannelID, &tagArray,
 			&note.CreatedAt, &note.UpdatedAt,
+			&authorDisplayName,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -325,6 +342,7 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 		note.ChannelID = channelID.String
 		note.SourceMsgID = sourceMsgID.String
 		note.SourceChannelID = sourceChannelID.String
+		note.AuthorDisplayName = authorDisplayName.String
 		note.Tags = tagArray
 		notes = append(notes, note)
 	}
