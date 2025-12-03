@@ -85,4 +85,8 @@ type GuildMemberRepository interface {
 
 	// CountGuildMembers returns the number of members in a guild
 	CountGuildMembers(ctx context.Context, guildID string) (int, error)
+
+	// RefreshDisplayNames updates the user_display_names table for a guild
+	// This should be called after batch upserting guild members to keep display names in sync
+	RefreshDisplayNames(ctx context.Context, guildID string) error
 }

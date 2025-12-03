@@ -95,6 +95,11 @@ message UpsertGuildMemberRequest {
   string guild_avatar_hash = 4;
   repeated string roles = 5;
   google.protobuf.Timestamp joined_at = 6;
+
+  // Discord user info (optional, for updating discord_users table)
+  string discord_username = 7;
+  string discord_global_name = 8;
+  string avatar_url = 9;
 }
 
 message UpsertGuildMemberResponse {
