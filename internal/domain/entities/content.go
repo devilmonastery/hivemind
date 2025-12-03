@@ -39,26 +39,30 @@ type Note struct {
 
 // Quote represents a saved memorable message from Discord
 type Quote struct {
-	ID                         string     `json:"id"`
-	Body                       string     `json:"body"`
-	AuthorID                   string     `json:"author_id"`         // Who saved the quote (internal user ID)
-	AuthorDiscordID            string     `json:"author_discord_id"` // Discord ID of who saved the quote
-	AuthorUsername             string     `json:"author_username,omitempty"`
-	AuthorDisplayName          string     `json:"author_display_name,omitempty"` // Resolved display name from view
-	AuthorGuildNick            string     `json:"author_guild_nick,omitempty"`   // Current guild nickname (legacy)
-	GuildID                    string     `json:"guild_id"`
-	GuildName                  string     `json:"guild_name,omitempty"`
-	SourceMsgID                string     `json:"source_msg_id"`
-	SourceChannelID            string     `json:"source_channel_id"`
-	SourceChannelName          string     `json:"source_channel_name,omitempty"`
-	SourceMsgAuthorDiscordID   string     `json:"source_msg_author_discord_id"`
-	SourceMsgAuthorUsername    string     `json:"source_msg_author_username,omitempty"`
-	SourceMsgAuthorDisplayName string     `json:"source_msg_author_display_name,omitempty"` // Resolved display name from view
-	SourceMsgAuthorGuildNick   string     `json:"source_msg_author_guild_nick,omitempty"`   // Current guild nickname (legacy)
-	SourceMsgTimestamp         time.Time  `json:"source_msg_timestamp"`                     // When the original message was sent
-	Tags                       []string   `json:"tags,omitempty"`
-	CreatedAt                  time.Time  `json:"created_at"`
-	DeletedAt                  *time.Time `json:"deleted_at,omitempty"`
+	ID                             string     `json:"id"`
+	Body                           string     `json:"body"`
+	AuthorID                       string     `json:"author_id"`         // Who saved the quote (internal user ID)
+	AuthorDiscordID                string     `json:"author_discord_id"` // Discord ID of who saved the quote
+	AuthorUsername                 string     `json:"author_username,omitempty"`
+	AuthorDisplayName              string     `json:"author_display_name,omitempty"`      // Resolved display name from view
+	AuthorGuildNick                string     `json:"author_guild_nick,omitempty"`        // Current guild nickname (legacy)
+	AuthorGuildAvatarHash          string     `json:"author_guild_avatar_hash,omitempty"` // Avatar from user_display_names
+	AuthorUserAvatarHash           string     `json:"author_user_avatar_hash,omitempty"`  // Avatar from user_display_names
+	GuildID                        string     `json:"guild_id"`
+	GuildName                      string     `json:"guild_name,omitempty"`
+	SourceMsgID                    string     `json:"source_msg_id"`
+	SourceChannelID                string     `json:"source_channel_id"`
+	SourceChannelName              string     `json:"source_channel_name,omitempty"`
+	SourceMsgAuthorDiscordID       string     `json:"source_msg_author_discord_id"`
+	SourceMsgAuthorUsername        string     `json:"source_msg_author_username,omitempty"`
+	SourceMsgAuthorDisplayName     string     `json:"source_msg_author_display_name,omitempty"`      // Resolved display name from view
+	SourceMsgAuthorGuildNick       string     `json:"source_msg_author_guild_nick,omitempty"`        // Current guild nickname (legacy)
+	SourceMsgAuthorGuildAvatarHash string     `json:"source_msg_author_guild_avatar_hash,omitempty"` // Avatar from user_display_names
+	SourceMsgAuthorUserAvatarHash  string     `json:"source_msg_author_user_avatar_hash,omitempty"`  // Avatar from user_display_names
+	SourceMsgTimestamp             time.Time  `json:"source_msg_timestamp"`                          // When the original message was sent
+	Tags                           []string   `json:"tags,omitempty"`
+	CreatedAt                      time.Time  `json:"created_at"`
+	DeletedAt                      *time.Time `json:"deleted_at,omitempty"`
 }
 
 // WikiMessageReference represents a Discord message tagged with a wiki page topic

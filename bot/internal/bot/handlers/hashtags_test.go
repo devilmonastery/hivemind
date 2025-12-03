@@ -95,6 +95,21 @@ func TestExtractHashtags(t *testing.T) {
 			input:    "Notes #project-alpha #v2_0 #Q4-2024 #follow-up",
 			wantTags: []string{"follow-up", "project-alpha", "q4-2024", "v2_0"}, // sorted
 		},
+		{
+			name:     "discord channel mentions should be ignored",
+			input:    "Check out <#274539255248977920> and <#123456789> for more info",
+			wantTags: []string{},
+		},
+		{
+			name:     "mix of channel mentions and real hashtags",
+			input:    "See <#274539255248977920> for #updates and #announcements in <#123456789>",
+			wantTags: []string{"announcements", "updates"},
+		},
+		{
+			name:     "hashtag followed by greater-than should still work",
+			input:    "This #tag is > that one",
+			wantTags: []string{"tag"},
+		},
 	}
 
 	for _, tt := range tests {

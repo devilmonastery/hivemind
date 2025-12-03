@@ -67,8 +67,16 @@
           <!-- Tags -->
           {{if .Tags}}
           <div class="flex flex-wrap gap-2 mt-2">
-            {{range .Tags}}
-            <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded">#{{.}}</span>
+            {{$tagCount := len .Tags}}
+            {{range $index, $tag := .Tags}}
+              {{if lt $index 5}}
+              <span class="px-2 py-1 bg-purple-900/30 text-purple-400 text-xs rounded">#{{$tag}}</span>
+              {{end}}
+            {{end}}
+            {{if gt $tagCount 5}}
+            <span class="px-2 py-1 text-gray-500 text-xs">
+              +{{sub $tagCount 5}} more
+            </span>
             {{end}}
           </div>
           {{end}}

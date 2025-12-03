@@ -102,9 +102,17 @@
                         <div class="flex items-center justify-between">
                             <div class="flex flex-wrap gap-1">
                                 {{if .Tags}}
-                                    {{range .Tags}}
-                                    <span class="text-xs text-gray-400 hover:text-neon-magenta transition-colors">
-                                        #{{.}}
+                                    {{$tagCount := len .Tags}}
+                                    {{range $index, $tag := .Tags}}
+                                        {{if lt $index 3}}
+                                        <span class="text-xs text-gray-400 hover:text-neon-magenta transition-colors">
+                                            #{{$tag}}
+                                        </span>
+                                        {{end}}
+                                    {{end}}
+                                    {{if gt $tagCount 3}}
+                                    <span class="text-xs text-gray-500">
+                                        +{{sub $tagCount 3}} more
                                     </span>
                                     {{end}}
                                 {{end}}
@@ -189,9 +197,17 @@
                     {{/* Tags - fixed width */}}
                     <div class="flex-shrink-0 w-32 flex flex-wrap gap-1 overflow-hidden">
                         {{if .Tags}}
-                            {{range .Tags}}
-                            <span class="text-xs text-gray-400 hover:text-neon-magenta transition-colors whitespace-nowrap">
-                                #{{.}}
+                            {{$tagCount := len .Tags}}
+                            {{range $index, $tag := .Tags}}
+                                {{if lt $index 3}}
+                                <span class="text-xs text-gray-400 hover:text-neon-magenta transition-colors whitespace-nowrap">
+                                    #{{$tag}}
+                                </span>
+                                {{end}}
+                            {{end}}
+                            {{if gt $tagCount 3}}
+                            <span class="text-xs text-gray-500 whitespace-nowrap">
+                                +{{sub $tagCount 3}}
                             </span>
                             {{end}}
                         {{else}}
