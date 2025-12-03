@@ -32,6 +32,7 @@ type Quote struct {
 	AuthorId        string `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`                         // Who saved the quote (internal user ID)
 	AuthorDiscordId string `protobuf:"bytes,15,opt,name=author_discord_id,json=authorDiscordId,proto3" json:"author_discord_id,omitempty"` // Discord ID of who saved the quote
 	AuthorUsername  string `protobuf:"bytes,4,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
+	AuthorGuildNick string `protobuf:"bytes,17,opt,name=author_guild_nick,json=authorGuildNick,proto3" json:"author_guild_nick,omitempty"` // Guild nickname of who saved the quote (current)
 	GuildId         string `protobuf:"bytes,5,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
 	GuildName       string `protobuf:"bytes,6,opt,name=guild_name,json=guildName,proto3" json:"guild_name,omitempty"` // Guild display name
 	// Source message information
@@ -40,6 +41,7 @@ type Quote struct {
 	SourceChannelName        string   `protobuf:"bytes,9,opt,name=source_channel_name,json=sourceChannelName,proto3" json:"source_channel_name,omitempty"`
 	SourceMsgAuthorDiscordId string   `protobuf:"bytes,10,opt,name=source_msg_author_discord_id,json=sourceMsgAuthorDiscordId,proto3" json:"source_msg_author_discord_id,omitempty"` // Who said it
 	SourceMsgAuthorUsername  string   `protobuf:"bytes,11,opt,name=source_msg_author_username,json=sourceMsgAuthorUsername,proto3" json:"source_msg_author_username,omitempty"`      // Username at time of quote
+	SourceMsgAuthorGuildNick string   `protobuf:"bytes,18,opt,name=source_msg_author_guild_nick,json=sourceMsgAuthorGuildNick,proto3" json:"source_msg_author_guild_nick,omitempty"` // Guild nickname of who said it (current)
 	MentionedUserIds         []string `protobuf:"bytes,12,rep,name=mentioned_user_ids,json=mentionedUserIds,proto3" json:"mentioned_user_ids,omitempty"`                             // Discord user IDs mentioned
 	// Metadata
 	Tags []string `protobuf:"bytes,13,rep,name=tags,proto3" json:"tags,omitempty"`
@@ -115,6 +117,13 @@ func (x *Quote) GetAuthorUsername() string {
 	return ""
 }
 
+func (x *Quote) GetAuthorGuildNick() string {
+	if x != nil {
+		return x.AuthorGuildNick
+	}
+	return ""
+}
+
 func (x *Quote) GetGuildId() string {
 	if x != nil {
 		return x.GuildId
@@ -160,6 +169,13 @@ func (x *Quote) GetSourceMsgAuthorDiscordId() string {
 func (x *Quote) GetSourceMsgAuthorUsername() string {
 	if x != nil {
 		return x.SourceMsgAuthorUsername
+	}
+	return ""
+}
+
+func (x *Quote) GetSourceMsgAuthorGuildNick() string {
+	if x != nil {
+		return x.SourceMsgAuthorGuildNick
 	}
 	return ""
 }
@@ -777,13 +793,14 @@ var File_quotes_proto protoreflect.FileDescriptor
 
 const file_quotes_proto_rawDesc = "" +
 	"\n" +
-	"\fquotes.proto\x12\x0fhivemind.quotes\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9f\x05\n" +
+	"\fquotes.proto\x12\x0fhivemind.quotes\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8b\x06\n" +
 	"\x05Quote\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1b\n" +
 	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12*\n" +
 	"\x11author_discord_id\x18\x0f \x01(\tR\x0fauthorDiscordId\x12'\n" +
-	"\x0fauthor_username\x18\x04 \x01(\tR\x0eauthorUsername\x12\x19\n" +
+	"\x0fauthor_username\x18\x04 \x01(\tR\x0eauthorUsername\x12*\n" +
+	"\x11author_guild_nick\x18\x11 \x01(\tR\x0fauthorGuildNick\x12\x19\n" +
 	"\bguild_id\x18\x05 \x01(\tR\aguildId\x12\x1d\n" +
 	"\n" +
 	"guild_name\x18\x06 \x01(\tR\tguildName\x12\"\n" +
@@ -792,7 +809,8 @@ const file_quotes_proto_rawDesc = "" +
 	"\x13source_channel_name\x18\t \x01(\tR\x11sourceChannelName\x12>\n" +
 	"\x1csource_msg_author_discord_id\x18\n" +
 	" \x01(\tR\x18sourceMsgAuthorDiscordId\x12;\n" +
-	"\x1asource_msg_author_username\x18\v \x01(\tR\x17sourceMsgAuthorUsername\x12,\n" +
+	"\x1asource_msg_author_username\x18\v \x01(\tR\x17sourceMsgAuthorUsername\x12>\n" +
+	"\x1csource_msg_author_guild_nick\x18\x12 \x01(\tR\x18sourceMsgAuthorGuildNick\x12,\n" +
 	"\x12mentioned_user_ids\x18\f \x03(\tR\x10mentionedUserIds\x12\x12\n" +
 	"\x04tags\x18\r \x03(\tR\x04tags\x129\n" +
 	"\n" +

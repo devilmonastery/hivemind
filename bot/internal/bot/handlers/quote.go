@@ -17,8 +17,13 @@ func buildQuoteEmbed(quote *quotespb.Quote) *discordgo.MessageEmbed {
 	quoteText := ""
 
 	// Add attribution header if we have the original author
-	if quote.SourceMsgAuthorUsername != "" {
-		quoteText = fmt.Sprintf("**%s** said:\n", quote.SourceMsgAuthorUsername)
+	// Prefer guild nickname, fallback to username
+	sourceAuthorName := quote.SourceMsgAuthorGuildNick
+	if sourceAuthorName == "" {
+		sourceAuthorName = quote.SourceMsgAuthorUsername
+	}
+	if sourceAuthorName != "" {
+		quoteText = fmt.Sprintf("**%s** said:\n", sourceAuthorName)
 	}
 
 	// Add the quote with > markdown
@@ -35,8 +40,13 @@ func buildQuoteEmbed(quote *quotespb.Quote) *discordgo.MessageEmbed {
 		footer = append(footer, fmt.Sprintf("_<t:%d:D>_", quote.SourceMsgTimestamp.Seconds))
 	}
 
-	if quote.AuthorUsername != "" {
-		footer = append(footer, fmt.Sprintf("_added by %s_", quote.AuthorUsername))
+	// Prefer guild nickname, fallback to username for quote author
+	authorName := quote.AuthorGuildNick
+	if authorName == "" {
+		authorName = quote.AuthorUsername
+	}
+	if authorName != "" {
+		footer = append(footer, fmt.Sprintf("_added by %s_", authorName))
 	}
 
 	if quote.SourceMsgId != "" && quote.SourceChannelId != "" && quote.GuildId != "" {
@@ -283,8 +293,12 @@ func handleQuoteSearch(s *discordgo.Session, i *discordgo.InteractionCreate, sub
 
 		// Create a description with attribution
 		description := ""
-		if quote.SourceMsgAuthorUsername != "" {
-			description = fmt.Sprintf("by %s", quote.SourceMsgAuthorUsername)
+		sourceAuthorName := quote.SourceMsgAuthorGuildNick
+		if sourceAuthorName == "" {
+			sourceAuthorName = quote.SourceMsgAuthorUsername
+		}
+		if sourceAuthorName != "" {
+			description = fmt.Sprintf("by %s", sourceAuthorName)
 			if len(description) > 100 {
 				description = description[:97] + "..."
 			}

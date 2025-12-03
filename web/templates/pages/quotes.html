@@ -29,8 +29,8 @@
           
           <!-- Metadata -->
           <div class="flex flex-wrap items-center gap-3 text-sm text-gray-400">
-            {{if .SourceMsgAuthorUsername}}
-            <span class="text-cyan-400 font-medium">— {{.SourceMsgAuthorUsername}}</span>
+            {{if or .SourceMsgAuthorGuildNick .SourceMsgAuthorUsername}}
+            <span class="text-cyan-400 font-medium">— {{if .SourceMsgAuthorGuildNick}}{{.SourceMsgAuthorGuildNick}}{{else}}{{.SourceMsgAuthorUsername}}{{end}}</span>
             {{end}}
             
             <span>•</span>
@@ -41,9 +41,9 @@
             <span class="text-purple-400">{{.GuildName}}</span>
             {{end}}
             
-            {{if .AuthorUsername}}
+            {{if or .AuthorGuildNick .AuthorUsername}}
             <span>•</span>
-            <span class="text-gray-500">added by {{.AuthorUsername}}</span>
+            <span class="text-gray-500">added by {{if .AuthorGuildNick}}{{.AuthorGuildNick}}{{else}}{{.AuthorUsername}}{{end}}</span>
             {{end}}
           </div>
 

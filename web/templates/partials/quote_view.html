@@ -34,9 +34,9 @@
 
     <!-- Attribution -->
     <div class="flex items-center justify-end gap-4 mt-6 pt-6 border-t border-hive-metal">
-      {{if .Quote.SourceMsgAuthorUsername}}
+      {{if or .Quote.SourceMsgAuthorGuildNick .Quote.SourceMsgAuthorUsername}}
       <div class="text-right">
-        <div class="text-cyan-400 font-semibold text-lg">— {{.Quote.SourceMsgAuthorUsername}}</div>
+        <div class="text-cyan-400 font-semibold text-lg">— {{if .Quote.SourceMsgAuthorGuildNick}}{{.Quote.SourceMsgAuthorGuildNick}}{{else}}{{.Quote.SourceMsgAuthorUsername}}{{end}}</div>
         <div class="text-gray-500 text-sm">
           {{formatDate .Quote.SourceMsgTimestamp}}
           {{if .Quote.GuildName}}
@@ -52,8 +52,8 @@
   <!-- Metadata Footer -->
   <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
     <div class="flex items-center gap-4 text-sm text-gray-400">
-      {{if .Quote.AuthorUsername}}
-      <span class="text-gray-500">added by {{.Quote.AuthorUsername}}</span>
+      {{if or .Quote.AuthorGuildNick .Quote.AuthorUsername}}
+      <span class="text-gray-500">added by {{if .Quote.AuthorGuildNick}}{{.Quote.AuthorGuildNick}}{{else}}{{.Quote.AuthorUsername}}{{end}}</span>
       {{end}}
       
       {{if and .Quote.SourceMsgId .Quote.SourceChannelId .Quote.GuildId}}

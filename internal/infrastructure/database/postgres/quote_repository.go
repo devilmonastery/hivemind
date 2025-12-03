@@ -50,15 +50,18 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 	query := `
 		SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name,
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-		       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at, q.deleted_at
+		       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at, q.deleted_at,
+		       gm_author.guild_nick, gm_source.guild_nick
 		FROM quotes q
 		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
-		LEFT JOIN users u ON q.author_id = u.id`
+		LEFT JOIN users u ON q.author_id = u.id
+		LEFT JOIN guild_members gm_author ON q.guild_id = gm_author.guild_id AND q.author_discord_id = gm_author.discord_id
+		LEFT JOIN guild_members gm_source ON q.guild_id = gm_source.guild_id AND q.source_msg_author_discord_id = gm_source.discord_id`
 
 	// Add ACL check if userDiscordID provided (non-admin)
 	if userDiscordID != "" {
 		query += `
-		INNER JOIN guild_members gm ON q.guild_id = gm.guild_id AND gm.discord_id = $2`
+		INNER JOIN guild_members gm_acl ON q.guild_id = gm_acl.guild_id AND gm_acl.discord_id = $2`
 	}
 
 	query += `
@@ -67,6 +70,7 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 	quote := &entities.Quote{}
 	var tags pq.StringArray
 	var guildName, authorUsername, sourceChannelName, sourceMsgAuthorUsername sql.NullString
+	var authorGuildNick, sourceAuthorGuildNick sql.NullString
 	var deletedAt sql.NullTime
 
 	var authorDiscordID sql.NullString
@@ -78,6 +82,7 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 			&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
 			&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
 			&sourceMsgTimestamp, &tags, &quote.CreatedAt, &deletedAt,
+			&authorGuildNick, &sourceAuthorGuildNick,
 		)
 	} else {
 		err = r.db.QueryRowContext(ctx, query, id).Scan(
@@ -85,6 +90,7 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 			&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
 			&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
 			&sourceMsgTimestamp, &tags, &quote.CreatedAt, &deletedAt,
+			&authorGuildNick, &sourceAuthorGuildNick,
 		)
 	}
 
@@ -98,8 +104,10 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 	quote.AuthorDiscordID = authorDiscordID.String
 	quote.GuildName = guildName.String
 	quote.AuthorUsername = authorUsername.String
+	quote.AuthorGuildNick = authorGuildNick.String
 	quote.SourceChannelName = sourceChannelName.String
 	quote.SourceMsgAuthorUsername = sourceMsgAuthorUsername.String
+	quote.SourceMsgAuthorGuildNick = sourceAuthorGuildNick.String
 	if sourceMsgTimestamp.Valid {
 		quote.SourceMsgTimestamp = sourceMsgTimestamp.Time
 	}
@@ -174,13 +182,15 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 	// Build base query with JOINs
 	baseFrom := `FROM quotes q
 		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
-		LEFT JOIN users u ON q.author_id = u.id`
+		LEFT JOIN users u ON q.author_id = u.id
+		LEFT JOIN guild_members gm_author ON q.guild_id = gm_author.guild_id AND q.author_discord_id = gm_author.discord_id
+		LEFT JOIN guild_members gm_source ON q.guild_id = gm_source.guild_id AND q.source_msg_author_discord_id = gm_source.discord_id`
 
 	// Add ACL check if userDiscordID provided (non-admin)
 	if userDiscordID != "" {
 		argCount++
 		baseFrom += fmt.Sprintf(`
-		INNER JOIN guild_members gm ON q.guild_id = gm.guild_id AND gm.discord_id = $%d`, argCount)
+		INNER JOIN guild_members gm_acl ON q.guild_id = gm_acl.guild_id AND gm_acl.discord_id = $%d`, argCount)
 		args = append(args, userDiscordID)
 	}
 
@@ -217,7 +227,8 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 	query := fmt.Sprintf(`
 		SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name, 
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-		       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at
+		       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at,
+		       gm_author.guild_nick, gm_source.guild_nick
 		%s
 		WHERE %s
 		ORDER BY %s
@@ -241,6 +252,7 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 		quote := &entities.Quote{}
 		var tags pq.StringArray
 		var guildName, authorDiscordID, authorUsername, sourceChannelName, sourceMsgAuthorUsername sql.NullString
+		var authorGuildNick, sourceAuthorGuildNick sql.NullString
 		var sourceMsgTimestamp sql.NullTime
 
 		err := rows.Scan(
@@ -248,6 +260,7 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 			&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
 			&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
 			&sourceMsgTimestamp, &tags, &quote.CreatedAt,
+			&authorGuildNick, &sourceAuthorGuildNick,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -256,13 +269,13 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 		quote.AuthorDiscordID = authorDiscordID.String
 		quote.GuildName = guildName.String
 		quote.AuthorUsername = authorUsername.String
+		quote.AuthorGuildNick = authorGuildNick.String
 		quote.SourceChannelName = sourceChannelName.String
 		quote.SourceMsgAuthorUsername = sourceMsgAuthorUsername.String
+		quote.SourceMsgAuthorGuildNick = sourceAuthorGuildNick.String
 		if sourceMsgTimestamp.Valid {
 			quote.SourceMsgTimestamp = sourceMsgTimestamp.Time
 		}
-		quote.Tags = tags
-		quote.SourceMsgAuthorUsername = sourceMsgAuthorUsername.String
 		quote.Tags = tags
 		quotes = append(quotes, quote)
 	}
@@ -283,13 +296,15 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 	// Build base FROM clause with JOINs
 	baseFrom := `FROM quotes q
 		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
-		LEFT JOIN users u ON q.author_id = u.id`
+		LEFT JOIN users u ON q.author_id = u.id
+		LEFT JOIN guild_members gm_author ON q.guild_id = gm_author.guild_id AND q.author_discord_id = gm_author.discord_id
+		LEFT JOIN guild_members gm_source ON q.guild_id = gm_source.guild_id AND q.source_msg_author_discord_id = gm_source.discord_id`
 
 	// Add ACL check if userDiscordID provided (non-admin)
 	if userDiscordID != "" {
 		argCount++
 		baseFrom += fmt.Sprintf(`
-		INNER JOIN guild_members gm ON q.guild_id = gm.guild_id AND gm.discord_id = $%d`, argCount)
+		INNER JOIN guild_members gm_acl ON q.guild_id = gm_acl.guild_id AND gm_acl.discord_id = $%d`, argCount)
 		args = append(args, userDiscordID)
 	}
 
@@ -326,7 +341,8 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 		searchQuery = fmt.Sprintf(`
 			SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name,
 			       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-			       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at
+			       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at,
+			       gm_author.guild_nick, gm_source.guild_nick
 			%s
 			WHERE %s
 			ORDER BY ts_rank(q.search_vector, websearch_to_tsquery('english', $%d)) DESC
@@ -336,7 +352,8 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 		searchQuery = fmt.Sprintf(`
 			SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name,
 			       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-			       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at
+			       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at,
+			       gm_author.guild_nick, gm_source.guild_nick
 			%s
 			WHERE %s
 			ORDER BY created_at DESC
@@ -357,6 +374,7 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 		quote := &entities.Quote{}
 		var tagArray pq.StringArray
 		var guildName, authorDiscordID, authorUsername, sourceChannelName, sourceMsgAuthorUsername sql.NullString
+		var authorGuildNick, sourceAuthorGuildNick sql.NullString
 		var sourceMsgTimestamp sql.NullTime
 
 		err := rows.Scan(
@@ -364,6 +382,7 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 			&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
 			&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
 			&sourceMsgTimestamp, &tagArray, &quote.CreatedAt,
+			&authorGuildNick, &sourceAuthorGuildNick,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -372,8 +391,10 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 		quote.AuthorDiscordID = authorDiscordID.String
 		quote.GuildName = guildName.String
 		quote.AuthorUsername = authorUsername.String
+		quote.AuthorGuildNick = authorGuildNick.String
 		quote.SourceChannelName = sourceChannelName.String
 		quote.SourceMsgAuthorUsername = sourceMsgAuthorUsername.String
+		quote.SourceMsgAuthorGuildNick = sourceAuthorGuildNick.String
 		if sourceMsgTimestamp.Valid {
 			quote.SourceMsgTimestamp = sourceMsgTimestamp.Time
 		}
@@ -401,10 +422,13 @@ func (r *quoteRepository) GetRandom(ctx context.Context, guildID string, tags []
 	query := fmt.Sprintf(`
 		SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name,
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-		       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at
+		       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at,
+		       gm_author.guild_nick, gm_source.guild_nick
 		FROM quotes q
 		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
 		LEFT JOIN users u ON q.author_id = u.id
+		LEFT JOIN guild_members gm_author ON q.guild_id = gm_author.guild_id AND q.author_discord_id = gm_author.discord_id
+		LEFT JOIN guild_members gm_source ON q.guild_id = gm_source.guild_id AND q.source_msg_author_discord_id = gm_source.discord_id
 		WHERE %s
 		ORDER BY RANDOM()
 		LIMIT 1
@@ -413,6 +437,7 @@ func (r *quoteRepository) GetRandom(ctx context.Context, guildID string, tags []
 	quote := &entities.Quote{}
 	var tagArray pq.StringArray
 	var guildName, authorDiscordID, authorUsername, sourceChannelName, sourceMsgAuthorUsername sql.NullString
+	var authorGuildNick, sourceAuthorGuildNick sql.NullString
 	var sourceMsgTimestamp sql.NullTime
 
 	err := r.db.QueryRowContext(ctx, query, args...).Scan(
@@ -420,6 +445,7 @@ func (r *quoteRepository) GetRandom(ctx context.Context, guildID string, tags []
 		&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
 		&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
 		&sourceMsgTimestamp, &tagArray, &quote.CreatedAt,
+		&authorGuildNick, &sourceAuthorGuildNick,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("no quotes found")
@@ -431,8 +457,10 @@ func (r *quoteRepository) GetRandom(ctx context.Context, guildID string, tags []
 	quote.AuthorDiscordID = authorDiscordID.String
 	quote.GuildName = guildName.String
 	quote.AuthorUsername = authorUsername.String
+	quote.AuthorGuildNick = authorGuildNick.String
 	quote.SourceChannelName = sourceChannelName.String
 	quote.SourceMsgAuthorUsername = sourceMsgAuthorUsername.String
+	quote.SourceMsgAuthorGuildNick = sourceAuthorGuildNick.String
 	if sourceMsgTimestamp.Valid {
 		quote.SourceMsgTimestamp = sourceMsgTimestamp.Time
 	}

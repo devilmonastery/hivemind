@@ -5,9 +5,9 @@
   <!-- Editor Header -->
   <div class="mb-6">
     <h1 class="text-2xl font-bold text-cyan-400 mb-2">Edit Quote</h1>
-    <div class="text-sm text-gray-400">
-      {{if .Quote.SourceMsgAuthorUsername}}
-      <span>Originally by {{.Quote.SourceMsgAuthorUsername}}</span>
+    <div class="text-gray-400 text-sm">
+      {{if or .Quote.SourceMsgAuthorGuildNick .Quote.SourceMsgAuthorUsername}}
+      <span>Originally by {{if .Quote.SourceMsgAuthorGuildNick}}{{.Quote.SourceMsgAuthorGuildNick}}{{else}}{{.Quote.SourceMsgAuthorUsername}}{{end}}</span>
       <span class="mx-2">•</span>
       {{end}}
       {{if .Quote.GuildName}}

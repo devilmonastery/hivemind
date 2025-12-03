@@ -46,18 +46,6 @@ func handleContextMenuQuote(s *discordgo.Session, i *discordgo.InteractionCreate
 						},
 					},
 				},
-				discordgo.ActionsRow{
-					Components: []discordgo.MessageComponent{
-						discordgo.TextInput{
-							CustomID:  "quote_author",
-							Label:     "Original Author (auto-detected)",
-							Style:     discordgo.TextInputShort,
-							Required:  false,
-							Value:     message.Author.Username,
-							MaxLength: 100,
-						},
-					},
-				},
 			},
 		},
 	})
@@ -184,9 +172,6 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 					switch textInput.CustomID {
 					case "quote_text":
 						quoteText = textInput.Value
-					case "quote_author":
-						// Author info is captured from the source message, not from modal input
-						// This field is just for display in the modal
 					}
 				}
 			}

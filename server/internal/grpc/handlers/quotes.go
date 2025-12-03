@@ -88,7 +88,17 @@ func (h *QuoteHandler) CreateQuote(ctx context.Context, req *quotespb.CreateQuot
 		return nil, status.Errorf(codes.Internal, "failed to create quote: %v", err)
 	}
 
-	return quoteToProto(created), nil
+	// Fetch the quote back to populate guild_nick fields from guild_members JOIN
+	userDiscordID := h.getUserDiscordID(ctx, user)
+	fetched, err := h.quoteService.GetQuote(ctx, created.ID, userDiscordID)
+	if err != nil {
+		h.log.Warn("Failed to fetch quote after creation, returning without guild nicks",
+			slog.String("quote_id", created.ID),
+			slog.String("error", err.Error()))
+		return quoteToProto(created), nil
+	}
+
+	return quoteToProto(fetched), nil
 }
 
 // GetQuote retrieves a quote by ID
@@ -257,20 +267,22 @@ func (h *QuoteHandler) GetRandomQuote(ctx context.Context, req *quotespb.GetRand
 // quoteToProto converts a domain quote to protobuf
 func quoteToProto(quote *entities.Quote) *quotespb.Quote {
 	proto := &quotespb.Quote{
-		Id:                       quote.ID,
-		Body:                     quote.Body,
-		Tags:                     quote.Tags,
-		AuthorId:                 quote.AuthorID,
-		AuthorDiscordId:          quote.AuthorDiscordID,
-		AuthorUsername:           quote.AuthorUsername,
-		GuildId:                  quote.GuildID,
-		GuildName:                quote.GuildName,
-		SourceMsgId:              quote.SourceMsgID,
-		SourceChannelId:          quote.SourceChannelID,
-		SourceChannelName:        quote.SourceChannelName,
-		SourceMsgAuthorDiscordId: quote.SourceMsgAuthorDiscordID,
-		SourceMsgAuthorUsername:  quote.SourceMsgAuthorUsername,
-		CreatedAt:                timestamppb.New(quote.CreatedAt),
+		Id:                         quote.ID,
+		Body:                       quote.Body,
+		Tags:                       quote.Tags,
+		AuthorId:                   quote.AuthorID,
+		AuthorDiscordId:            quote.AuthorDiscordID,
+		AuthorUsername:             quote.AuthorUsername,
+		AuthorGuildNick:            quote.AuthorGuildNick,
+		GuildId:                    quote.GuildID,
+		GuildName:                  quote.GuildName,
+		SourceMsgId:                quote.SourceMsgID,
+		SourceChannelId:            quote.SourceChannelID,
+		SourceChannelName:          quote.SourceChannelName,
+		SourceMsgAuthorDiscordId:   quote.SourceMsgAuthorDiscordID,
+		SourceMsgAuthorUsername:    quote.SourceMsgAuthorUsername,
+		SourceMsgAuthorGuildNick:   quote.SourceMsgAuthorGuildNick,
+		CreatedAt:                  timestamppb.New(quote.CreatedAt),
 	}
 	if !quote.SourceMsgTimestamp.IsZero() {
 		proto.SourceMsgTimestamp = timestamppb.New(quote.SourceMsgTimestamp)
