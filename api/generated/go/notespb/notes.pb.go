@@ -916,23 +916,24 @@ func (x *AttachmentMetadata) GetSize() int64 {
 
 // NoteMessageReference represents a Discord message referenced in a note
 type NoteMessageReference struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	NoteId            string                 `protobuf:"bytes,2,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
-	MessageId         string                 `protobuf:"bytes,3,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
-	ChannelId         string                 `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
-	GuildId           string                 `protobuf:"bytes,5,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"` // Nullable for DM contexts
-	Content           string                 `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`
-	AuthorId          string                 `protobuf:"bytes,7,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
-	AuthorUsername    string                 `protobuf:"bytes,8,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
-	AuthorDisplayName string                 `protobuf:"bytes,9,opt,name=author_display_name,json=authorDisplayName,proto3" json:"author_display_name,omitempty"`
-	AuthorAvatarUrl   string                 `protobuf:"bytes,10,opt,name=author_avatar_url,json=authorAvatarUrl,proto3" json:"author_avatar_url,omitempty"`
-	MessageTimestamp  *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=message_timestamp,json=messageTimestamp,proto3" json:"message_timestamp,omitempty"`
-	Attachments       []*AttachmentMetadata  `protobuf:"bytes,12,rep,name=attachments,proto3" json:"attachments,omitempty"`
-	AddedAt           *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
-	DiscordLink       string                 `protobuf:"bytes,14,opt,name=discord_link,json=discordLink,proto3" json:"discord_link,omitempty"` // Computed: Discord message URL
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Id                    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	NoteId                string                 `protobuf:"bytes,2,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
+	MessageId             string                 `protobuf:"bytes,3,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	ChannelId             string                 `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	GuildId               string                 `protobuf:"bytes,5,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"` // Nullable for DM contexts
+	Content               string                 `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`
+	AuthorId              string                 `protobuf:"bytes,7,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	AuthorUsername        string                 `protobuf:"bytes,8,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
+	AuthorDisplayName     string                 `protobuf:"bytes,9,opt,name=author_display_name,json=authorDisplayName,proto3" json:"author_display_name,omitempty"`
+	AuthorGuildAvatarHash string                 `protobuf:"bytes,10,opt,name=author_guild_avatar_hash,json=authorGuildAvatarHash,proto3" json:"author_guild_avatar_hash,omitempty"` // Guild-specific avatar hash
+	AuthorUserAvatarHash  string                 `protobuf:"bytes,15,opt,name=author_user_avatar_hash,json=authorUserAvatarHash,proto3" json:"author_user_avatar_hash,omitempty"`    // Global user avatar hash
+	MessageTimestamp      *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=message_timestamp,json=messageTimestamp,proto3" json:"message_timestamp,omitempty"`
+	Attachments           []*AttachmentMetadata  `protobuf:"bytes,12,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	AddedAt               *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	DiscordLink           string                 `protobuf:"bytes,14,opt,name=discord_link,json=discordLink,proto3" json:"discord_link,omitempty"` // Computed: Discord message URL
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *NoteMessageReference) Reset() {
@@ -1028,9 +1029,16 @@ func (x *NoteMessageReference) GetAuthorDisplayName() string {
 	return ""
 }
 
-func (x *NoteMessageReference) GetAuthorAvatarUrl() string {
+func (x *NoteMessageReference) GetAuthorGuildAvatarHash() string {
 	if x != nil {
-		return x.AuthorAvatarUrl
+		return x.AuthorGuildAvatarHash
+	}
+	return ""
+}
+
+func (x *NoteMessageReference) GetAuthorUserAvatarHash() string {
+	if x != nil {
+		return x.AuthorUserAvatarHash
 	}
 	return ""
 }
@@ -1342,7 +1350,7 @@ const file_notes_proto_rawDesc = "" +
 	"\bfilename\x18\x03 \x01(\tR\bfilename\x12\x14\n" +
 	"\x05width\x18\x04 \x01(\x05R\x05width\x12\x16\n" +
 	"\x06height\x18\x05 \x01(\x05R\x06height\x12\x12\n" +
-	"\x04size\x18\x06 \x01(\x03R\x04size\"\xbd\x04\n" +
+	"\x04size\x18\x06 \x01(\x03R\x04size\"\x81\x05\n" +
 	"\x14NoteMessageReference\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\anote_id\x18\x02 \x01(\tR\x06noteId\x12\x1d\n" +
@@ -1354,9 +1362,10 @@ const file_notes_proto_rawDesc = "" +
 	"\acontent\x18\x06 \x01(\tR\acontent\x12\x1b\n" +
 	"\tauthor_id\x18\a \x01(\tR\bauthorId\x12'\n" +
 	"\x0fauthor_username\x18\b \x01(\tR\x0eauthorUsername\x12.\n" +
-	"\x13author_display_name\x18\t \x01(\tR\x11authorDisplayName\x12*\n" +
-	"\x11author_avatar_url\x18\n" +
-	" \x01(\tR\x0fauthorAvatarUrl\x12G\n" +
+	"\x13author_display_name\x18\t \x01(\tR\x11authorDisplayName\x127\n" +
+	"\x18author_guild_avatar_hash\x18\n" +
+	" \x01(\tR\x15authorGuildAvatarHash\x125\n" +
+	"\x17author_user_avatar_hash\x18\x0f \x01(\tR\x14authorUserAvatarHash\x12G\n" +
 	"\x11message_timestamp\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x10messageTimestamp\x12D\n" +
 	"\vattachments\x18\f \x03(\v2\".hivemind.notes.AttachmentMetadataR\vattachments\x125\n" +
 	"\badded_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\aaddedAt\x12!\n" +

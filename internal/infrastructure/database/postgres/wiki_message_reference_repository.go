@@ -91,9 +91,9 @@ func (r *wikiMessageReferenceRepository) GetByPageID(ctx context.Context, pageID
 			wmr.content, wmr.author_id, wmr.author_username, wmr.author_display_name,
 			wmr.message_timestamp, wmr.attachment_urls, wmr.attachment_metadata, 
 			wmr.added_at, wmr.added_by_user_id,
-			du.avatar_url
+			udn.guild_avatar_hash, udn.user_avatar_hash
 		FROM wiki_message_references wmr
-		LEFT JOIN discord_users du ON wmr.author_id = du.discord_id
+		LEFT JOIN user_display_names udn ON wmr.author_id = udn.discord_id AND wmr.guild_id = udn.guild_id
 		WHERE wmr.wiki_page_id = $1
 		ORDER BY wmr.message_timestamp DESC
 	`
@@ -107,7 +107,7 @@ func (r *wikiMessageReferenceRepository) GetByPageID(ctx context.Context, pageID
 	var refs []*entities.WikiMessageReference
 	for rows.Next() {
 		ref := &entities.WikiMessageReference{}
-		var authorDisplayName, authorAvatarURL, addedByUserID sql.NullString
+		var authorDisplayName, addedByUserID, guildAvatarHash, userAvatarHash sql.NullString
 		var attachmentURLs pq.StringArray
 		var attachmentMetadata []byte
 
@@ -115,14 +115,15 @@ func (r *wikiMessageReferenceRepository) GetByPageID(ctx context.Context, pageID
 			&ref.ID, &ref.WikiPageID, &ref.MessageID, &ref.ChannelID, &ref.GuildID,
 			&ref.Content, &ref.AuthorID, &ref.AuthorUsername, &authorDisplayName,
 			&ref.MessageTimestamp, &attachmentURLs, &attachmentMetadata, &ref.AddedAt, &addedByUserID,
-			&authorAvatarURL,
+			&guildAvatarHash, &userAvatarHash,
 		)
 		if err != nil {
 			return nil, err
 		}
 
 		ref.AuthorDisplayName = authorDisplayName.String
-		ref.AuthorAvatarURL = authorAvatarURL.String
+		ref.AuthorGuildAvatarHash = guildAvatarHash.String
+		ref.AuthorUserAvatarHash = userAvatarHash.String
 		ref.AddedByUserID = addedByUserID.String
 		ref.AttachmentURLs = attachmentURLs
 

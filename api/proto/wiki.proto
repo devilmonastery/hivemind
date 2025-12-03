@@ -168,7 +168,8 @@ message WikiMessageReference {
   string author_id = 7;
   string author_username = 8;
   string author_display_name = 9;
-  string author_avatar_url = 16; // Discord avatar URL (joined from discord_users)
+  string author_guild_avatar_hash = 16; // Guild-specific avatar hash
+  string author_user_avatar_hash = 17; // Global user avatar hash
   google.protobuf.Timestamp message_timestamp = 10;
 
   // Attachment URLs (images, files, etc)

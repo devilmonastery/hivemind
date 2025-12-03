@@ -2,7 +2,6 @@ package bot
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -104,7 +103,7 @@ func (b *Bot) syncGuildMembers(ctx context.Context, discordClient discordpb.Disc
 				pbMember.DiscordGlobalName = m.User.GlobalName
 			}
 			if m.User.Avatar != "" {
-				pbMember.AvatarUrl = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", m.User.ID, m.User.Avatar)
+				pbMember.AvatarHash = m.User.Avatar
 			}
 
 			allMembers = append(allMembers, pbMember)

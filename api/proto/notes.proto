@@ -151,7 +151,8 @@ message NoteMessageReference {
   string author_id = 7;
   string author_username = 8;
   string author_display_name = 9;
-  string author_avatar_url = 10;
+  string author_guild_avatar_hash = 10; // Guild-specific avatar hash
+  string author_user_avatar_hash = 15; // Global user avatar hash
   google.protobuf.Timestamp message_timestamp = 11;
   repeated AttachmentMetadata attachments = 12;
   google.protobuf.Timestamp added_at = 13;

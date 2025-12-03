@@ -44,3 +44,37 @@ COALESCE(gm.guild_nick, du.discord_global_name, du.discord_username) AS display_
 - **Incremental**: Only updates affected guilds/members, not the entire table
 - **Automatic cleanup**: When members leave a guild, their display name entries are automatically deleted via foreign key CASCADE
 - **Simple queries**: Single JOIN to user_display_names instead of multiple table lookups
+
+## Avatar Support
+
+The `user_display_names` table also stores avatar hashes for efficient avatar display with proper fallback:
+
+### Avatar Priority
+
+1. `guild_avatar_hash` - Guild-specific avatar (highest priority)
+2. `user_avatar_hash` - Global Discord avatar
+3. Default avatar - Calculated from user ID if no custom avatar
+
+### Implementation
+
+Avatar hashes are stored in the denormalized table alongside display names:
+
+```sql
+ALTER TABLE user_display_names ADD COLUMN
+    guild_avatar_hash TEXT,  -- From guild_members
+    user_avatar_hash TEXT;   -- From discord_users
+```
+
+### URL Construction
+
+Avatar URLs are constructed in the presentation layer using `internal/pkg/urlutil.ConstructAvatarURL()`:
+
+```go
+avatarURL := urlutil.ConstructAvatarURL(discordID, guildID, guildAvatarHash, userAvatarHash, size)
+```
+
+This function handles the three-tier fallback:
+- If guild avatar hash exists → `https://cdn.discordapp.com/guilds/{guild}/users/{user}/avatars/{hash}.png`
+- Else if user avatar hash exists → `https://cdn.discordapp.com/avatars/{user}/{hash}.png`
+- Else → `https://cdn.discordapp.com/embed/avatars/{index}.png` (calculated from user ID)
+

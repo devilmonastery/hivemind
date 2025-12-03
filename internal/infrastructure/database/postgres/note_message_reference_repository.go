@@ -88,9 +88,9 @@ func (r *noteMessageReferenceRepository) GetByNoteID(ctx context.Context, noteID
 			nmr.id, nmr.note_id, nmr.message_id, nmr.channel_id, nmr.guild_id,
 			nmr.content, nmr.author_id, nmr.author_username, nmr.author_display_name,
 			nmr.message_timestamp, nmr.attachment_metadata, nmr.added_at,
-			du.avatar_url
+			udn.guild_avatar_hash, udn.user_avatar_hash
 		FROM note_message_references nmr
-		LEFT JOIN discord_users du ON nmr.author_id = du.discord_id
+		LEFT JOIN user_display_names udn ON nmr.author_id = udn.discord_id AND nmr.guild_id = udn.guild_id
 		WHERE nmr.note_id = $1
 		ORDER BY nmr.added_at DESC
 	`
@@ -104,21 +104,22 @@ func (r *noteMessageReferenceRepository) GetByNoteID(ctx context.Context, noteID
 	var refs []*entities.NoteMessageReference
 	for rows.Next() {
 		ref := &entities.NoteMessageReference{}
-		var authorDisplayName, authorAvatarURL, guildID sql.NullString
+		var authorDisplayName, guildID, guildAvatarHash, userAvatarHash sql.NullString
 		var attachmentMetadata []byte
 
 		err := rows.Scan(
 			&ref.ID, &ref.NoteID, &ref.MessageID, &ref.ChannelID, &guildID,
 			&ref.Content, &ref.AuthorID, &ref.AuthorUsername, &authorDisplayName,
 			&ref.MessageTimestamp, &attachmentMetadata, &ref.AddedAt,
-			&authorAvatarURL,
+			&guildAvatarHash, &userAvatarHash,
 		)
 		if err != nil {
 			return nil, err
 		}
 
 		ref.AuthorDisplayName = authorDisplayName.String
-		ref.AuthorAvatarURL = authorAvatarURL.String
+		ref.AuthorGuildAvatarHash = guildAvatarHash.String
+		ref.AuthorUserAvatarHash = userAvatarHash.String
 		ref.GuildID = guildID.String
 
 		// Unmarshal attachment metadata if present
@@ -141,9 +142,9 @@ func (r *noteMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 			nmr.id, nmr.note_id, nmr.message_id, nmr.channel_id, nmr.guild_id,
 			nmr.content, nmr.author_id, nmr.author_username, nmr.author_display_name,
 			nmr.message_timestamp, nmr.attachment_metadata, nmr.added_at,
-			du.avatar_url
+			udn.guild_avatar_hash, udn.user_avatar_hash
 		FROM note_message_references nmr
-		LEFT JOIN discord_users du ON nmr.author_id = du.discord_id
+		LEFT JOIN user_display_names udn ON nmr.author_id = udn.discord_id AND nmr.guild_id = udn.guild_id
 		WHERE nmr.message_id = $1
 		ORDER BY nmr.added_at DESC
 	`
@@ -157,21 +158,22 @@ func (r *noteMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 	var refs []*entities.NoteMessageReference
 	for rows.Next() {
 		ref := &entities.NoteMessageReference{}
-		var authorDisplayName, authorAvatarURL, guildID sql.NullString
+		var authorDisplayName, guildID, guildAvatarHash, userAvatarHash sql.NullString
 		var attachmentMetadata []byte
 
 		err := rows.Scan(
 			&ref.ID, &ref.NoteID, &ref.MessageID, &ref.ChannelID, &guildID,
 			&ref.Content, &ref.AuthorID, &ref.AuthorUsername, &authorDisplayName,
 			&ref.MessageTimestamp, &attachmentMetadata, &ref.AddedAt,
-			&authorAvatarURL,
+			&guildAvatarHash, &userAvatarHash,
 		)
 		if err != nil {
 			return nil, err
 		}
 
 		ref.AuthorDisplayName = authorDisplayName.String
-		ref.AuthorAvatarURL = authorAvatarURL.String
+		ref.AuthorGuildAvatarHash = guildAvatarHash.String
+		ref.AuthorUserAvatarHash = userAvatarHash.String
 		ref.GuildID = guildID.String
 
 		// Unmarshal attachment metadata if present

@@ -417,7 +417,7 @@ type GuildMember struct {
 	// Discord user info (for batch upsert to ensure user exists)
 	DiscordUsername   string `protobuf:"bytes,9,opt,name=discord_username,json=discordUsername,proto3" json:"discord_username,omitempty"`
 	DiscordGlobalName string `protobuf:"bytes,10,opt,name=discord_global_name,json=discordGlobalName,proto3" json:"discord_global_name,omitempty"`
-	AvatarUrl         string `protobuf:"bytes,11,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	AvatarHash        string `protobuf:"bytes,11,opt,name=avatar_hash,json=avatarHash,proto3" json:"avatar_hash,omitempty"` // User avatar hash (not URL)
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -522,9 +522,9 @@ func (x *GuildMember) GetDiscordGlobalName() string {
 	return ""
 }
 
-func (x *GuildMember) GetAvatarUrl() string {
+func (x *GuildMember) GetAvatarHash() string {
 	if x != nil {
-		return x.AvatarUrl
+		return x.AvatarHash
 	}
 	return ""
 }
@@ -540,7 +540,7 @@ type UpsertGuildMemberRequest struct {
 	// Discord user info (optional, for updating discord_users table)
 	DiscordUsername   string `protobuf:"bytes,7,opt,name=discord_username,json=discordUsername,proto3" json:"discord_username,omitempty"`
 	DiscordGlobalName string `protobuf:"bytes,8,opt,name=discord_global_name,json=discordGlobalName,proto3" json:"discord_global_name,omitempty"`
-	AvatarUrl         string `protobuf:"bytes,9,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	AvatarHash        string `protobuf:"bytes,9,opt,name=avatar_hash,json=avatarHash,proto3" json:"avatar_hash,omitempty"` // User avatar hash (not URL)
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -631,9 +631,9 @@ func (x *UpsertGuildMemberRequest) GetDiscordGlobalName() string {
 	return ""
 }
 
-func (x *UpsertGuildMemberRequest) GetAvatarUrl() string {
+func (x *UpsertGuildMemberRequest) GetAvatarHash() string {
 	if x != nil {
-		return x.AvatarUrl
+		return x.AvatarHash
 	}
 	return ""
 }
@@ -1079,7 +1079,7 @@ const file_discord_proto_rawDesc = "" +
 	"\x0fGetGuildRequest\x12\x19\n" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\"A\n" +
 	"\x10GetGuildResponse\x12-\n" +
-	"\x05guild\x18\x01 \x01(\v2\x17.hivemind.discord.GuildR\x05guild\"\xcd\x03\n" +
+	"\x05guild\x18\x01 \x01(\v2\x17.hivemind.discord.GuildR\x05guild\"\xcf\x03\n" +
 	"\vGuildMember\x12\x19\n" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x1d\n" +
 	"\n" +
@@ -1093,9 +1093,9 @@ const file_discord_proto_rawDesc = "" +
 	"\tlast_seen\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\x12)\n" +
 	"\x10discord_username\x18\t \x01(\tR\x0fdiscordUsername\x12.\n" +
 	"\x13discord_global_name\x18\n" +
-	" \x01(\tR\x11discordGlobalName\x12\x1d\n" +
-	"\n" +
-	"avatar_url\x18\v \x01(\tR\tavatarUrl\"\xe8\x02\n" +
+	" \x01(\tR\x11discordGlobalName\x12\x1f\n" +
+	"\vavatar_hash\x18\v \x01(\tR\n" +
+	"avatarHash\"\xea\x02\n" +
 	"\x18UpsertGuildMemberRequest\x12\x19\n" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x1d\n" +
 	"\n" +
@@ -1106,9 +1106,9 @@ const file_discord_proto_rawDesc = "" +
 	"\x05roles\x18\x05 \x03(\tR\x05roles\x127\n" +
 	"\tjoined_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\x12)\n" +
 	"\x10discord_username\x18\a \x01(\tR\x0fdiscordUsername\x12.\n" +
-	"\x13discord_global_name\x18\b \x01(\tR\x11discordGlobalName\x12\x1d\n" +
-	"\n" +
-	"avatar_url\x18\t \x01(\tR\tavatarUrl\"5\n" +
+	"\x13discord_global_name\x18\b \x01(\tR\x11discordGlobalName\x12\x1f\n" +
+	"\vavatar_hash\x18\t \x01(\tR\n" +
+	"avatarHash\"5\n" +
 	"\x19UpsertGuildMemberResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"Y\n" +
 	"\x1eUpsertGuildMembersBatchRequest\x127\n" +

@@ -32,7 +32,7 @@ func (r *DiscordUserRepository) Create(ctx context.Context, discordUser *entitie
 	query := `
 		INSERT INTO discord_users (
 			discord_id, user_id, discord_username, discord_global_name,
-			avatar_url, linked_at, last_seen
+			avatar_hash, linked_at, last_seen
 		) VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
@@ -41,7 +41,7 @@ func (r *DiscordUserRepository) Create(ctx context.Context, discordUser *entitie
 		discordUser.UserID,
 		discordUser.DiscordUsername,
 		discordUser.DiscordGlobalName,
-		discordUser.AvatarURL,
+		discordUser.AvatarHash,
 		discordUser.LinkedAt,
 		discordUser.LastSeen,
 	)
@@ -57,13 +57,13 @@ func (r *DiscordUserRepository) Upsert(ctx context.Context, discordUser *entitie
 	query := `
 		INSERT INTO discord_users (
 			discord_id, user_id, discord_username, discord_global_name,
-			avatar_url, linked_at, last_seen
+			avatar_hash, linked_at, last_seen
 		) VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (discord_id) DO UPDATE SET
 			user_id = COALESCE(EXCLUDED.user_id, discord_users.user_id),
 			discord_username = EXCLUDED.discord_username,
 			discord_global_name = EXCLUDED.discord_global_name,
-			avatar_url = EXCLUDED.avatar_url,
+			avatar_hash = EXCLUDED.avatar_hash,
 			last_seen = EXCLUDED.last_seen
 	`
 
@@ -72,7 +72,7 @@ func (r *DiscordUserRepository) Upsert(ctx context.Context, discordUser *entitie
 		discordUser.UserID,
 		discordUser.DiscordUsername,
 		discordUser.DiscordGlobalName,
-		discordUser.AvatarURL,
+		discordUser.AvatarHash,
 		discordUser.LinkedAt,
 		discordUser.LastSeen,
 	)
@@ -87,7 +87,7 @@ func (r *DiscordUserRepository) Upsert(ctx context.Context, discordUser *entitie
 func (r *DiscordUserRepository) GetByDiscordID(ctx context.Context, discordID string) (*entities.DiscordUser, error) {
 	query := `
 		SELECT discord_id, user_id, discord_username, discord_global_name,
-		       avatar_url, linked_at, last_seen
+		       avatar_hash, linked_at, last_seen
 		FROM discord_users
 		WHERE discord_id = $1
 	`
@@ -108,7 +108,7 @@ func (r *DiscordUserRepository) GetByDiscordID(ctx context.Context, discordID st
 func (r *DiscordUserRepository) GetByUserID(ctx context.Context, userID string) (*entities.DiscordUser, error) {
 	query := `
 		SELECT discord_id, user_id, discord_username, discord_global_name,
-		       avatar_url, linked_at, last_seen
+		       avatar_hash, linked_at, last_seen
 		FROM discord_users
 		WHERE user_id = $1
 	`
@@ -132,7 +132,7 @@ func (r *DiscordUserRepository) Update(ctx context.Context, discordUser *entitie
 		SET user_id = $2,
 		    discord_username = $3,
 		    discord_global_name = $4,
-		    avatar_url = $5,
+		    avatar_hash = $5,
 		    last_seen = $6
 		WHERE discord_id = $1
 	`
@@ -146,7 +146,7 @@ func (r *DiscordUserRepository) Update(ctx context.Context, discordUser *entitie
 		discordUser.UserID,
 		discordUser.DiscordUsername,
 		discordUser.DiscordGlobalName,
-		discordUser.AvatarURL,
+		discordUser.AvatarHash,
 		discordUser.LastSeen,
 	)
 	if err != nil {

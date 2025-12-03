@@ -80,13 +80,8 @@ Note - Hivemind
             <!-- User Avatar -->
             {{$displayName := .AuthorDisplayName}}
             {{if not $displayName}}{{$displayName = .AuthorUsername}}{{end}}
-            {{if .AuthorAvatarUrl}}
-              <img src="{{.AuthorAvatarUrl}}" alt="{{$displayName}}" class="w-8 h-8 rounded-full border-glitch" />
-            {{else}}
-              <div class="w-8 h-8 rounded-full bg-gradient-to-br {{avatarColors $displayName}} flex items-center justify-center text-white text-sm font-bold border-glitch">
-                {{initials $displayName}}
-              </div>
-            {{end}}
+            {{$avatarUrl := avatarURL .AuthorId $.Note.GuildId .AuthorGuildAvatarHash .AuthorUserAvatarHash}}
+            <img src="{{$avatarUrl}}" alt="{{$displayName}}" class="w-8 h-8 rounded-full border-glitch" />
             
             <div>
               <div class="flex items-center gap-2">
