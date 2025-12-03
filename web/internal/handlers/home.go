@@ -139,10 +139,15 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		h.log.Debug("fetched quotes from server",
 			slog.Int("count", len(quotesResp.Quotes)))
 		for _, quote := range quotesResp.Quotes {
+			// Generate title for quotes: "Author said..."
+			quoteTitle := ""
+			if quote.SourceMsgAuthorUsername != "" {
+				quoteTitle = quote.SourceMsgAuthorUsername + " said..."
+			}
 			activity = append(activity, ActivityItem{
 				Type:        "quote",
 				ID:          quote.Id,
-				Title:       "", // empty title for quotes
+				Title:       quoteTitle,
 				Body:        quote.Body,
 				Preview:     truncateText(quote.Body, 200),
 				GuildID:     quote.GuildId,
