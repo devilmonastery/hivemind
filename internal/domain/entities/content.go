@@ -42,6 +42,7 @@ type Quote struct {
 	AuthorID                 string     `json:"author_id"`         // Who saved the quote (internal user ID)
 	AuthorDiscordID          string     `json:"author_discord_id"` // Discord ID of who saved the quote
 	AuthorUsername           string     `json:"author_username,omitempty"`
+	AuthorGuildNick          string     `json:"author_guild_nick,omitempty"` // Current guild nickname
 	GuildID                  string     `json:"guild_id"`
 	GuildName                string     `json:"guild_name,omitempty"`
 	SourceMsgID              string     `json:"source_msg_id"`
@@ -49,7 +50,8 @@ type Quote struct {
 	SourceChannelName        string     `json:"source_channel_name,omitempty"`
 	SourceMsgAuthorDiscordID string     `json:"source_msg_author_discord_id"`
 	SourceMsgAuthorUsername  string     `json:"source_msg_author_username,omitempty"`
-	SourceMsgTimestamp       time.Time  `json:"source_msg_timestamp"` // When the original message was sent
+	SourceMsgAuthorGuildNick string     `json:"source_msg_author_guild_nick,omitempty"` // Current guild nickname
+	SourceMsgTimestamp       time.Time  `json:"source_msg_timestamp"`                    // When the original message was sent
 	Tags                     []string   `json:"tags,omitempty"`
 	CreatedAt                time.Time  `json:"created_at"`
 	DeletedAt                *time.Time `json:"deleted_at,omitempty"`

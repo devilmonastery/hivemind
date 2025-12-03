@@ -139,6 +139,11 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		h.log.Debug("fetched quotes from server",
 			slog.Int("count", len(quotesResp.Quotes)))
 		for _, quote := range quotesResp.Quotes {
+			// Prefer guild nickname over username
+			author := quote.SourceMsgAuthorUsername
+			if quote.SourceMsgAuthorGuildNick != "" {
+				author = quote.SourceMsgAuthorGuildNick
+			}
 			activity = append(activity, ActivityItem{
 				Type:        "quote",
 				ID:          quote.Id,
@@ -148,7 +153,7 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 				GuildName:   quote.GuildName,
 				ChannelName: quote.SourceChannelName,
 				Timestamp:   quote.CreatedAt.AsTime(),
-				Author:      quote.SourceMsgAuthorUsername,
+				Author:      author,
 				Tags:        quote.Tags,
 			})
 		}

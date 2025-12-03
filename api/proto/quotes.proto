@@ -40,6 +40,7 @@ message Quote {
   string author_id = 3; // Who saved the quote (internal user ID)
   string author_discord_id = 15; // Discord ID of who saved the quote
   string author_username = 4;
+  string author_guild_nick = 17; // Guild nickname of who saved the quote (current)
   string guild_id = 5;
   string guild_name = 6; // Guild display name
 
@@ -49,6 +50,7 @@ message Quote {
   string source_channel_name = 9;
   string source_msg_author_discord_id = 10; // Who said it
   string source_msg_author_username = 11; // Username at time of quote
+  string source_msg_author_guild_nick = 18; // Guild nickname of who said it (current)
   repeated string mentioned_user_ids = 12; // Discord user IDs mentioned
 
   // Metadata
