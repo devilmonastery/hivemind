@@ -267,22 +267,22 @@ func (h *QuoteHandler) GetRandomQuote(ctx context.Context, req *quotespb.GetRand
 // quoteToProto converts a domain quote to protobuf
 func quoteToProto(quote *entities.Quote) *quotespb.Quote {
 	proto := &quotespb.Quote{
-		Id:                         quote.ID,
-		Body:                       quote.Body,
-		Tags:                       quote.Tags,
-		AuthorId:                   quote.AuthorID,
-		AuthorDiscordId:            quote.AuthorDiscordID,
-		AuthorUsername:             quote.AuthorUsername,
-		AuthorGuildNick:            quote.AuthorGuildNick,
-		GuildId:                    quote.GuildID,
-		GuildName:                  quote.GuildName,
-		SourceMsgId:                quote.SourceMsgID,
-		SourceChannelId:            quote.SourceChannelID,
-		SourceChannelName:          quote.SourceChannelName,
-		SourceMsgAuthorDiscordId:   quote.SourceMsgAuthorDiscordID,
-		SourceMsgAuthorUsername:    quote.SourceMsgAuthorUsername,
-		SourceMsgAuthorGuildNick:   quote.SourceMsgAuthorGuildNick,
-		CreatedAt:                  timestamppb.New(quote.CreatedAt),
+		Id:                       quote.ID,
+		Body:                     quote.Body,
+		Tags:                     quote.Tags,
+		AuthorId:                 quote.AuthorID,
+		AuthorDiscordId:          quote.AuthorDiscordID,
+		AuthorUsername:           quote.AuthorUsername,
+		AuthorGuildNick:          quote.AuthorGuildNick,
+		GuildId:                  quote.GuildID,
+		GuildName:                quote.GuildName,
+		SourceMsgId:              quote.SourceMsgID,
+		SourceChannelId:          quote.SourceChannelID,
+		SourceChannelName:        quote.SourceChannelName,
+		SourceMsgAuthorDiscordId: quote.SourceMsgAuthorDiscordID,
+		SourceMsgAuthorUsername:  quote.SourceMsgAuthorUsername,
+		SourceMsgAuthorGuildNick: quote.SourceMsgAuthorGuildNick,
+		CreatedAt:                timestamppb.New(quote.CreatedAt),
 	}
 	if !quote.SourceMsgTimestamp.IsZero() {
 		proto.SourceMsgTimestamp = timestamppb.New(quote.SourceMsgTimestamp)
