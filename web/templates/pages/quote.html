@@ -47,6 +47,12 @@
           {{end}}
         </div>
       </div>
+      
+      {{/* Avatar */}}
+      {{if .Quote.SourceMsgAuthorDiscordId}}
+      {{$avatarUrl := avatarURL .Quote.SourceMsgAuthorDiscordId .Quote.GuildId .Quote.SourceMsgAuthorGuildAvatarHash .Quote.SourceMsgAuthorUserAvatarHash}}
+      <img src="{{$avatarUrl}}" alt="{{if .Quote.SourceMsgAuthorGuildNick}}{{.Quote.SourceMsgAuthorGuildNick}}{{else}}{{.Quote.SourceMsgAuthorUsername}}{{end}}" class="w-16 h-16 rounded-full border-2 border-cyan-400/30" />
+      {{end}}
       {{end}}
     </div>
   </div>

@@ -41,6 +41,8 @@ message Quote {
   string author_discord_id = 15; // Discord ID of who saved the quote
   string author_username = 4;
   string author_guild_nick = 17; // Guild nickname of who saved the quote (current)
+  string author_guild_avatar_hash = 19; // Guild-specific avatar
+  string author_user_avatar_hash = 20; // Global user avatar
   string guild_id = 5;
   string guild_name = 6; // Guild display name
 
@@ -51,6 +53,8 @@ message Quote {
   string source_msg_author_discord_id = 10; // Who said it
   string source_msg_author_username = 11; // Username at time of quote
   string source_msg_author_guild_nick = 18; // Guild nickname of who said it (current)
+  string source_msg_author_guild_avatar_hash = 21; // Guild-specific avatar of who said it
+  string source_msg_author_user_avatar_hash = 22; // Global user avatar of who said it
   repeated string mentioned_user_ids = 12; // Discord user IDs mentioned
 
   // Metadata

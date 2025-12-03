@@ -51,7 +51,8 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 		SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name,
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
 		       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at, q.deleted_at,
-		       udn_author.display_name, udn_author.guild_nick, udn_source.display_name, udn_source.guild_nick
+		       udn_author.display_name, udn_author.guild_nick, udn_author.guild_avatar_hash, udn_author.user_avatar_hash,
+		       udn_source.display_name, udn_source.guild_nick, udn_source.guild_avatar_hash, udn_source.user_avatar_hash
 		FROM quotes q
 		LEFT JOIN discord_guilds dg ON q.guild_id = dg.guild_id
 		LEFT JOIN users u ON q.author_id = u.id
@@ -70,7 +71,8 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 	quote := &entities.Quote{}
 	var tags pq.StringArray
 	var guildName, authorUsername, sourceChannelName, sourceMsgAuthorUsername sql.NullString
-	var authorDisplayName, authorGuildNick, sourceAuthorDisplayName, sourceAuthorGuildNick sql.NullString
+	var authorDisplayName, authorGuildNick, authorGuildAvatarHash, authorUserAvatarHash sql.NullString
+	var sourceAuthorDisplayName, sourceAuthorGuildNick, sourceAuthorGuildAvatarHash, sourceAuthorUserAvatarHash sql.NullString
 	var deletedAt sql.NullTime
 
 	var authorDiscordID sql.NullString
@@ -82,7 +84,8 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 			&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
 			&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
 			&sourceMsgTimestamp, &tags, &quote.CreatedAt, &deletedAt,
-			&authorDisplayName, &authorGuildNick, &sourceAuthorDisplayName, &sourceAuthorGuildNick,
+			&authorDisplayName, &authorGuildNick, &authorGuildAvatarHash, &authorUserAvatarHash,
+			&sourceAuthorDisplayName, &sourceAuthorGuildNick, &sourceAuthorGuildAvatarHash, &sourceAuthorUserAvatarHash,
 		)
 	} else {
 		err = r.db.QueryRowContext(ctx, query, id).Scan(
@@ -90,7 +93,8 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 			&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
 			&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
 			&sourceMsgTimestamp, &tags, &quote.CreatedAt, &deletedAt,
-			&authorDisplayName, &authorGuildNick, &sourceAuthorDisplayName, &sourceAuthorGuildNick,
+			&authorDisplayName, &authorGuildNick, &authorGuildAvatarHash, &authorUserAvatarHash,
+			&sourceAuthorDisplayName, &sourceAuthorGuildNick, &sourceAuthorGuildAvatarHash, &sourceAuthorUserAvatarHash,
 		)
 	}
 
@@ -106,10 +110,14 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 	quote.AuthorUsername = authorUsername.String
 	quote.AuthorDisplayName = authorDisplayName.String
 	quote.AuthorGuildNick = authorGuildNick.String
+	quote.AuthorGuildAvatarHash = authorGuildAvatarHash.String
+	quote.AuthorUserAvatarHash = authorUserAvatarHash.String
 	quote.SourceChannelName = sourceChannelName.String
 	quote.SourceMsgAuthorUsername = sourceMsgAuthorUsername.String
 	quote.SourceMsgAuthorDisplayName = sourceAuthorDisplayName.String
 	quote.SourceMsgAuthorGuildNick = sourceAuthorGuildNick.String
+	quote.SourceMsgAuthorGuildAvatarHash = sourceAuthorGuildAvatarHash.String
+	quote.SourceMsgAuthorUserAvatarHash = sourceAuthorUserAvatarHash.String
 	if sourceMsgTimestamp.Valid {
 		quote.SourceMsgTimestamp = sourceMsgTimestamp.Time
 	}
@@ -230,7 +238,8 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 		SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name, 
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
 		       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at,
-		       udn_author.display_name, udn_author.guild_nick, udn_source.display_name, udn_source.guild_nick
+		       udn_author.display_name, udn_author.guild_nick, udn_author.guild_avatar_hash, udn_author.user_avatar_hash,
+		       udn_source.display_name, udn_source.guild_nick, udn_source.guild_avatar_hash, udn_source.user_avatar_hash
 		%s
 		WHERE %s
 		ORDER BY %s
@@ -254,7 +263,8 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 		quote := &entities.Quote{}
 		var tags pq.StringArray
 		var guildName, authorDiscordID, authorUsername, sourceChannelName, sourceMsgAuthorUsername sql.NullString
-		var authorDisplayName, authorGuildNick, sourceAuthorDisplayName, sourceAuthorGuildNick sql.NullString
+		var authorDisplayName, authorGuildNick, authorGuildAvatarHash, authorUserAvatarHash sql.NullString
+		var sourceAuthorDisplayName, sourceAuthorGuildNick, sourceAuthorGuildAvatarHash, sourceAuthorUserAvatarHash sql.NullString
 		var sourceMsgTimestamp sql.NullTime
 
 		err := rows.Scan(
@@ -262,7 +272,8 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 			&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
 			&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
 			&sourceMsgTimestamp, &tags, &quote.CreatedAt,
-			&authorDisplayName, &authorGuildNick, &sourceAuthorDisplayName, &sourceAuthorGuildNick,
+			&authorDisplayName, &authorGuildNick, &authorGuildAvatarHash, &authorUserAvatarHash,
+			&sourceAuthorDisplayName, &sourceAuthorGuildNick, &sourceAuthorGuildAvatarHash, &sourceAuthorUserAvatarHash,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -273,10 +284,14 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 		quote.AuthorUsername = authorUsername.String
 		quote.AuthorDisplayName = authorDisplayName.String
 		quote.AuthorGuildNick = authorGuildNick.String
+		quote.AuthorGuildAvatarHash = authorGuildAvatarHash.String
+		quote.AuthorUserAvatarHash = authorUserAvatarHash.String
 		quote.SourceChannelName = sourceChannelName.String
 		quote.SourceMsgAuthorUsername = sourceMsgAuthorUsername.String
 		quote.SourceMsgAuthorDisplayName = sourceAuthorDisplayName.String
 		quote.SourceMsgAuthorGuildNick = sourceAuthorGuildNick.String
+		quote.SourceMsgAuthorGuildAvatarHash = sourceAuthorGuildAvatarHash.String
+		quote.SourceMsgAuthorUserAvatarHash = sourceAuthorUserAvatarHash.String
 		if sourceMsgTimestamp.Valid {
 			quote.SourceMsgTimestamp = sourceMsgTimestamp.Time
 		}

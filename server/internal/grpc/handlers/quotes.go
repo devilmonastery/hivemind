@@ -267,22 +267,26 @@ func (h *QuoteHandler) GetRandomQuote(ctx context.Context, req *quotespb.GetRand
 // quoteToProto converts a domain quote to protobuf
 func quoteToProto(quote *entities.Quote) *quotespb.Quote {
 	proto := &quotespb.Quote{
-		Id:                       quote.ID,
-		Body:                     quote.Body,
-		Tags:                     quote.Tags,
-		AuthorId:                 quote.AuthorID,
-		AuthorDiscordId:          quote.AuthorDiscordID,
-		AuthorUsername:           quote.AuthorDisplayName, // Use display name from view
-		AuthorGuildNick:          quote.AuthorGuildNick,   // Keep for backward compatibility
-		GuildId:                  quote.GuildID,
-		GuildName:                quote.GuildName,
-		SourceMsgId:              quote.SourceMsgID,
-		SourceChannelId:          quote.SourceChannelID,
-		SourceChannelName:        quote.SourceChannelName,
-		SourceMsgAuthorDiscordId: quote.SourceMsgAuthorDiscordID,
-		SourceMsgAuthorUsername:  quote.SourceMsgAuthorDisplayName, // Use display name from view
-		SourceMsgAuthorGuildNick: quote.SourceMsgAuthorGuildNick,   // Keep for backward compatibility
-		CreatedAt:                timestamppb.New(quote.CreatedAt),
+		Id:                             quote.ID,
+		Body:                           quote.Body,
+		Tags:                           quote.Tags,
+		AuthorId:                       quote.AuthorID,
+		AuthorDiscordId:                quote.AuthorDiscordID,
+		AuthorUsername:                 quote.AuthorDisplayName,     // Use display name from view
+		AuthorGuildNick:                quote.AuthorGuildNick,       // Keep for backward compatibility
+		AuthorGuildAvatarHash:          quote.AuthorGuildAvatarHash, // Guild-specific avatar
+		AuthorUserAvatarHash:           quote.AuthorUserAvatarHash,  // Global user avatar
+		GuildId:                        quote.GuildID,
+		GuildName:                      quote.GuildName,
+		SourceMsgId:                    quote.SourceMsgID,
+		SourceChannelId:                quote.SourceChannelID,
+		SourceChannelName:              quote.SourceChannelName,
+		SourceMsgAuthorDiscordId:       quote.SourceMsgAuthorDiscordID,
+		SourceMsgAuthorUsername:        quote.SourceMsgAuthorDisplayName,     // Use display name from view
+		SourceMsgAuthorGuildNick:       quote.SourceMsgAuthorGuildNick,       // Keep for backward compatibility
+		SourceMsgAuthorGuildAvatarHash: quote.SourceMsgAuthorGuildAvatarHash, // Guild-specific avatar of who said it
+		SourceMsgAuthorUserAvatarHash:  quote.SourceMsgAuthorUserAvatarHash,  // Global user avatar of who said it
+		CreatedAt:                      timestamppb.New(quote.CreatedAt),
 	}
 	if !quote.SourceMsgTimestamp.IsZero() {
 		proto.SourceMsgTimestamp = timestamppb.New(quote.SourceMsgTimestamp)
