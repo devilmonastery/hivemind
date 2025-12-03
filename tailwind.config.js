@@ -21,7 +21,8 @@ module.exports = {
         // High-contrast neon accents for the "glitch" effect
         neon: {
           cyan: '#00ffff',
-          magenta: '#ff00ff',
+          magenta: '#ff6bff',
+          green: '#00ff00',
           // The yellow from the sparks and sticky note
           yellow: '#fde047',
           // The red from the blinking server lights
@@ -41,6 +42,7 @@ module.exports = {
       boxShadow: {
         'neon-cyan': '0 0 10px rgba(0, 255, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.3)',
         'neon-magenta': '0 0 10px rgba(255, 0, 255, 0.5), 0 0 20px rgba(255, 0, 255, 0.3)',
+        'neon-green': '0 0 10px rgba(0, 255, 0, 0.5), 0 0 20px rgba(0, 255, 0, 0.3)',
       },
       // Custom typography for markdown rendering
       typography: ({ theme }) => ({
