@@ -428,21 +428,22 @@ func toProtoWikiMessageReference(ref *entities.WikiMessageReference) *wikipb.Wik
 	}
 
 	return &wikipb.WikiMessageReference{
-		Id:                ref.ID,
-		WikiPageId:        ref.WikiPageID,
-		MessageId:         ref.MessageID,
-		ChannelId:         ref.ChannelID,
-		GuildId:           ref.GuildID,
-		Content:           ref.Content,
-		AuthorId:          ref.AuthorID,
-		AuthorUsername:    ref.AuthorUsername,
-		AuthorDisplayName: ref.AuthorDisplayName,
-		AuthorAvatarUrl:   ref.AuthorAvatarURL,
-		MessageTimestamp:  timestamppb.New(ref.MessageTimestamp),
-		AttachmentUrls:    ref.AttachmentURLs, // Keep for backwards compatibility
-		Attachments:       protoAttachments,
-		AddedAt:           timestamppb.New(ref.AddedAt),
-		AddedByUserId:     ref.AddedByUserID,
-		DiscordLink:       discordLink,
+		Id:                    ref.ID,
+		WikiPageId:            ref.WikiPageID,
+		MessageId:             ref.MessageID,
+		ChannelId:             ref.ChannelID,
+		GuildId:               ref.GuildID,
+		Content:               ref.Content,
+		AuthorId:              ref.AuthorID,
+		AuthorUsername:        ref.AuthorUsername,
+		AuthorDisplayName:     ref.AuthorDisplayName,
+		AuthorGuildAvatarHash: ref.AuthorGuildAvatarHash,
+		AuthorUserAvatarHash:  ref.AuthorUserAvatarHash,
+		MessageTimestamp:      timestamppb.New(ref.MessageTimestamp),
+		AttachmentUrls:        ref.AttachmentURLs, // Keep for backwards compatibility
+		Attachments:           protoAttachments,
+		AddedAt:               timestamppb.New(ref.AddedAt),
+		AddedByUserId:         ref.AddedByUserID,
+		DiscordLink:           discordLink,
 	}
 }

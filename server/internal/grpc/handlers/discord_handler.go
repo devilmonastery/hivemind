@@ -125,8 +125,8 @@ func (h *DiscordHandler) UpsertGuildMember(ctx context.Context, req *discordpb.U
 		if req.DiscordGlobalName != "" {
 			discordUser.DiscordGlobalName = &req.DiscordGlobalName
 		}
-		if req.AvatarUrl != "" {
-			discordUser.AvatarURL = &req.AvatarUrl
+		if req.AvatarHash != "" {
+			discordUser.AvatarHash = &req.AvatarHash
 		}
 		now := time.Now()
 		discordUser.LastSeen = &now
@@ -180,8 +180,8 @@ func (h *DiscordHandler) UpsertGuildMembersBatch(ctx context.Context, req *disco
 			if m.DiscordGlobalName != "" {
 				discordUser.DiscordGlobalName = &m.DiscordGlobalName
 			}
-			if m.AvatarUrl != "" {
-				discordUser.AvatarURL = &m.AvatarUrl
+			if m.AvatarHash != "" {
+				discordUser.AvatarHash = &m.AvatarHash
 			}
 			now := time.Now()
 			discordUser.LastSeen = &now

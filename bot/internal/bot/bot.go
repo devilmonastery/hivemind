@@ -276,7 +276,7 @@ func (b *Bot) onGuildMemberUpdate(s *discordgo.Session, event *discordgo.GuildMe
 		req.DiscordGlobalName = event.User.GlobalName
 	}
 	if event.User.Avatar != "" {
-		req.AvatarUrl = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", event.User.ID, event.User.Avatar)
+		req.AvatarHash = event.User.Avatar
 	}
 
 	_, err := discordClient.UpsertGuildMember(ctx, req)

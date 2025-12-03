@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 )
 
 // Version is set at build time using ldflags
@@ -223,6 +225,9 @@ func LoadTemplates(path string) (*TemplateSet, error) {
 
 			// Select color deterministically based on hash
 			return colors[hashValue%len(colors)]
+		},
+		"avatarURL": func(discordID, guildID, guildAvatarHash, userAvatarHash string) string {
+			return urlutil.ConstructAvatarURL(discordID, guildID, guildAvatarHash, userAvatarHash, 128)
 		},
 		"mul": func(a, b int) int {
 			return a * b

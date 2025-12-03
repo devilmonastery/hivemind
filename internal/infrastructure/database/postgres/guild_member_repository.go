@@ -284,7 +284,8 @@ func (r *GuildMemberRepository) RefreshDisplayNames(ctx context.Context, guildID
 	query := `
 		INSERT INTO user_display_names (
 			discord_id, guild_id, display_name,
-			guild_nick, discord_global_name, discord_username
+			guild_nick, discord_global_name, discord_username,
+			guild_avatar_hash, user_avatar_hash
 		)
 		SELECT 
 			gm.discord_id,
@@ -292,7 +293,9 @@ func (r *GuildMemberRepository) RefreshDisplayNames(ctx context.Context, guildID
 			COALESCE(gm.guild_nick, du.discord_global_name, du.discord_username) AS display_name,
 			gm.guild_nick,
 			du.discord_global_name,
-			du.discord_username
+			du.discord_username,
+			gm.guild_avatar_hash,
+			du.avatar_hash
 		FROM guild_members gm
 		JOIN discord_users du ON gm.discord_id = du.discord_id
 		WHERE gm.guild_id = $1
@@ -300,7 +303,9 @@ func (r *GuildMemberRepository) RefreshDisplayNames(ctx context.Context, guildID
 			display_name = EXCLUDED.display_name,
 			guild_nick = EXCLUDED.guild_nick,
 			discord_global_name = EXCLUDED.discord_global_name,
-			discord_username = EXCLUDED.discord_username
+			discord_username = EXCLUDED.discord_username,
+			guild_avatar_hash = EXCLUDED.guild_avatar_hash,
+			user_avatar_hash = EXCLUDED.user_avatar_hash
 	`
 
 	result, err := r.db.ExecContext(ctx, query, guildID)

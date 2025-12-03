@@ -44,7 +44,7 @@ func (s *DiscordService) GetOrCreateUserFromDiscord(
 	discordID string,
 	discordUsername string,
 	discordGlobalName *string,
-	avatarURL *string,
+	avatarURL *string, // Deprecated: Use avatarHash instead, keeping for backwards compatibility
 ) (*entities.User, error) {
 	// Try to find existing Discord user mapping
 	s.logger.Debug("GetOrCreateUserFromDiscord called",
@@ -157,7 +157,7 @@ func (s *DiscordService) GetOrCreateUserFromDiscord(
 			UserID:            &userIDPtr,
 			DiscordUsername:   discordUsername,
 			DiscordGlobalName: discordGlobalName,
-			AvatarURL:         avatarURL,
+			AvatarHash:        nil, // Auto-provisioning doesn't have avatar hash
 			LinkedAt:          now,
 			LastSeen:          &now,
 		}
@@ -186,7 +186,7 @@ func (s *DiscordService) UpdateDiscordUserInfo(
 	discordID string,
 	discordUsername string,
 	discordGlobalName *string,
-	avatarURL *string,
+	avatarHash *string,
 ) error {
 	discordUser, err := s.discordUserRepo.GetByDiscordID(ctx, discordID)
 	if err != nil {
@@ -196,7 +196,7 @@ func (s *DiscordService) UpdateDiscordUserInfo(
 	// Update fields
 	discordUser.DiscordUsername = discordUsername
 	discordUser.DiscordGlobalName = discordGlobalName
-	discordUser.AvatarURL = avatarURL
+	discordUser.AvatarHash = avatarHash
 	now := time.Now()
 	discordUser.LastSeen = &now
 

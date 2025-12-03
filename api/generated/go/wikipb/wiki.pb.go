@@ -1002,12 +1002,13 @@ type WikiMessageReference struct {
 	ChannelId string `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	GuildId   string `protobuf:"bytes,5,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
 	// Captured message content (snapshot at time of reference)
-	Content           string                 `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`
-	AuthorId          string                 `protobuf:"bytes,7,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
-	AuthorUsername    string                 `protobuf:"bytes,8,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
-	AuthorDisplayName string                 `protobuf:"bytes,9,opt,name=author_display_name,json=authorDisplayName,proto3" json:"author_display_name,omitempty"`
-	AuthorAvatarUrl   string                 `protobuf:"bytes,16,opt,name=author_avatar_url,json=authorAvatarUrl,proto3" json:"author_avatar_url,omitempty"` // Discord avatar URL (joined from discord_users)
-	MessageTimestamp  *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=message_timestamp,json=messageTimestamp,proto3" json:"message_timestamp,omitempty"`
+	Content               string                 `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`
+	AuthorId              string                 `protobuf:"bytes,7,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	AuthorUsername        string                 `protobuf:"bytes,8,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
+	AuthorDisplayName     string                 `protobuf:"bytes,9,opt,name=author_display_name,json=authorDisplayName,proto3" json:"author_display_name,omitempty"`
+	AuthorGuildAvatarHash string                 `protobuf:"bytes,16,opt,name=author_guild_avatar_hash,json=authorGuildAvatarHash,proto3" json:"author_guild_avatar_hash,omitempty"` // Guild-specific avatar hash
+	AuthorUserAvatarHash  string                 `protobuf:"bytes,17,opt,name=author_user_avatar_hash,json=authorUserAvatarHash,proto3" json:"author_user_avatar_hash,omitempty"`    // Global user avatar hash
+	MessageTimestamp      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=message_timestamp,json=messageTimestamp,proto3" json:"message_timestamp,omitempty"`
 	// Attachment URLs (images, files, etc)
 	AttachmentUrls []string `protobuf:"bytes,11,rep,name=attachment_urls,json=attachmentUrls,proto3" json:"attachment_urls,omitempty"`
 	// Attachment metadata (content type, filename, size)
@@ -1114,9 +1115,16 @@ func (x *WikiMessageReference) GetAuthorDisplayName() string {
 	return ""
 }
 
-func (x *WikiMessageReference) GetAuthorAvatarUrl() string {
+func (x *WikiMessageReference) GetAuthorGuildAvatarHash() string {
 	if x != nil {
-		return x.AuthorAvatarUrl
+		return x.AuthorGuildAvatarHash
+	}
+	return ""
+}
+
+func (x *WikiMessageReference) GetAuthorUserAvatarHash() string {
+	if x != nil {
+		return x.AuthorUserAvatarHash
 	}
 	return ""
 }
@@ -1596,7 +1604,7 @@ const file_wiki_proto_rawDesc = "" +
 	"\x13WikiTitleSuggestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
-	"\x04slug\x18\x03 \x01(\tR\x04slug\"\x97\x05\n" +
+	"\x04slug\x18\x03 \x01(\tR\x04slug\"\xdb\x05\n" +
 	"\x14WikiMessageReference\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\fwiki_page_id\x18\x02 \x01(\tR\n" +
@@ -1609,8 +1617,9 @@ const file_wiki_proto_rawDesc = "" +
 	"\acontent\x18\x06 \x01(\tR\acontent\x12\x1b\n" +
 	"\tauthor_id\x18\a \x01(\tR\bauthorId\x12'\n" +
 	"\x0fauthor_username\x18\b \x01(\tR\x0eauthorUsername\x12.\n" +
-	"\x13author_display_name\x18\t \x01(\tR\x11authorDisplayName\x12*\n" +
-	"\x11author_avatar_url\x18\x10 \x01(\tR\x0fauthorAvatarUrl\x12G\n" +
+	"\x13author_display_name\x18\t \x01(\tR\x11authorDisplayName\x127\n" +
+	"\x18author_guild_avatar_hash\x18\x10 \x01(\tR\x15authorGuildAvatarHash\x125\n" +
+	"\x17author_user_avatar_hash\x18\x11 \x01(\tR\x14authorUserAvatarHash\x12G\n" +
 	"\x11message_timestamp\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\x10messageTimestamp\x12'\n" +
 	"\x0fattachment_urls\x18\v \x03(\tR\x0eattachmentUrls\x12C\n" +

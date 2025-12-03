@@ -85,7 +85,7 @@ message GuildMember {
   // Discord user info (for batch upsert to ensure user exists)
   string discord_username = 9;
   string discord_global_name = 10;
-  string avatar_url = 11;
+  string avatar_hash = 11; // User avatar hash (not URL)
 }
 
 message UpsertGuildMemberRequest {
@@ -99,7 +99,7 @@ message UpsertGuildMemberRequest {
   // Discord user info (optional, for updating discord_users table)
   string discord_username = 7;
   string discord_global_name = 8;
-  string avatar_url = 9;
+  string avatar_hash = 9; // User avatar hash (not URL)
 }
 
 message UpsertGuildMemberResponse {

@@ -270,7 +270,7 @@ func (s *AuthHandler) ExchangeAuthCode(
 			DiscordID:       claims.Subject,
 			UserID:          &userIDPtr,
 			DiscordUsername: claims.Name,
-			AvatarURL:       &claims.Picture,
+			AvatarHash:      nil, // OIDC provides URL, not hash - will be populated by bot sync
 			LinkedAt:        time.Now(),
 			LastSeen:        nil,
 		}
@@ -320,9 +320,8 @@ func (s *AuthHandler) ExchangeAuthCode(
 			displayName = discordUser.DiscordUsername
 		}
 		// Use Discord avatar
-		if discordUser.AvatarURL != nil {
-			picture = *discordUser.AvatarURL
-		}
+		// Note: DiscordUser now stores avatar_hash, not full URL
+		// For now, we keep picture from OIDC claims for User.AvatarURL
 	}
 
 	// Update user's avatar URL and timezone from this login
@@ -974,7 +973,7 @@ func (s *AuthHandler) LoginWithOIDC(
 			DiscordID:       claims.Subject,
 			UserID:          &userIDPtr,
 			DiscordUsername: claims.Name,
-			AvatarURL:       &claims.Picture,
+			AvatarHash:      nil, // OIDC provides URL, not hash - will be populated by bot sync
 			LinkedAt:        time.Now(),
 			LastSeen:        nil,
 		}

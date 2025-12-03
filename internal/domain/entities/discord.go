@@ -11,7 +11,7 @@ type DiscordUser struct {
 	UserID            *string    `json:"user_id,omitempty" db:"user_id"`
 	DiscordUsername   string     `json:"discord_username" db:"discord_username"`
 	DiscordGlobalName *string    `json:"discord_global_name,omitempty" db:"discord_global_name"`
-	AvatarURL         *string    `json:"avatar_url,omitempty" db:"avatar_url"`
+	AvatarHash        *string    `json:"avatar_hash,omitempty" db:"avatar_hash"`
 	LinkedAt          time.Time  `json:"linked_at" db:"linked_at"`
 	LastSeen          *time.Time `json:"last_seen,omitempty" db:"last_seen"`
 }
