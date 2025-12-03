@@ -80,8 +80,12 @@ func (r *wikiPageRepository) GetByID(ctx context.Context, id string, userDiscord
 
 	// Build query with optional ACL check via guild_members JOIN
 	query := `
-		SELECT wp.id, wp.title, wp.body, wp.author_id, wp.guild_id, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wp.deleted_at
+		SELECT wp.id, wp.title, wp.body, wp.author_id, wp.guild_id, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wp.deleted_at,
+		       udn.display_name
 		FROM wiki_pages wp
+		LEFT JOIN users u ON wp.author_id = u.id
+		LEFT JOIN discord_users du ON u.id = du.user_id
+		LEFT JOIN user_display_names udn ON du.discord_id = udn.discord_id AND wp.guild_id = udn.guild_id
 	`
 
 	// Add ACL check if userDiscordID provided (non-admin)
@@ -97,7 +101,7 @@ func (r *wikiPageRepository) GetByID(ctx context.Context, id string, userDiscord
 
 	page := &entities.WikiPage{}
 	var tags pq.StringArray
-	var channelID sql.NullString
+	var channelID, authorDisplayName sql.NullString
 	var deletedAt sql.NullTime
 
 	var err error
@@ -105,11 +109,13 @@ func (r *wikiPageRepository) GetByID(ctx context.Context, id string, userDiscord
 		err = r.db.QueryRowContext(ctx, query, id, userDiscordID).Scan(
 			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
 			&channelID, &tags, &page.CreatedAt, &page.UpdatedAt, &deletedAt,
+			&authorDisplayName,
 		)
 	} else {
 		err = r.db.QueryRowContext(ctx, query, id).Scan(
 			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
 			&channelID, &tags, &page.CreatedAt, &page.UpdatedAt, &deletedAt,
+			&authorDisplayName,
 		)
 	}
 	if err == sql.ErrNoRows {
@@ -120,6 +126,7 @@ func (r *wikiPageRepository) GetByID(ctx context.Context, id string, userDiscord
 	}
 
 	page.ChannelID = channelID.String
+	page.AuthorDisplayName = authorDisplayName.String
 	page.Tags = tags
 	page.Slug = slug.Make(page.Title)
 	if deletedAt.Valid {
@@ -276,10 +283,14 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 
 	// Get pages with canonical slug from wiki_titles
 	query := fmt.Sprintf(`
-		SELECT wp.id, wt.display_title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wt.page_slug
+		SELECT wp.id, wt.display_title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wt.page_slug,
+		       udn.display_name
 		FROM %s
 		LEFT JOIN discord_guilds dg ON wp.guild_id = dg.guild_id
 		LEFT JOIN wiki_titles wt ON wp.id = wt.page_id AND wt.is_canonical = TRUE
+		LEFT JOIN users u ON wp.author_id = u.id
+		LEFT JOIN discord_users du ON u.id = du.user_id
+		LEFT JOIN user_display_names udn ON du.discord_id = udn.discord_id AND wp.guild_id = udn.guild_id
 		WHERE %s
 		ORDER BY wp.%s %s
 		LIMIT $%d OFFSET $%d
@@ -300,12 +311,13 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 	for rows.Next() {
 		page := &entities.WikiPage{}
 		var tags pq.StringArray
-		var guildName, channelID sql.NullString
+		var guildName, channelID, authorDisplayName sql.NullString
 		var pageSlug sql.NullString
 
 		err := rows.Scan(
 			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID, &guildName,
 			&channelID, &tags, &page.CreatedAt, &page.UpdatedAt, &pageSlug,
+			&authorDisplayName,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -313,6 +325,7 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 
 		page.GuildName = guildName.String
 		page.ChannelID = channelID.String
+		page.AuthorDisplayName = authorDisplayName.String
 		page.Tags = tags
 		if pageSlug.Valid {
 			page.Slug = pageSlug.String
@@ -397,10 +410,14 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 	}
 
 	searchQuery := fmt.Sprintf(`
-		SELECT wp.id, wt.display_title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wt.page_slug
+		SELECT wp.id, wt.display_title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wt.page_slug,
+		       udn.display_name
 		FROM %s
 		LEFT JOIN discord_guilds dg ON wp.guild_id = dg.guild_id
 		LEFT JOIN wiki_titles wt ON wp.id = wt.page_id AND wt.is_canonical = TRUE
+		LEFT JOIN users u ON wp.author_id = u.id
+		LEFT JOIN discord_users du ON u.id = du.user_id
+		LEFT JOIN user_display_names udn ON du.discord_id = udn.discord_id AND wp.guild_id = udn.guild_id
 		WHERE %s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
@@ -422,13 +439,13 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 	for rows.Next() {
 		page := &entities.WikiPage{}
 		var tagArray pq.StringArray
-		var channelID sql.NullString
-		var guildName sql.NullString
+		var channelID, guildName, authorDisplayName sql.NullString
 		var pageSlug sql.NullString
 
 		err := rows.Scan(
 			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
 			&guildName, &channelID, &tagArray, &page.CreatedAt, &page.UpdatedAt, &pageSlug,
+			&authorDisplayName,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -436,6 +453,7 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 
 		page.ChannelID = channelID.String
 		page.GuildName = guildName.String
+		page.AuthorDisplayName = authorDisplayName.String
 		page.Tags = tagArray
 		if pageSlug.Valid {
 			page.Slug = pageSlug.String

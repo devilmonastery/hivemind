@@ -32,7 +32,15 @@
                 </thead>
                 <tbody class="divide-y divide-hive-metal">
                     {{range .RecentActivity}}
-                    <tr class="hover:bg-hive-surface transition-colors">
+                    {{$url := ""}}
+                    {{if eq .Type "wiki"}}
+                        {{$url = printf "/wiki?slug=%s&guild_id=%s" .Slug .GuildID}}
+                    {{else if eq .Type "note"}}
+                        {{$url = printf "/note?id=%s" .ID}}
+                    {{else if eq .Type "quote"}}
+                        {{$url = printf "/quote?id=%s" .ID}}
+                    {{end}}
+                    <tr class="hover:bg-hive-surface transition-colors cursor-pointer" onclick="window.location='{{$url}}'">
                         <td class="px-4 py-3 whitespace-nowrap">
                             {{if eq .Type "note"}}
                             <span class="px-2 py-1 bg-neon-cyan bg-opacity-20 text-neon-cyan text-xs font-mono rounded border border-neon-cyan">
@@ -50,29 +58,13 @@
                         </td>
                         <td class="px-4 py-3">
                             {{if .Title}}
-                            {{if eq .Type "wiki"}}
-                            <a href="/wiki?slug={{.Slug}}&guild_id={{.GuildID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
+                            <span class="font-semibold text-gray-100">
                                 {{.Title}}
-                            </a>
-                            {{else if eq .Type "note"}}
-                            <a href="/note?id={{.ID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
-                                {{.Title}}
-                            </a>
-                            {{else if eq .Type "quote"}}
-                            <a href="/quote?id={{.ID}}" class="font-semibold text-gray-100 hover:text-neon-cyan transition-colors">
-                                {{.Title}}
-                            </a>
-                            {{end}}
+                            </span>
                             {{else}}
-                            {{if eq .Type "note"}}
-                            <a href="/note?id={{.ID}}" class="text-gray-400 italic hover:text-neon-cyan transition-colors">
+                            <span class="text-gray-400 italic">
                                 (no title)
-                            </a>
-                            {{else if eq .Type "quote"}}
-                            <a href="/quote?id={{.ID}}" class="text-gray-400 italic hover:text-neon-cyan transition-colors">
-                                (no title)
-                            </a>
-                            {{end}}
+                            </span>
                             {{end}}
                         </td>
                         <td class="px-4 py-3 max-w-md">

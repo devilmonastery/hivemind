@@ -61,8 +61,7 @@ func (h *wikiHandler) CreateWikiPage(ctx context.Context, req *wikipb.CreateWiki
 		return nil, err
 	}
 
-	authorUsername := h.getUsernameForAuthor(ctx, created.AuthorID)
-	return toProtoWikiPage(created, authorUsername), nil
+	return toProtoWikiPage(created), nil
 }
 
 func (h *wikiHandler) GetWikiPage(ctx context.Context, req *wikipb.GetWikiPageRequest) (*wikipb.WikiPage, error) {
@@ -78,7 +77,7 @@ func (h *wikiHandler) GetWikiPage(ctx context.Context, req *wikipb.GetWikiPageRe
 		return nil, err
 	}
 
-	return toProtoWikiPage(page, userCtx.Username), nil
+	return toProtoWikiPage(page), nil
 }
 
 func (h *wikiHandler) GetWikiPageByTitle(ctx context.Context, req *wikipb.GetWikiPageByTitleRequest) (*wikipb.WikiPage, error) {
@@ -97,7 +96,7 @@ func (h *wikiHandler) GetWikiPageByTitle(ctx context.Context, req *wikipb.GetWik
 		return nil, status.Error(codes.NotFound, "wiki page not found")
 	}
 
-	return toProtoWikiPage(page, userCtx.Username), nil
+	return toProtoWikiPage(page), nil
 }
 
 func (h *wikiHandler) SearchWikiPages(ctx context.Context, req *wikipb.SearchWikiPagesRequest) (*wikipb.SearchWikiPagesResponse, error) {
@@ -120,8 +119,7 @@ func (h *wikiHandler) SearchWikiPages(ctx context.Context, req *wikipb.SearchWik
 
 	protoPages := make([]*wikipb.WikiPage, len(pages))
 	for i, page := range pages {
-		authorUsername := h.getUsernameForAuthor(ctx, page.AuthorID)
-		protoPages[i] = toProtoWikiPage(page, authorUsername)
+		protoPages[i] = toProtoWikiPage(page)
 	}
 
 	return &wikipb.SearchWikiPagesResponse{
@@ -150,7 +148,7 @@ func (h *wikiHandler) UpdateWikiPage(ctx context.Context, req *wikipb.UpdateWiki
 		return nil, err
 	}
 
-	return toProtoWikiPage(updated, userCtx.Username), nil
+	return toProtoWikiPage(updated), nil
 }
 
 func (h *wikiHandler) UpsertWikiPage(ctx context.Context, req *wikipb.UpsertWikiPageRequest) (*wikipb.UpsertWikiPageResponse, error) {
@@ -186,9 +184,8 @@ func (h *wikiHandler) UpsertWikiPage(ctx context.Context, req *wikipb.UpsertWiki
 		return nil, err
 	}
 
-	authorUsername := h.getUsernameForAuthor(ctx, upserted.AuthorID)
 	return &wikipb.UpsertWikiPageResponse{
-		Page:    toProtoWikiPage(upserted, authorUsername),
+		Page:    toProtoWikiPage(upserted),
 		Created: created,
 	}, nil
 }
@@ -236,8 +233,7 @@ func (h *wikiHandler) ListWikiPages(ctx context.Context, req *wikipb.ListWikiPag
 
 	protoPages := make([]*wikipb.WikiPage, len(pages))
 	for i, page := range pages {
-		authorUsername := h.getUsernameForAuthor(ctx, page.AuthorID)
-		protoPages[i] = toProtoWikiPage(page, authorUsername)
+		protoPages[i] = toProtoWikiPage(page)
 	}
 
 	return &wikipb.ListWikiPagesResponse{
@@ -246,14 +242,14 @@ func (h *wikiHandler) ListWikiPages(ctx context.Context, req *wikipb.ListWikiPag
 	}, nil
 }
 
-func toProtoWikiPage(page *entities.WikiPage, authorUsername string) *wikipb.WikiPage {
+func toProtoWikiPage(page *entities.WikiPage) *wikipb.WikiPage {
 	return &wikipb.WikiPage{
 		Id:             page.ID,
 		Title:          page.Title,
 		Slug:           page.Slug,
 		Body:           page.Body,
 		AuthorId:       page.AuthorID,
-		AuthorUsername: authorUsername,
+		AuthorUsername: page.AuthorDisplayName, // Display name from user_display_names view
 		GuildId:        page.GuildID,
 		GuildName:      page.GuildName,
 		ChannelId:      page.ChannelID,
@@ -261,21 +257,6 @@ func toProtoWikiPage(page *entities.WikiPage, authorUsername string) *wikipb.Wik
 		CreatedAt:      timestamppb.New(page.CreatedAt),
 		UpdatedAt:      timestamppb.New(page.UpdatedAt),
 	}
-}
-
-// getUsernameForAuthor looks up the username for a given author ID
-func (h *wikiHandler) getUsernameForAuthor(ctx context.Context, authorID string) string {
-	// Try to get Discord user for this author
-	discordUser, err := h.discordService.GetDiscordUserByHivemindID(ctx, authorID)
-	if err == nil && discordUser != nil {
-		// Prefer global name, fallback to username
-		if discordUser.DiscordGlobalName != nil && *discordUser.DiscordGlobalName != "" {
-			return *discordUser.DiscordGlobalName
-		}
-		return discordUser.DiscordUsername
-	}
-	// Fallback to author ID if username not found
-	return authorID
 }
 
 // getUserDiscordID extracts Discord ID from context for ACL filtering
@@ -427,8 +408,7 @@ func (h *wikiHandler) MergeWikiPages(ctx context.Context, req *wikipb.MergeWikiP
 		return nil, status.Error(codes.Internal, "failed to merge wiki pages")
 	}
 
-	authorUsername := h.getUsernameForAuthor(ctx, merged.AuthorID)
-	return toProtoWikiPage(merged, authorUsername), nil
+	return toProtoWikiPage(merged), nil
 }
 
 func toProtoWikiMessageReference(ref *entities.WikiMessageReference) *wikipb.WikiMessageReference {
