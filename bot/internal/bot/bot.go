@@ -259,10 +259,11 @@ func (b *Bot) onGuildMemberUpdate(s *discordgo.Session, event *discordgo.GuildMe
 
 	// Prepare updated member data
 	req := &discordpb.UpsertGuildMemberRequest{
-		GuildId:   event.GuildID,
-		DiscordId: event.User.ID,
-		JoinedAt:  timestamppb.New(event.JoinedAt),
-		Roles:     event.Roles,
+		GuildId:         event.GuildID,
+		DiscordId:       event.User.ID,
+		JoinedAt:        timestamppb.New(event.JoinedAt),
+		Roles:           event.Roles,
+		DiscordUsername: event.User.Username, // Include for discord_users update
 	}
 
 	if event.Nick != "" {
@@ -270,6 +271,12 @@ func (b *Bot) onGuildMemberUpdate(s *discordgo.Session, event *discordgo.GuildMe
 	}
 	if event.Avatar != "" {
 		req.GuildAvatarHash = event.Avatar
+	}
+	if event.User.GlobalName != "" {
+		req.DiscordGlobalName = event.User.GlobalName
+	}
+	if event.User.Avatar != "" {
+		req.AvatarUrl = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", event.User.ID, event.User.Avatar)
 	}
 
 	_, err := discordClient.UpsertGuildMember(ctx, req)

@@ -139,16 +139,10 @@ func (h *Handler) fetchRecentActivity(ctx context.Context, r *http.Request, w ht
 		h.log.Debug("fetched quotes from server",
 			slog.Int("count", len(quotesResp.Quotes)))
 		for _, quote := range quotesResp.Quotes {
-			// Use display name from user_display_names view (now in SourceMsgAuthorUsername)
-			// Build title as "<author> in <channel>"
-			title := quote.SourceMsgAuthorUsername
-			if quote.SourceChannelName != "" {
-				title = title + " in " + quote.SourceChannelName
-			}
 			activity = append(activity, ActivityItem{
 				Type:        "quote",
 				ID:          quote.Id,
-				Title:       title, // "<author> in <channel>"
+				Title:       "", // empty title for quotes
 				Body:        quote.Body,
 				Preview:     truncateText(quote.Body, 200),
 				GuildID:     quote.GuildId,

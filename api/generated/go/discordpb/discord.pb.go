@@ -537,8 +537,12 @@ type UpsertGuildMemberRequest struct {
 	GuildAvatarHash string                 `protobuf:"bytes,4,opt,name=guild_avatar_hash,json=guildAvatarHash,proto3" json:"guild_avatar_hash,omitempty"`
 	Roles           []string               `protobuf:"bytes,5,rep,name=roles,proto3" json:"roles,omitempty"`
 	JoinedAt        *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Discord user info (optional, for updating discord_users table)
+	DiscordUsername   string `protobuf:"bytes,7,opt,name=discord_username,json=discordUsername,proto3" json:"discord_username,omitempty"`
+	DiscordGlobalName string `protobuf:"bytes,8,opt,name=discord_global_name,json=discordGlobalName,proto3" json:"discord_global_name,omitempty"`
+	AvatarUrl         string `protobuf:"bytes,9,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpsertGuildMemberRequest) Reset() {
@@ -611,6 +615,27 @@ func (x *UpsertGuildMemberRequest) GetJoinedAt() *timestamppb.Timestamp {
 		return x.JoinedAt
 	}
 	return nil
+}
+
+func (x *UpsertGuildMemberRequest) GetDiscordUsername() string {
+	if x != nil {
+		return x.DiscordUsername
+	}
+	return ""
+}
+
+func (x *UpsertGuildMemberRequest) GetDiscordGlobalName() string {
+	if x != nil {
+		return x.DiscordGlobalName
+	}
+	return ""
+}
+
+func (x *UpsertGuildMemberRequest) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
 }
 
 type UpsertGuildMemberResponse struct {
@@ -1070,7 +1095,7 @@ const file_discord_proto_rawDesc = "" +
 	"\x13discord_global_name\x18\n" +
 	" \x01(\tR\x11discordGlobalName\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\v \x01(\tR\tavatarUrl\"\xee\x01\n" +
+	"avatar_url\x18\v \x01(\tR\tavatarUrl\"\xe8\x02\n" +
 	"\x18UpsertGuildMemberRequest\x12\x19\n" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x1d\n" +
 	"\n" +
@@ -1079,7 +1104,11 @@ const file_discord_proto_rawDesc = "" +
 	"guild_nick\x18\x03 \x01(\tR\tguildNick\x12*\n" +
 	"\x11guild_avatar_hash\x18\x04 \x01(\tR\x0fguildAvatarHash\x12\x14\n" +
 	"\x05roles\x18\x05 \x03(\tR\x05roles\x127\n" +
-	"\tjoined_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"5\n" +
+	"\tjoined_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\x12)\n" +
+	"\x10discord_username\x18\a \x01(\tR\x0fdiscordUsername\x12.\n" +
+	"\x13discord_global_name\x18\b \x01(\tR\x11discordGlobalName\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\t \x01(\tR\tavatarUrl\"5\n" +
 	"\x19UpsertGuildMemberResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"Y\n" +
 	"\x1eUpsertGuildMembersBatchRequest\x127\n" +

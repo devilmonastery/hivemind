@@ -273,3 +273,49 @@ func (r *GuildMemberRepository) CountGuildMembers(ctx context.Context, guildID s
 	err := r.db.GetContext(ctx, &count, query, guildID)
 	return count, err
 }
+
+// RefreshDisplayNames updates the user_display_names table for a guild
+// This keeps the denormalized display names in sync after member updates
+func (r *GuildMemberRepository) RefreshDisplayNames(ctx context.Context, guildID string) error {
+	r.log.Debug("refreshing display names for guild", slog.String("guild_id", guildID))
+
+	// Upsert all display names for this guild using SQL-based COALESCE logic
+	// This ensures single source of truth while allowing incremental updates
+	query := `
+		INSERT INTO user_display_names (
+			discord_id, guild_id, display_name,
+			guild_nick, discord_global_name, discord_username
+		)
+		SELECT 
+			gm.discord_id,
+			gm.guild_id,
+			COALESCE(gm.guild_nick, du.discord_global_name, du.discord_username) AS display_name,
+			gm.guild_nick,
+			du.discord_global_name,
+			du.discord_username
+		FROM guild_members gm
+		JOIN discord_users du ON gm.discord_id = du.discord_id
+		WHERE gm.guild_id = $1
+		ON CONFLICT (discord_id, guild_id) DO UPDATE SET
+			display_name = EXCLUDED.display_name,
+			guild_nick = EXCLUDED.guild_nick,
+			discord_global_name = EXCLUDED.discord_global_name,
+			discord_username = EXCLUDED.discord_username
+	`
+
+	result, err := r.db.ExecContext(ctx, query, guildID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	r.log.Debug("refreshed display names",
+		slog.String("guild_id", guildID),
+		slog.Int64("rows_affected", rows))
+
+	return nil
+}

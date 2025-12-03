@@ -367,7 +367,24 @@ func (s *DiscordService) UpsertGuildMember(
 	ctx context.Context,
 	member *entities.GuildMember,
 ) error {
-	return s.guildMemberRepo.Upsert(ctx, member)
+	if err := s.guildMemberRepo.Upsert(ctx, member); err != nil {
+		return err
+	}
+
+	// Refresh display names for this specific guild member
+	if err := s.guildMemberRepo.RefreshDisplayNames(ctx, member.GuildID); err != nil {
+		return fmt.Errorf("failed to refresh display names: %w", err)
+	}
+
+	return nil
+}
+
+// UpsertDiscordUser creates or updates a discord user record
+func (s *DiscordService) UpsertDiscordUser(
+	ctx context.Context,
+	discordUser *entities.DiscordUser,
+) error {
+	return s.discordUserRepo.Upsert(ctx, discordUser)
 }
 
 // UpsertDiscordUsersBatch efficiently upserts multiple Discord users
@@ -408,6 +425,11 @@ func (s *DiscordService) UpsertGuildMembersBatch(
 	s.logger.Info("batch upserted guild members",
 		slog.Int("count", len(members)),
 		slog.String("guild_id", members[0].GuildID))
+
+	// Refresh the denormalized display names table for this guild
+	if err := s.guildMemberRepo.RefreshDisplayNames(ctx, members[0].GuildID); err != nil {
+		return fmt.Errorf("failed to refresh display names: %w", err)
+	}
 
 	return nil
 }

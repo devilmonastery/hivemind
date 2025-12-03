@@ -114,6 +114,28 @@ func (h *DiscordHandler) UpsertGuildMember(ctx context.Context, req *discordpb.U
 		return nil, status.Error(codes.InvalidArgument, "discord_id is required")
 	}
 
+	// If user data is provided, update discord_users first
+	if req.DiscordUsername != "" {
+		discordUser := &entities.DiscordUser{
+			DiscordID:       req.DiscordId,
+			UserID:          nil,
+			DiscordUsername: req.DiscordUsername,
+			LinkedAt:        time.Now(),
+		}
+		if req.DiscordGlobalName != "" {
+			discordUser.DiscordGlobalName = &req.DiscordGlobalName
+		}
+		if req.AvatarUrl != "" {
+			discordUser.AvatarURL = &req.AvatarUrl
+		}
+		now := time.Now()
+		discordUser.LastSeen = &now
+
+		if err := h.discordService.UpsertDiscordUser(ctx, discordUser); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to upsert discord user: %v", err)
+		}
+	}
+
 	member := &entities.GuildMember{
 		GuildID:   req.GuildId,
 		DiscordID: req.DiscordId,

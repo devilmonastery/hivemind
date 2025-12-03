@@ -63,7 +63,7 @@
                             </span>
                             {{else}}
                             <span class="text-gray-400 italic">
-                                (no title)
+                                {{ if ne .Type "quote"}} (no title) {{ end }}
                             </span>
                             {{end}}
                         </td>

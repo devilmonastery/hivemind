@@ -205,6 +205,21 @@ See `configs/k8s/` for complete RBAC and deployment examples.
 - Leader holds lease for 15s, renews every 10s
 - Failed leaders are detected within 2-5 seconds
 
+## Background Jobs
+
+The bot runs periodic background jobs:
+
+### Guild Member Sync
+
+- **Frequency**: Every 24 hours
+- **Purpose**: Syncs guild member data (nicknames, roles, usernames) with the database
+- **Maintenance**: Automatically updates the `user_display_names` table for efficient display name lookups
+- **Behavior**:
+  - Standalone/Docker: All instances run sync jobs independently (idempotent, safe but duplicate work)
+  - Kubernetes: Only the leader replica runs sync jobs (via leader election)
+
+The sync ensures that display names (guild nick > global name > username) are always up-to-date in queries without expensive real-time joins.
+
 ## Commands
 
 ### Wiki Commands
