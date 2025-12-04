@@ -45,8 +45,11 @@ backend:
   # See example_server.yaml for details.
   service_token: ""
   
-  # Metrics server port (optional, defaults to 9100)
-  metrics_port: 9100
+  # Base URL for the web interface (used in bot response links)
+  web_base_url: "http://localhost:8080"
+  
+  # Metrics server port (for Prometheus scraping)
+  metrics_port: 9091
 
 logging:
   level: "info"      # debug, info, warn, error
