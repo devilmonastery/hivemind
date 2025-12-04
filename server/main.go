@@ -31,6 +31,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/infrastructure/database/postgres"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
 	"github.com/devilmonastery/hivemind/internal/pkg/logger"
+	_ "github.com/devilmonastery/hivemind/internal/pkg/metrics" // Initialize metrics
 	"github.com/devilmonastery/hivemind/migrations"
 	"github.com/devilmonastery/hivemind/server/internal/grpc/handlers"
 	"github.com/devilmonastery/hivemind/server/internal/grpc/interceptors"

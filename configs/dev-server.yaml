@@ -25,6 +25,9 @@ grpc:
   host: "127.0.0.1"
   # Port to listen on
   port: 4153
+  # Metrics port (defaults to grpc.port + 10 = 4163)
+  # Endpoints: /metrics (Prometheus), /health, /readiness
+  metrics_port: 0  # 0 = auto (port + 10)
 
 # Logging configuration
 logging:

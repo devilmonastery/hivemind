@@ -8,6 +8,8 @@ server:
   host: "localhost"
   # Port to listen on
   port: 8080
+  # Metrics port for Prometheus (0 = port + 10 = 8090)
+  metrics_port: 9092
 
 # gRPC backend configuration
 grpc:
