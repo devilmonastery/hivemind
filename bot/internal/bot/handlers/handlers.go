@@ -3,18 +3,42 @@ package handlers
 import (
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 
 	"github.com/devilmonastery/hivemind/bot/internal/config"
 	"github.com/devilmonastery/hivemind/internal/client"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 // HandleInteraction routes interactions to the appropriate handler
 func HandleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client, cache *TitlesCache) {
+	start := time.Now()
+	interactionType := i.Type.String()
+	customID := ""
+
+	// Track interaction metrics
+	defer func() {
+		status := "success"
+		if r := recover(); r != nil {
+			status = "error"
+			panic(r) // re-panic after recording
+		}
+
+		switch i.Type {
+		case discordgo.InteractionMessageComponent:
+			customID = i.MessageComponentData().CustomID
+		case discordgo.InteractionModalSubmit:
+			customID = i.ModalSubmitData().CustomID
+		}
+
+		metrics.DiscordInteractions.WithLabelValues(interactionType, customID, status).Inc()
+	}()
+
 	switch i.Type {
 	case discordgo.InteractionApplicationCommand:
-		handleCommand(s, i, cfg, log, grpcClient)
+		handleCommand(s, i, cfg, log, grpcClient, start)
 	case discordgo.InteractionMessageComponent:
 		handleComponent(s, i, cfg, log, grpcClient)
 	case discordgo.InteractionModalSubmit:
@@ -24,14 +48,32 @@ func HandleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, cfg
 	}
 }
 
-func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
+func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client, start time.Time) {
 	commandName := i.ApplicationCommandData().Name
+	subcommand := ""
+
+	// Extract subcommand if it exists
+	if len(i.ApplicationCommandData().Options) > 0 && i.ApplicationCommandData().Options[0].Type == discordgo.ApplicationCommandOptionSubCommand {
+		subcommand = i.ApplicationCommandData().Options[0].Name
+	}
 
 	log.Info("command received",
 		slog.String("command", commandName),
 		slog.String("user_id", i.Member.User.ID),
 		slog.String("guild_id", i.GuildID),
 	)
+
+	// Track command metrics
+	defer func() {
+		status := "success"
+		if r := recover(); r != nil {
+			status = "error"
+			panic(r) // re-panic after recording
+		}
+		duration := time.Since(start).Milliseconds()
+		metrics.DiscordCommands.WithLabelValues(commandName, subcommand, status).Inc()
+		metrics.DiscordCommandDuration.WithLabelValues(commandName, subcommand).Observe(float64(duration))
+	}()
 
 	switch commandName {
 	case "ping":
