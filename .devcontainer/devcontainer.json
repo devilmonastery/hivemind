@@ -79,9 +79,10 @@
   // Set container user
   "remoteUser": "vscode",
 
-  // Mount docker socket for building images
+  // Mount docker socket for building images and kubeconfig for k8s access
   "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube,type=bind"
   ],
 
   "features": {
