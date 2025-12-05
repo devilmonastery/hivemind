@@ -19,6 +19,7 @@ import (
 	"github.com/devilmonastery/hivemind/bot/internal/bot/handlers"
 	"github.com/devilmonastery/hivemind/bot/internal/config"
 	botgrpc "github.com/devilmonastery/hivemind/bot/internal/grpc"
+	botmetrics "github.com/devilmonastery/hivemind/bot/internal/metrics"
 	"github.com/devilmonastery/hivemind/internal/client"
 	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 )
@@ -51,6 +52,9 @@ func New(cfg *config.Config, log *slog.Logger) (*Bot, error) {
 		discordgo.IntentsGuildMessages |
 		discordgo.IntentsGuildMembers |
 		discordgo.IntentsMessageContent
+
+	// Wrap HTTP client with metrics transport for Discord API monitoring
+	session.Client.Transport = botmetrics.NewDiscordMetricsTransport(nil)
 
 	// Create gRPC client for backend communication
 	grpcClient, err := botgrpc.NewClient(cfg)
