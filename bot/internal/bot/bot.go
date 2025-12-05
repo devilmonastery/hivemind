@@ -230,12 +230,19 @@ func (b *Bot) onGuildMemberAdd(s *discordgo.Session, event *discordgo.GuildMembe
 
 	// Prepare guild member data
 	req := &discordpb.UpsertGuildMemberRequest{
-		GuildId:   event.GuildID,
-		DiscordId: event.User.ID,
-		JoinedAt:  timestamppb.New(event.JoinedAt),
-		Roles:     event.Roles,
+		GuildId:         event.GuildID,
+		DiscordId:       event.User.ID,
+		JoinedAt:        timestamppb.New(event.JoinedAt),
+		Roles:           event.Roles,
+		DiscordUsername: event.User.Username,
 	}
 
+	if event.User.GlobalName != "" {
+		req.DiscordGlobalName = event.User.GlobalName
+	}
+	if event.User.Avatar != "" {
+		req.AvatarHash = event.User.Avatar
+	}
 	if event.Nick != "" {
 		req.GuildNick = event.Nick
 	}
