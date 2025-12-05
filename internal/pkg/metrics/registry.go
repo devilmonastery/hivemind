@@ -194,9 +194,9 @@ var (
 	DiscordAPICalls = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "hivemind_discord_api_calls_total",
-			Help: "Total Discord API calls by method, bucket, and status code",
+			Help: "Total Discord API calls by method, route (normalized path), bucket (Discord's rate limit bucket ID), and status code",
 		},
-		[]string{"method", "bucket", "status_code"},
+		[]string{"method", "route", "bucket", "status_code"},
 	)
 
 	// DiscordAPIDuration tracks Discord API latency
@@ -208,61 +208,61 @@ var (
 			NativeHistogramMaxBucketNumber:  100,
 			NativeHistogramMinResetDuration: 1 * time.Hour,
 		},
-		[]string{"method", "bucket"},
+		[]string{"method", "route", "bucket"},
 	)
 
 	// DiscordAPIErrors tracks Discord API errors
 	DiscordAPIErrors = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "hivemind_discord_api_errors_total",
-			Help: "Total Discord API errors by bucket and error type",
+			Help: "Total Discord API errors by route, bucket, and error type",
 		},
-		[]string{"bucket", "error_type"},
+		[]string{"route", "bucket", "error_type"},
 	)
 
 	// DiscordRateLimitRemaining tracks rate limit remaining requests
 	DiscordRateLimitRemaining = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "hivemind_discord_ratelimit_remaining",
-			Help: "Discord rate limit remaining requests",
+			Help: "Discord rate limit remaining requests (by route and bucket)",
 		},
-		[]string{"bucket"},
+		[]string{"route", "bucket"},
 	)
 
 	// DiscordRateLimitLimit tracks rate limit maximum
 	DiscordRateLimitLimit = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "hivemind_discord_ratelimit_limit",
-			Help: "Discord rate limit maximum requests",
+			Help: "Discord rate limit maximum requests (by route and bucket)",
 		},
-		[]string{"bucket"},
+		[]string{"route", "bucket"},
 	)
 
 	// DiscordRateLimitReset tracks rate limit reset time
 	DiscordRateLimitReset = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "hivemind_discord_ratelimit_reset_timestamp",
-			Help: "Discord rate limit reset time (Unix timestamp)",
+			Help: "Discord rate limit reset time (Unix timestamp, by route and bucket)",
 		},
-		[]string{"bucket"},
+		[]string{"route", "bucket"},
 	)
 
 	// DiscordRateLimitHits tracks rate limit hits (429 responses)
 	DiscordRateLimitHits = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "hivemind_discord_ratelimit_hits_total",
-			Help: "Total Discord rate limit hits (429 responses)",
+			Help: "Total Discord rate limit hits (429 responses, by route and bucket)",
 		},
-		[]string{"bucket"},
+		[]string{"route", "bucket"},
 	)
 
-	// DiscordEvents tracks gateway events received
+	// DiscordEvents tracks Discord gateway event counts by event type and status
 	DiscordEvents = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "hivemind_discord_events_total",
-			Help: "Total Discord gateway events received by type",
+			Name: "discord_events_total",
+			Help: "Total number of Discord gateway events received",
 		},
-		[]string{"event_type"},
+		[]string{"event_type", "status"},
 	)
 
 	// DiscordEventProcessing tracks event processing duration

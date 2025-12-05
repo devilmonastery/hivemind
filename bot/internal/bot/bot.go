@@ -21,6 +21,7 @@ import (
 	botgrpc "github.com/devilmonastery/hivemind/bot/internal/grpc"
 	botmetrics "github.com/devilmonastery/hivemind/bot/internal/metrics"
 	"github.com/devilmonastery/hivemind/internal/client"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
 )
 
@@ -148,21 +149,47 @@ func (b *Bot) Stop(ctx context.Context) error {
 
 // onReady is called when the bot successfully connects to Discord
 func (b *Bot) onReady(s *discordgo.Session, event *discordgo.Ready) {
+	start := time.Now()
+	status := "success"
+	defer func() {
+		if r := recover(); r != nil {
+			status = "error"
+			panic(r)
+		}
+		metrics.DiscordEvents.WithLabelValues("ready", status).Inc()
+		metrics.DiscordEventProcessing.WithLabelValues("ready").Observe(float64(time.Since(start).Milliseconds()))
+	}()
+
 	b.log.Info("bot connected to Discord",
 		slog.String("username", event.User.Username),
 		slog.String("discriminator", event.User.Discriminator),
 		slog.Int("guilds", len(event.Guilds)),
 	)
 
+	// Mark gateway as connected
+	metrics.DiscordGatewayConnected.WithLabelValues("0").Set(1)
+
 	// Set bot status
 	err := s.UpdateGameStatus(0, "/wiki • /note • /quote")
 	if err != nil {
 		b.log.Warn("failed to set bot status", slog.String("error", err.Error()))
+		status = "error"
 	}
 }
 
 // onGuildCreate is called when the bot joins a guild or becomes available
 func (b *Bot) onGuildCreate(s *discordgo.Session, event *discordgo.GuildCreate) {
+	start := time.Now()
+	status := "success"
+	defer func() {
+		if r := recover(); r != nil {
+			status = "error"
+			panic(r)
+		}
+		metrics.DiscordEvents.WithLabelValues("guild_create", status).Inc()
+		metrics.DiscordEventProcessing.WithLabelValues("guild_create").Observe(float64(time.Since(start).Milliseconds()))
+	}()
+
 	b.log.Info("guild available",
 		slog.String("guild_id", event.ID),
 		slog.String("guild_name", event.Name),
@@ -185,6 +212,7 @@ func (b *Bot) onGuildCreate(s *discordgo.Session, event *discordgo.GuildCreate) 
 		OwnerDiscordId: event.OwnerID,
 	})
 	if err != nil {
+		status = "error"
 		b.log.Error("failed to upsert guild",
 			slog.String("guild_id", event.ID),
 			slog.String("error", err.Error()))
@@ -197,6 +225,17 @@ func (b *Bot) onGuildCreate(s *discordgo.Session, event *discordgo.GuildCreate) 
 
 // onGuildDelete is called when the bot is removed from a guild
 func (b *Bot) onGuildDelete(s *discordgo.Session, event *discordgo.GuildDelete) {
+	start := time.Now()
+	status := "success"
+	defer func() {
+		if r := recover(); r != nil {
+			status = "error"
+			panic(r)
+		}
+		metrics.DiscordEvents.WithLabelValues("guild_delete", status).Inc()
+		metrics.DiscordEventProcessing.WithLabelValues("guild_delete").Observe(float64(time.Since(start).Milliseconds()))
+	}()
+
 	b.log.Info("removed from guild",
 		slog.String("guild_id", event.ID),
 	)
@@ -209,6 +248,7 @@ func (b *Bot) onGuildDelete(s *discordgo.Session, event *discordgo.GuildDelete) 
 		GuildId: event.ID,
 	})
 	if err != nil {
+		status = "error"
 		b.log.Error("failed to disable guild",
 			slog.String("guild_id", event.ID),
 			slog.String("error", err.Error()))
@@ -220,6 +260,17 @@ func (b *Bot) onGuildDelete(s *discordgo.Session, event *discordgo.GuildDelete) 
 
 // onGuildMemberAdd is called when a member joins a guild
 func (b *Bot) onGuildMemberAdd(s *discordgo.Session, event *discordgo.GuildMemberAdd) {
+	start := time.Now()
+	status := "success"
+	defer func() {
+		if r := recover(); r != nil {
+			status = "error"
+			panic(r)
+		}
+		metrics.DiscordEvents.WithLabelValues("guild_member_add", status).Inc()
+		metrics.DiscordEventProcessing.WithLabelValues("guild_member_add").Observe(float64(time.Since(start).Milliseconds()))
+	}()
+
 	b.log.Info("member joined guild",
 		slog.String("guild_id", event.GuildID),
 		slog.String("discord_id", event.User.ID),
@@ -252,6 +303,7 @@ func (b *Bot) onGuildMemberAdd(s *discordgo.Session, event *discordgo.GuildMembe
 
 	_, err := discordClient.UpsertGuildMember(ctx, req)
 	if err != nil {
+		status = "error"
 		b.log.Error("failed to upsert guild member",
 			slog.String("guild_id", event.GuildID),
 			slog.String("discord_id", event.User.ID),
@@ -261,6 +313,17 @@ func (b *Bot) onGuildMemberAdd(s *discordgo.Session, event *discordgo.GuildMembe
 
 // onGuildMemberUpdate is called when a member's data changes (nickname, roles, avatar)
 func (b *Bot) onGuildMemberUpdate(s *discordgo.Session, event *discordgo.GuildMemberUpdate) {
+	start := time.Now()
+	status := "success"
+	defer func() {
+		if r := recover(); r != nil {
+			status = "error"
+			panic(r)
+		}
+		metrics.DiscordEvents.WithLabelValues("guild_member_update", status).Inc()
+		metrics.DiscordEventProcessing.WithLabelValues("guild_member_update").Observe(float64(time.Since(start).Milliseconds()))
+	}()
+
 	b.log.Debug("member updated in guild",
 		slog.String("guild_id", event.GuildID),
 		slog.String("discord_id", event.User.ID))
@@ -292,6 +355,7 @@ func (b *Bot) onGuildMemberUpdate(s *discordgo.Session, event *discordgo.GuildMe
 
 	_, err := discordClient.UpsertGuildMember(ctx, req)
 	if err != nil {
+		status = "error"
 		b.log.Error("failed to update guild member",
 			slog.String("guild_id", event.GuildID),
 			slog.String("discord_id", event.User.ID),
@@ -301,6 +365,17 @@ func (b *Bot) onGuildMemberUpdate(s *discordgo.Session, event *discordgo.GuildMe
 
 // onGuildMemberRemove is called when a member leaves or is kicked from a guild
 func (b *Bot) onGuildMemberRemove(s *discordgo.Session, event *discordgo.GuildMemberRemove) {
+	start := time.Now()
+	status := "success"
+	defer func() {
+		if r := recover(); r != nil {
+			status = "error"
+			panic(r)
+		}
+		metrics.DiscordEvents.WithLabelValues("guild_member_remove", status).Inc()
+		metrics.DiscordEventProcessing.WithLabelValues("guild_member_remove").Observe(float64(time.Since(start).Milliseconds()))
+	}()
+
 	b.log.Info("member left guild",
 		slog.String("guild_id", event.GuildID),
 		slog.String("discord_id", event.User.ID),
@@ -314,6 +389,7 @@ func (b *Bot) onGuildMemberRemove(s *discordgo.Session, event *discordgo.GuildMe
 		DiscordId: event.User.ID,
 	})
 	if err != nil {
+		status = "error"
 		b.log.Error("failed to remove guild member",
 			slog.String("guild_id", event.GuildID),
 			slog.String("discord_id", event.User.ID),

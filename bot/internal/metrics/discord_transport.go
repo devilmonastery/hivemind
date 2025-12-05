@@ -35,7 +35,10 @@ func (t *discordMetricsTransport) RoundTrip(req *http.Request) (*http.Response, 
 	resp, err := t.base.RoundTrip(req)
 	duration := time.Since(start)
 
-	// Extract bucket and status code
+	// Normalize the route for human-readable metrics
+	route := normalizeDiscordRoute(req.URL.Path)
+
+	// Extract bucket ID and status code
 	bucket := "unknown"
 	statusCode := 0
 
@@ -45,27 +48,27 @@ func (t *discordMetricsTransport) RoundTrip(req *http.Request) (*http.Response, 
 		// Discord provides bucket ID in response header (most accurate for rate limiting)
 		bucket = resp.Header.Get("X-RateLimit-Bucket")
 		if bucket == "" {
-			// Fall back to normalized path
-			bucket = normalizeDiscordRoute(req.URL.Path)
+			// Fall back to normalized path if Discord doesn't provide bucket
+			bucket = route
 		}
 
 		// Track rate limit information from response headers
-		trackRateLimitHeaders(resp, bucket)
+		trackRateLimitHeaders(resp, route, bucket)
 
 		// Track rate limit hits (429 responses)
 		if statusCode == 429 {
-			metrics.DiscordRateLimitHits.WithLabelValues(bucket).Inc()
+			metrics.DiscordRateLimitHits.WithLabelValues(route, bucket).Inc()
 		}
 	}
 
-	// Record API call metrics
-	metrics.DiscordAPICalls.WithLabelValues(req.Method, bucket, strconv.Itoa(statusCode)).Inc()
-	metrics.DiscordAPIDuration.WithLabelValues(req.Method, bucket).Observe(float64(duration.Milliseconds()))
+	// Record API call metrics with both route (readable) and bucket (accurate)
+	metrics.DiscordAPICalls.WithLabelValues(req.Method, route, bucket, strconv.Itoa(statusCode)).Inc()
+	metrics.DiscordAPIDuration.WithLabelValues(req.Method, route, bucket).Observe(float64(duration.Milliseconds()))
 
 	// Track errors
 	if err != nil || statusCode >= 400 {
 		errorType := classifyDiscordError(statusCode, err)
-		metrics.DiscordAPIErrors.WithLabelValues(bucket, errorType).Inc()
+		metrics.DiscordAPIErrors.WithLabelValues(route, bucket, errorType).Inc()
 	}
 
 	return resp, err
@@ -78,25 +81,25 @@ func isDiscordAPIRequest(req *http.Request) bool {
 }
 
 // trackRateLimitHeaders extracts and records rate limit information from Discord response headers
-func trackRateLimitHeaders(resp *http.Response, bucket string) {
+func trackRateLimitHeaders(resp *http.Response, route, bucket string) {
 	// X-RateLimit-Remaining: Number of requests remaining before rate limit
 	if remaining := resp.Header.Get("X-RateLimit-Remaining"); remaining != "" {
 		if r, err := strconv.Atoi(remaining); err == nil {
-			metrics.DiscordRateLimitRemaining.WithLabelValues(bucket).Set(float64(r))
+			metrics.DiscordRateLimitRemaining.WithLabelValues(route, bucket).Set(float64(r))
 		}
 	}
 
 	// X-RateLimit-Limit: Maximum number of requests allowed
 	if limit := resp.Header.Get("X-RateLimit-Limit"); limit != "" {
 		if l, err := strconv.Atoi(limit); err == nil {
-			metrics.DiscordRateLimitLimit.WithLabelValues(bucket).Set(float64(l))
+			metrics.DiscordRateLimitLimit.WithLabelValues(route, bucket).Set(float64(l))
 		}
 	}
 
 	// X-RateLimit-Reset: Unix timestamp when the rate limit resets
 	if reset := resp.Header.Get("X-RateLimit-Reset"); reset != "" {
 		if r, err := strconv.ParseFloat(reset, 64); err == nil {
-			metrics.DiscordRateLimitReset.WithLabelValues(bucket).Set(r)
+			metrics.DiscordRateLimitReset.WithLabelValues(route, bucket).Set(r)
 		}
 	}
 }
