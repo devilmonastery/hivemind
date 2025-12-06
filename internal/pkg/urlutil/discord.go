@@ -19,6 +19,7 @@ func DiscordCDNIconURL(guildID, iconHash string) string {
 
 // DiscordOAuthURL builds a Discord OAuth authorization URL with the specified parameters.
 // integrationType should be 0 for guild installation or 1 for user installation.
+// If permissions is empty, it will be omitted and Discord will use the Default Install Settings.
 func DiscordOAuthURL(clientID, permissions string, integrationType int) string {
 	u := &url.URL{
 		Scheme: "https",
@@ -27,7 +28,9 @@ func DiscordOAuthURL(clientID, permissions string, integrationType int) string {
 	}
 	q := url.Values{}
 	q.Set("client_id", clientID)
-	q.Set("permissions", permissions)
+	if permissions != "" {
+		q.Set("permissions", permissions)
+	}
 	q.Set("integration_type", fmt.Sprintf("%d", integrationType))
 	q.Set("scope", "bot applications.commands")
 	u.RawQuery = q.Encode()

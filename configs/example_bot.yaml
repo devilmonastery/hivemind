@@ -68,3 +68,12 @@ features:
   enable_notes: true
   max_note_size: 10000    # Max characters for notes
   max_wiki_size: 50000    # Max characters for wiki pages
+  
+  # Message reactions for saved content
+  # Set enabled: false to disable reactions entirely
+  # Emoji IDs are application-specific - get them from Discord Developer Portal
+  reactions:
+    enabled: true
+    quote_emoji_id: "YOUR_QUOTE_EMOJI_ID"      # Application emoji ID for quote reactions
+    wiki_emoji_id: "YOUR_WIKI_EMOJI_ID"        # Application emoji ID for wiki reactions
+    hivemind_emoji_id: "YOUR_HIVEMIND_EMOJI_ID" # Application emoji ID for notes/general

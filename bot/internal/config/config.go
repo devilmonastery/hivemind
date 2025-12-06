@@ -38,13 +38,22 @@ type LoggingConfig struct {
 	Output string `yaml:"output"`
 }
 
+// ReactionsConfig holds emoji reaction configuration
+type ReactionsConfig struct {
+	Enabled         bool   `yaml:"enabled"`           // Master switch for reactions
+	QuoteEmojiID    string `yaml:"quote_emoji_id"`    // Application emoji ID for quotes
+	WikiEmojiID     string `yaml:"wiki_emoji_id"`     // Application emoji ID for wiki
+	HivemindEmojiID string `yaml:"hivemind_emoji_id"` // Application emoji ID for notes/general
+}
+
 // FeaturesConfig holds feature flags
 type FeaturesConfig struct {
-	EnableQuotes bool `yaml:"enable_quotes"`
-	EnableWiki   bool `yaml:"enable_wiki"`
-	EnableNotes  bool `yaml:"enable_notes"`
-	MaxNoteSize  int  `yaml:"max_note_size"`
-	MaxWikiSize  int  `yaml:"max_wiki_size"`
+	EnableQuotes bool            `yaml:"enable_quotes"`
+	EnableWiki   bool            `yaml:"enable_wiki"`
+	EnableNotes  bool            `yaml:"enable_notes"`
+	MaxNoteSize  int             `yaml:"max_note_size"`
+	MaxWikiSize  int             `yaml:"max_wiki_size"`
+	Reactions    ReactionsConfig `yaml:"reactions"` // Emoji reactions for saved content
 }
 
 // Load reads the configuration from a YAML file

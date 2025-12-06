@@ -56,7 +56,7 @@ func handleContextMenuQuote(s *discordgo.Session, i *discordgo.InteractionCreate
 }
 
 // handleContextMenuNote handles "Create Note" context menu command
-func handleContextMenuNote(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleContextMenuNote(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
 	// Get the target message
 	targetID := i.ApplicationCommandData().TargetID
 	message := i.ApplicationCommandData().Resolved.Messages[targetID]
@@ -162,7 +162,7 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 }
 
 // handleContextQuoteModal handles the modal submission for context menu quote
-func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
 	data := i.ModalSubmitData()
 
 	var quoteText string
@@ -252,6 +252,11 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 		return
 	}
 
+	// Add reaction to source message
+	if sourceMessageID != "" && sourceChannelID != "" {
+		addQuoteReaction(s, cfg, sourceChannelID, sourceMessageID, log)
+	}
+
 	// Show the created quote with standard embed
 	embed := buildQuoteEmbed(resp)
 	embed.Title = "✅ Quote Saved"
@@ -273,6 +278,8 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 			resp.Body,
 			i.Member.User.Username,
 			resp.Id,
+			sourceChannelID,
+			sourceMessageID,
 			log,
 		)
 	}
@@ -385,6 +392,9 @@ func handleContextNoteModal(s *discordgo.Session, i *discordgo.InteractionCreate
 			if err != nil {
 				log.Warn("Failed to add message reference to note", "error", err)
 				// Don't fail the whole operation if reference addition fails
+			} else {
+				// Add reaction to indicate message was added to note
+				addNoteReaction(s, cfg, message.ChannelID, message.ID, log)
 			}
 		} else {
 			log.Warn("Failed to fetch message for note reference", "error", err, "message_id", messageID)
@@ -548,6 +558,9 @@ func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate
 			if err != nil {
 				log.Warn("Failed to add message reference to wiki page", "error", err)
 				// Don't fail the whole operation if reference addition fails
+			} else {
+				// Add reaction to indicate message was added to wiki
+				addWikiReaction(s, cfg, message.ChannelID, message.ID, log)
 			}
 		} else {
 			log.Warn("Failed to fetch message for wiki reference", "error", fetchErr, "message_id", messageID)
@@ -584,7 +597,7 @@ func handleContextMenuWikiRef(s *discordgo.Session, i *discordgo.InteractionCrea
 }
 
 // handleContextWikiUnifiedModal handles submission of the unified wiki modal
-func handleContextWikiUnifiedModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleContextWikiUnifiedModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
 	// Parse custom ID: context_wiki_unified_modal:MessageID:PageID
 	customID := i.ModalSubmitData().CustomID
 	parts := strings.Split(customID, ":")
@@ -727,6 +740,9 @@ func handleContextWikiUnifiedModal(s *discordgo.Session, i *discordgo.Interactio
 		})
 		if err != nil {
 			log.Warn("Failed to add message reference", "error", err)
+		} else {
+			// Add reaction to indicate message was added to wiki
+			addWikiReaction(s, cfg, message.ChannelID, message.ID, log)
 		}
 
 		// Send appropriate success message
@@ -816,6 +832,9 @@ func handleContextWikiUnifiedModal(s *discordgo.Session, i *discordgo.Interactio
 			}
 			return
 		}
+
+		// Add reaction to indicate message was added to wiki
+		addWikiReaction(s, cfg, message.ChannelID, message.ID, log)
 
 		// Get page title for confirmation
 		page, err := wikiClient.GetWikiPage(discordContextFor(i), &wikipb.GetWikiPageRequest{
