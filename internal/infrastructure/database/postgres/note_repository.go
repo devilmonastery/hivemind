@@ -13,6 +13,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 type noteRepository struct {
@@ -29,6 +30,12 @@ func NewNoteRepository(db *sql.DB) repositories.NoteRepository {
 }
 
 func (r *noteRepository) Create(ctx context.Context, note *entities.Note) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("note", "create", time.Since(start), 1, err)
+	}()
+
 	if note.ID == "" {
 		note.ID = idgen.GenerateID()
 	}
@@ -39,7 +46,7 @@ func (r *noteRepository) Create(ctx context.Context, note *entities.Note) error 
 		INSERT INTO notes (id, title, body, author_id, guild_id, channel_id, source_msg_id, source_channel_id, tags, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		note.ID, nullString(note.Title), note.Body, note.AuthorID, nullString(note.GuildID),
 		nullString(note.ChannelID), nullString(note.SourceMsgID), nullString(note.SourceChannelID),
 		pq.Array(note.Tags), note.CreatedAt, note.UpdatedAt,
@@ -48,6 +55,12 @@ func (r *noteRepository) Create(ctx context.Context, note *entities.Note) error 
 }
 
 func (r *noteRepository) GetByID(ctx context.Context, id string, userDiscordID string) (*entities.Note, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("note", "get_by_id", time.Since(start), -1, err)
+	}()
+
 	// Notes are personal - no ACL check needed, just retrieve by ID
 	// Ownership verification happens at the service layer (author_id check)
 	query := `
@@ -65,14 +78,15 @@ func (r *noteRepository) GetByID(ctx context.Context, id string, userDiscordID s
 	var title, guildID, channelID, sourceMsgID, sourceChannelID, authorDisplayName sql.NullString
 	var deletedAt sql.NullTime
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err = r.db.QueryRowContext(ctx, query, id).Scan(
 		&note.ID, &title, &note.Body, &note.AuthorID, &guildID,
 		&channelID, &sourceMsgID, &sourceChannelID, &tags,
 		&note.CreatedAt, &note.UpdatedAt, &deletedAt,
 		&authorDisplayName,
 	)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("note not found: %s", id)
+		err = fmt.Errorf("note not found: %s", id)
+		return nil, err
 	}
 	if err != nil {
 		return nil, err
@@ -93,6 +107,13 @@ func (r *noteRepository) GetByID(ctx context.Context, id string, userDiscordID s
 }
 
 func (r *noteRepository) Update(ctx context.Context, note *entities.Note) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("note", "update", time.Since(start), rowsAffected, err)
+	}()
+
 	note.UpdatedAt = time.Now()
 
 	query := `
@@ -107,18 +128,26 @@ func (r *noteRepository) Update(ctx context.Context, note *entities.Note) error 
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
-		return fmt.Errorf("note not found: %s", note.ID)
+	if rowsAffected == 0 {
+		err = fmt.Errorf("note not found: %s", note.ID)
+		return err
 	}
 
 	return nil
 }
 
 func (r *noteRepository) Delete(ctx context.Context, id string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("note", "delete", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `
 		UPDATE notes
 		SET deleted_at = $2
@@ -129,18 +158,26 @@ func (r *noteRepository) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
-		return fmt.Errorf("note not found: %s", id)
+	if rowsAffected == 0 {
+		err = fmt.Errorf("note not found: %s", id)
+		return err
 	}
 
 	return nil
 }
 
 func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tags []string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.Note, int, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("note", "list", time.Since(start), rowCount, err)
+	}()
+
 	if limit <= 0 {
 		limit = 50
 	}
@@ -189,8 +226,8 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
 	r.log.Debug("executing count query", slog.String("query", countQuery), slog.Any("args", args))
-	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
-	if err != nil {
+	if err2 := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err2 != nil {
+		err = err2
 		r.log.Debug("count query error", slog.String("error", err.Error()))
 		return nil, 0, err
 	}
@@ -246,10 +283,18 @@ func (r *noteRepository) List(ctx context.Context, authorID, guildID string, tag
 		notes = append(notes, note)
 	}
 
+	rowCount = int64(len(notes))
 	return notes, total, nil
 }
 
 func (r *noteRepository) Search(ctx context.Context, authorID string, query, guildID string, tags []string, limit, offset int, userDiscordID string) ([]*entities.Note, int, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("note", "search", time.Since(start), rowCount, err)
+	}()
+
 	if limit <= 0 {
 		limit = 10
 	}
@@ -295,8 +340,8 @@ func (r *noteRepository) Search(ctx context.Context, authorID string, query, gui
 	// Get total count
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
-	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
-	if err != nil {
+	if err2 := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err2 != nil {
+		err = err2
 		return nil, 0, err
 	}
 
@@ -357,6 +402,13 @@ func (r *noteRepository) GetTitlesForUser(ctx context.Context, userDiscordID, gu
 	Title string
 }, error,
 ) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("note", "get_titles_for_user", time.Since(start), rowCount, err)
+	}()
+
 	var query string
 	var args []interface{}
 
@@ -409,5 +461,9 @@ func (r *noteRepository) GetTitlesForUser(ctx context.Context, userDiscordID, gu
 		})
 	}
 
-	return results, rows.Err()
+	rowCount = int64(len(results))
+	if err2 := rows.Err(); err2 != nil {
+		err = err2
+	}
+	return results, err
 }

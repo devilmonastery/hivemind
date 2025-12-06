@@ -14,6 +14,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 // AuditRepository implements the AuditRepository interface for SQLite
@@ -112,6 +113,12 @@ func auditLogRowFromEntity(auditLog *entities.AuditLog) (*auditLogRow, error) {
 
 // Create creates a new audit log entry
 func (r *AuditRepository) Create(ctx context.Context, log *entities.AuditLog) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("audit", "create", time.Since(start), 1, err)
+	}()
+
 	// Generate ID if not set
 	if log.ID == "" {
 		log.ID = idgen.GenerateID()
@@ -128,8 +135,9 @@ func (r *AuditRepository) Create(ctx context.Context, log *entities.AuditLog) er
 		slog.Any("resource_id", log.ResourceID),
 		slog.Any("user_id", log.UserID))
 
-	row, err := auditLogRowFromEntity(log)
-	if err != nil {
+	row, convertErr := auditLogRowFromEntity(log)
+	if convertErr != nil {
+		err = convertErr
 		return err
 	}
 
@@ -148,10 +156,17 @@ func (r *AuditRepository) Create(ctx context.Context, log *entities.AuditLog) er
 
 // GetByID retrieves an audit log by its ID
 func (r *AuditRepository) GetByID(ctx context.Context, id string) (*entities.AuditLog, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("audit", "get_by_id", time.Since(start), rowCount, err)
+	}()
+
 	var row auditLogRow
 	query := `SELECT * FROM audit_logs WHERE id = $1 LIMIT 1`
 
-	err := r.db.GetContext(ctx, &row, query, id)
+	err = r.db.GetContext(ctx, &row, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -159,11 +174,19 @@ func (r *AuditRepository) GetByID(ctx context.Context, id string) (*entities.Aud
 		return nil, fmt.Errorf("failed to get audit log by ID: %w", err)
 	}
 
+	rowCount = 1
 	return row.toEntity()
 }
 
 // List audit logs with filtering and pagination
 func (r *AuditRepository) List(ctx context.Context, opts repositories.ListAuditLogsOptions) ([]*entities.AuditLog, int64, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("audit", "list", time.Since(start), rowCount, err)
+	}()
+
 	// Build query conditions
 	var conditions []string
 	var args []interface{}
@@ -262,7 +285,7 @@ func (r *AuditRepository) List(ctx context.Context, opts repositories.ListAuditL
 	// Count total records
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM audit_logs %s", whereClause)
 	var total int64
-	err := r.db.GetContext(ctx, &total, countQuery, args...)
+	err = r.db.GetContext(ctx, &total, countQuery, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count audit logs: %w", err)
 	}
@@ -315,13 +338,15 @@ func (r *AuditRepository) List(ctx context.Context, opts repositories.ListAuditL
 	// Convert to entities
 	auditLogs := make([]*entities.AuditLog, len(rows))
 	for i, row := range rows {
-		auditLog, err := row.toEntity()
-		if err != nil {
+		auditLog, convertErr := row.toEntity()
+		if convertErr != nil {
+			err = convertErr
 			return nil, 0, fmt.Errorf("failed to convert audit log row: %w", err)
 		}
 		auditLogs[i] = auditLog
 	}
 
+	rowCount = int64(len(rows))
 	return auditLogs, total, nil
 }
 
@@ -346,6 +371,13 @@ func (r *AuditRepository) ListSecurityEvents(ctx context.Context, opts repositor
 
 // DeleteBefore deletes old audit logs (cleanup job)
 func (r *AuditRepository) DeleteBefore(ctx context.Context, before time.Time) (int64, error) {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("audit", "cleanup", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `DELETE FROM audit_logs WHERE timestamp < $1`
 	result, err := r.db.ExecContext(ctx, query, before)
 	if err != nil {
@@ -357,50 +389,82 @@ func (r *AuditRepository) DeleteBefore(ctx context.Context, before time.Time) (i
 		return 0, fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
+	rowsAffected = deleted
 	return deleted, nil
 }
 
 // CountByAction counts audit logs by action within a time range
 func (r *AuditRepository) CountByAction(ctx context.Context, action entities.AuditAction, since time.Time) (int64, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("audit", "count_by_action", time.Since(start), rowCount, err)
+	}()
+
 	query := `SELECT COUNT(*) FROM audit_logs WHERE action = $1 AND timestamp >= $2`
 	var count int64
-	err := r.db.GetContext(ctx, &count, query, string(action), since)
+	err = r.db.GetContext(ctx, &count, query, string(action), since)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count audit logs by action: %w", err)
 	}
+	rowCount = count
 	return count, nil
 }
 
 // CountFailedLoginsByUser counts failed login attempts for a user within a time range
 func (r *AuditRepository) CountFailedLoginsByUser(ctx context.Context, userID string, since time.Time) (int64, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("audit", "count_failed_logins_by_user", time.Since(start), rowCount, err)
+	}()
+
 	query := `
 		SELECT COUNT(*) FROM audit_logs 
 		WHERE action = $1 AND user_id = $2 AND success = false AND timestamp >= $3
 	`
 	var count int64
-	err := r.db.GetContext(ctx, &count, query, string(entities.ActionUserLoginFailed), userID, since)
+	err = r.db.GetContext(ctx, &count, query, string(entities.ActionUserLoginFailed), userID, since)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count failed logins by user: %w", err)
 	}
+	rowCount = count
 	return count, nil
 }
 
 // CountFailedLoginsByIP counts failed login attempts from an IP within a time range
 func (r *AuditRepository) CountFailedLoginsByIP(ctx context.Context, ipAddress string, since time.Time) (int64, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("audit", "count_failed_logins_by_ip", time.Since(start), rowCount, err)
+	}()
+
 	query := `
 		SELECT COUNT(*) FROM audit_logs 
 		WHERE action = $1 AND ip_address = $2 AND success = false AND timestamp >= $3
 	`
 	var count int64
-	err := r.db.GetContext(ctx, &count, query, string(entities.ActionUserLoginFailed), ipAddress, since)
+	err = r.db.GetContext(ctx, &count, query, string(entities.ActionUserLoginFailed), ipAddress, since)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count failed logins by IP: %w", err)
 	}
+	rowCount = count
 	return count, nil
 }
 
 // GetRecentActivityByUser gets recent activity for a user
 func (r *AuditRepository) GetRecentActivityByUser(ctx context.Context, userID string, limit int) ([]*entities.AuditLog, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("audit", "get_recent_activity_by_user", time.Since(start), rowCount, err)
+	}()
+
 	if limit <= 0 {
 		limit = 10
 	}
@@ -413,7 +477,7 @@ func (r *AuditRepository) GetRecentActivityByUser(ctx context.Context, userID st
 		LIMIT $2
 	`
 
-	err := r.db.SelectContext(ctx, &rows, query, userID, limit)
+	err = r.db.SelectContext(ctx, &rows, query, userID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get recent activity: %w", err)
 	}
@@ -421,12 +485,14 @@ func (r *AuditRepository) GetRecentActivityByUser(ctx context.Context, userID st
 	// Convert to entities
 	auditLogs := make([]*entities.AuditLog, len(rows))
 	for i, row := range rows {
-		auditLog, err := row.toEntity()
-		if err != nil {
+		auditLog, convertErr := row.toEntity()
+		if convertErr != nil {
+			err = convertErr
 			return nil, fmt.Errorf("failed to convert audit log row: %w", err)
 		}
 		auditLogs[i] = auditLog
 	}
 
+	rowCount = int64(len(rows))
 	return auditLogs, nil
 }

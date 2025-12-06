@@ -11,6 +11,7 @@ import (
 
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 // DiscordGuildRepository implements repositories.DiscordGuildRepository for PostgreSQL
@@ -57,8 +58,14 @@ func (r *DiscordGuildRepository) Create(ctx context.Context, guild *entities.Dis
 	return nil
 }
 
-// GetByID retrieves a Discord guild by its ID
+// GetByID retrieves a Discord guild by guild ID
 func (r *DiscordGuildRepository) GetByID(ctx context.Context, guildID string) (*entities.DiscordGuild, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("discord_guild", "get_by_id", time.Since(start), -1, err)
+	}()
+
 	query := `
 		SELECT guild_id, guild_name, icon_url, owner_discord_id,
 		       enabled, settings, added_at, last_activity
@@ -67,7 +74,7 @@ func (r *DiscordGuildRepository) GetByID(ctx context.Context, guildID string) (*
 	`
 
 	var guild entities.DiscordGuild
-	err := r.db.GetContext(ctx, &guild, query, guildID)
+	err = r.db.GetContext(ctx, &guild, query, guildID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, repositories.ErrDiscordGuildNotFound
@@ -78,20 +85,19 @@ func (r *DiscordGuildRepository) GetByID(ctx context.Context, guildID string) (*
 	return &guild, nil
 }
 
-// Update updates an existing Discord guild record
+// Update updates a Discord guild's information
 func (r *DiscordGuildRepository) Update(ctx context.Context, guild *entities.DiscordGuild) error {
-	r.log.Debug("updating discord guild",
-		slog.String("guild_id", guild.GuildID),
-		slog.String("guild_name", guild.GuildName))
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("discord_guild", "update", time.Since(start), rowsAffected, err)
+	}()
 
 	query := `
 		UPDATE discord_guilds
-		SET guild_name = $2,
-		    icon_url = $3,
-		    owner_discord_id = $4,
-		    enabled = $5,
-		    settings = $6,
-		    last_activity = $7
+		SET guild_name = $2, icon_url = $3, owner_discord_id = $4,
+		    enabled = $5, settings = $6, last_activity = $7
 		WHERE guild_id = $1
 	`
 
@@ -108,12 +114,12 @@ func (r *DiscordGuildRepository) Update(ctx context.Context, guild *entities.Dis
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
 
-	if rows == 0 {
+	if rowsAffected == 0 {
 		return repositories.ErrDiscordGuildNotFound
 	}
 
@@ -122,6 +128,13 @@ func (r *DiscordGuildRepository) Update(ctx context.Context, guild *entities.Dis
 
 // UpdateLastActivity updates the last activity timestamp for a guild
 func (r *DiscordGuildRepository) UpdateLastActivity(ctx context.Context, guildID string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("discord_guild", "update_last_activity", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `
 		UPDATE discord_guilds
 		SET last_activity = $2
@@ -145,8 +158,15 @@ func (r *DiscordGuildRepository) UpdateLastActivity(ctx context.Context, guildID
 	return nil
 }
 
-// UpdateMemberSyncTime updates the last_member_sync timestamp for a guild
+// UpdateMemberSyncTime updates the last member sync timestamp for a guild
 func (r *DiscordGuildRepository) UpdateMemberSyncTime(ctx context.Context, guildID string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("discord_guild", "update_member_sync_time", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `
 		UPDATE discord_guilds
 		SET last_member_sync = $2
@@ -172,6 +192,12 @@ func (r *DiscordGuildRepository) UpdateMemberSyncTime(ctx context.Context, guild
 
 // List retrieves all Discord guilds, optionally filtering by enabled status
 func (r *DiscordGuildRepository) List(ctx context.Context, enabledOnly bool) ([]*entities.DiscordGuild, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("discord_guild", "list", time.Since(start), rowCount, err)
+	}()
 	query := `
 		SELECT guild_id, guild_name, icon_url, owner_discord_id,
 		       enabled, settings, added_at, last_activity
@@ -185,7 +211,7 @@ func (r *DiscordGuildRepository) List(ctx context.Context, enabledOnly bool) ([]
 	query += " ORDER BY guild_name"
 
 	var guilds []*entities.DiscordGuild
-	err := r.db.SelectContext(ctx, &guilds, query)
+	err = r.db.SelectContext(ctx, &guilds, query)
 	if err != nil {
 		return nil, err
 	}

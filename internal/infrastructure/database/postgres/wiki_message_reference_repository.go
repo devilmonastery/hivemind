@@ -12,6 +12,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 type wikiMessageReferenceRepository struct {
@@ -28,6 +29,12 @@ func NewWikiMessageReferenceRepository(db *sql.DB) repositories.WikiMessageRefer
 }
 
 func (r *wikiMessageReferenceRepository) Create(ctx context.Context, ref *entities.WikiMessageReference) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("wiki_message_reference", "create", time.Since(start), 1, err)
+	}()
+
 	if ref.ID == "" {
 		ref.ID = idgen.GenerateID()
 	}
@@ -40,8 +47,9 @@ func (r *wikiMessageReferenceRepository) Create(ctx context.Context, ref *entiti
 	// Marshal attachments to JSON for JSONB column
 	var attachmentMetadata interface{}
 	if len(ref.Attachments) > 0 {
-		jsonData, err := json.Marshal(ref.Attachments)
-		if err != nil {
+		jsonData, marshalErr := json.Marshal(ref.Attachments)
+		if marshalErr != nil {
+			err = marshalErr
 			return err
 		}
 		attachmentMetadata = jsonData
@@ -62,7 +70,7 @@ func (r *wikiMessageReferenceRepository) Create(ctx context.Context, ref *entiti
 
 	var returnedID string
 	var returnedAddedAt time.Time
-	err := r.db.QueryRowContext(ctx, query,
+	err = r.db.QueryRowContext(ctx, query,
 		ref.ID, ref.WikiPageID, ref.MessageID, ref.ChannelID, ref.GuildID,
 		ref.Content, ref.AuthorID, ref.AuthorUsername, nullString(ref.AuthorDisplayName),
 		ref.MessageTimestamp, pq.Array(ref.AttachmentURLs), attachmentMetadata, ref.AddedAt, nullString(ref.AddedByUserID),
@@ -83,6 +91,13 @@ func (r *wikiMessageReferenceRepository) Create(ctx context.Context, ref *entiti
 }
 
 func (r *wikiMessageReferenceRepository) GetByPageID(ctx context.Context, pageID string) ([]*entities.WikiMessageReference, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_message_reference", "get_by_page_id", time.Since(start), rowCount, err)
+	}()
+
 	r.log.Debug("getting message references by page id", slog.String("page_id", pageID))
 
 	query := `
@@ -98,8 +113,9 @@ func (r *wikiMessageReferenceRepository) GetByPageID(ctx context.Context, pageID
 		ORDER BY wmr.message_timestamp DESC
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, pageID)
-	if err != nil {
+	rows, queryErr := r.db.QueryContext(ctx, query, pageID)
+	if queryErr != nil {
+		err = queryErr
 		return nil, err
 	}
 	defer rows.Close()
@@ -111,13 +127,14 @@ func (r *wikiMessageReferenceRepository) GetByPageID(ctx context.Context, pageID
 		var attachmentURLs pq.StringArray
 		var attachmentMetadata []byte
 
-		err := rows.Scan(
+		scanErr := rows.Scan(
 			&ref.ID, &ref.WikiPageID, &ref.MessageID, &ref.ChannelID, &ref.GuildID,
 			&ref.Content, &ref.AuthorID, &ref.AuthorUsername, &authorDisplayName,
 			&ref.MessageTimestamp, &attachmentURLs, &attachmentMetadata, &ref.AddedAt, &addedByUserID,
 			&guildAvatarHash, &userAvatarHash,
 		)
-		if err != nil {
+		if scanErr != nil {
+			err = scanErr
 			return nil, err
 		}
 
@@ -129,7 +146,7 @@ func (r *wikiMessageReferenceRepository) GetByPageID(ctx context.Context, pageID
 
 		// Unmarshal attachment metadata if present
 		if len(attachmentMetadata) > 0 {
-			if err := json.Unmarshal(attachmentMetadata, &ref.Attachments); err != nil {
+			if unmarshalErr := json.Unmarshal(attachmentMetadata, &ref.Attachments); unmarshalErr != nil {
 				// Log error but don't fail - attachments are optional
 				// We still have attachment_urls as fallback
 			}
@@ -138,10 +155,19 @@ func (r *wikiMessageReferenceRepository) GetByPageID(ctx context.Context, pageID
 		refs = append(refs, ref)
 	}
 
-	return refs, rows.Err()
+	rowCount = int64(len(refs))
+	err = rows.Err()
+	return refs, err
 }
 
 func (r *wikiMessageReferenceRepository) GetByMessageID(ctx context.Context, messageID string) ([]*entities.WikiMessageReference, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_message_reference", "get_by_message_id", time.Since(start), rowCount, err)
+	}()
+
 	query := `
 		SELECT id, wiki_page_id, message_id, channel_id, guild_id,
 			   content, author_id, author_username, author_display_name,
@@ -151,8 +177,9 @@ func (r *wikiMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 		ORDER BY message_timestamp DESC
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, messageID)
-	if err != nil {
+	rows, queryErr := r.db.QueryContext(ctx, query, messageID)
+	if queryErr != nil {
+		err = queryErr
 		return nil, err
 	}
 	defer rows.Close()
@@ -163,12 +190,13 @@ func (r *wikiMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 		var authorDisplayName, addedByUserID sql.NullString
 		var attachmentURLs pq.StringArray
 
-		err := rows.Scan(
+		scanErr := rows.Scan(
 			&ref.ID, &ref.WikiPageID, &ref.MessageID, &ref.ChannelID, &ref.GuildID,
 			&ref.Content, &ref.AuthorID, &ref.AuthorUsername, &authorDisplayName,
 			&ref.MessageTimestamp, &attachmentURLs, &ref.AddedAt, &addedByUserID,
 		)
-		if err != nil {
+		if scanErr != nil {
+			err = scanErr
 			return nil, err
 		}
 
@@ -178,10 +206,19 @@ func (r *wikiMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 		refs = append(refs, ref)
 	}
 
-	return refs, rows.Err()
+	rowCount = int64(len(refs))
+	err = rows.Err()
+	return refs, err
 }
 
 func (r *wikiMessageReferenceRepository) Delete(ctx context.Context, id string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_message_reference", "delete", time.Since(start), rowsAffected, err)
+	}()
+
 	r.log.Debug("deleting wiki message reference", slog.String("id", id))
 
 	query := `DELETE FROM wiki_message_references WHERE id = $1`
@@ -190,24 +227,44 @@ func (r *wikiMessageReferenceRepository) Delete(ctx context.Context, id string) 
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
-		return sql.ErrNoRows
+	if rowsAffected == 0 {
+		err = sql.ErrNoRows
+		return err
 	}
 
 	return nil
 }
 
 func (r *wikiMessageReferenceRepository) DeleteByMessageID(ctx context.Context, messageID string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_message_reference", "delete_by_message_id", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `DELETE FROM wiki_message_references WHERE message_id = $1`
-	_, err := r.db.ExecContext(ctx, query, messageID)
+	result, err := r.db.ExecContext(ctx, query, messageID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err = result.RowsAffected()
 	return err
 }
 
 func (r *wikiMessageReferenceRepository) TransferReferences(ctx context.Context, sourcePageID, targetPageID string) (int, error) {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_message_reference", "transfer", time.Since(start), rowsAffected, err)
+	}()
+
 	// Transfer all references from source to target using INSERT ... ON CONFLICT DO NOTHING
 	// This handles duplicates gracefully (if a message is already referenced by target)
 	// New IDs are deterministic: original_id + '_xfer_' + target_page_id for traceability
@@ -233,6 +290,6 @@ func (r *wikiMessageReferenceRepository) TransferReferences(ctx context.Context,
 		return 0, err
 	}
 
-	transferred, err := result.RowsAffected()
-	return int(transferred), err
+	rowsAffected, err = result.RowsAffected()
+	return int(rowsAffected), err
 }
