@@ -12,6 +12,7 @@ import (
 
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 // GuildMemberRepository implements repositories.GuildMemberRepository for PostgreSQL
@@ -30,6 +31,12 @@ func NewGuildMemberRepository(db *sqlx.DB) repositories.GuildMemberRepository {
 
 // Upsert creates or updates a guild member record
 func (r *GuildMemberRepository) Upsert(ctx context.Context, member *entities.GuildMember) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("guild_member", "upsert", time.Since(start), 1, err)
+	}()
+
 	r.log.Debug("upserting guild member",
 		slog.String("guild_id", member.GuildID),
 		slog.String("discord_id", member.DiscordID))
@@ -47,7 +54,7 @@ func (r *GuildMemberRepository) Upsert(ctx context.Context, member *entities.Gui
 			last_seen = COALESCE(EXCLUDED.last_seen, guild_members.last_seen)
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		member.GuildID,
 		member.DiscordID,
 		member.GuildNick,
@@ -62,6 +69,13 @@ func (r *GuildMemberRepository) Upsert(ctx context.Context, member *entities.Gui
 
 // UpsertBatch efficiently inserts/updates multiple members in a transaction
 func (r *GuildMemberRepository) UpsertBatch(ctx context.Context, members []*entities.GuildMember) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("guild_member", "upsert_batch", time.Since(start), rowsAffected, err)
+	}()
+
 	if len(members) == 0 {
 		return nil
 	}
@@ -96,7 +110,7 @@ func (r *GuildMemberRepository) UpsertBatch(ctx context.Context, members []*enti
 	defer stmt.Close()
 
 	for _, member := range members {
-		_, err := stmt.ExecContext(ctx,
+		_, execErr := stmt.ExecContext(ctx,
 			member.GuildID,
 			member.DiscordID,
 			member.GuildNick,
@@ -106,12 +120,17 @@ func (r *GuildMemberRepository) UpsertBatch(ctx context.Context, members []*enti
 			member.SyncedAt,
 			member.LastSeen,
 		)
-		if err != nil {
+		if execErr != nil {
+			err = execErr
 			return err
 		}
 	}
 
-	return tx.Commit()
+	err = tx.Commit()
+	if err == nil {
+		rowsAffected = int64(len(members))
+	}
+	return err
 }
 
 // IsMember checks if a Discord user is a member of a guild
@@ -134,6 +153,13 @@ func (r *GuildMemberRepository) IsMember(ctx context.Context, guildID, discordID
 
 // GetMember retrieves a guild member record
 func (r *GuildMemberRepository) GetMember(ctx context.Context, guildID, discordID string) (*entities.GuildMember, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("guild_member", "get_member", time.Since(start), rowCount, err)
+	}()
+
 	r.log.Debug("getting guild member",
 		slog.String("guild_id", guildID),
 		slog.String("discord_id", discordID))
@@ -146,7 +172,7 @@ func (r *GuildMemberRepository) GetMember(ctx context.Context, guildID, discordI
 	`
 
 	var member entities.GuildMember
-	err := r.db.GetContext(ctx, &member, query, guildID, discordID)
+	err = r.db.GetContext(ctx, &member, query, guildID, discordID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, repositories.ErrGuildMemberNotFound
@@ -154,11 +180,19 @@ func (r *GuildMemberRepository) GetMember(ctx context.Context, guildID, discordI
 		return nil, err
 	}
 
+	rowCount = 1
 	return &member, nil
 }
 
 // ListGuildMembers retrieves all members for a guild
 func (r *GuildMemberRepository) ListGuildMembers(ctx context.Context, guildID string) ([]*entities.GuildMember, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("guild_member", "list_guild_members", time.Since(start), rowCount, err)
+	}()
+
 	query := `
 		SELECT guild_id, discord_id, guild_nick, guild_avatar_hash,
 		       roles, joined_at, synced_at, last_seen
@@ -168,11 +202,12 @@ func (r *GuildMemberRepository) ListGuildMembers(ctx context.Context, guildID st
 	`
 
 	var members []*entities.GuildMember
-	err := r.db.SelectContext(ctx, &members, query, guildID)
+	err = r.db.SelectContext(ctx, &members, query, guildID)
 	if err != nil {
 		return nil, err
 	}
 
+	rowCount = int64(len(members))
 	return members, nil
 }
 
@@ -222,6 +257,13 @@ func (r *GuildMemberRepository) UpdateLastSeen(ctx context.Context, guildID, dis
 
 // DeleteMember removes a member record (when they leave)
 func (r *GuildMemberRepository) DeleteMember(ctx context.Context, guildID, discordID string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("guild_member", "delete_member", time.Since(start), rowsAffected, err)
+	}()
+
 	r.log.Debug("deleting guild member",
 		slog.String("guild_id", guildID),
 		slog.String("discord_id", discordID))
@@ -236,13 +278,14 @@ func (r *GuildMemberRepository) DeleteMember(ctx context.Context, guildID, disco
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
 
-	if rows == 0 {
-		return repositories.ErrGuildMemberNotFound
+	if rowsAffected == 0 {
+		err = repositories.ErrGuildMemberNotFound
+		return err
 	}
 
 	return nil
@@ -277,6 +320,13 @@ func (r *GuildMemberRepository) CountGuildMembers(ctx context.Context, guildID s
 // RefreshDisplayNames updates the user_display_names table for a guild
 // This keeps the denormalized display names in sync after member updates
 func (r *GuildMemberRepository) RefreshDisplayNames(ctx context.Context, guildID string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("guild_member", "refresh_display_names", time.Since(start), rowsAffected, err)
+	}()
+
 	r.log.Debug("refreshing display names for guild", slog.String("guild_id", guildID))
 
 	// Upsert all display names for this guild using SQL-based COALESCE logic
@@ -313,14 +363,14 @@ func (r *GuildMemberRepository) RefreshDisplayNames(ctx context.Context, guildID
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
 
 	r.log.Debug("refreshed display names",
 		slog.String("guild_id", guildID),
-		slog.Int64("rows_affected", rows))
+		slog.Int64("rows_affected", rowsAffected))
 
 	return nil
 }

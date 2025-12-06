@@ -13,6 +13,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 type quoteRepository struct {
@@ -29,6 +30,12 @@ func NewQuoteRepository(db *sql.DB) repositories.QuoteRepository {
 }
 
 func (r *quoteRepository) Create(ctx context.Context, quote *entities.Quote) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("quote", "create", time.Since(start), 1, err)
+	}()
+
 	if quote.ID == "" {
 		quote.ID = idgen.GenerateID()
 	}
@@ -38,7 +45,7 @@ func (r *quoteRepository) Create(ctx context.Context, quote *entities.Quote) err
 		INSERT INTO quotes (id, body, author_id, author_discord_id, guild_id, source_msg_id, source_channel_id, source_channel_name, source_msg_author_discord_id, source_msg_author_username, source_msg_timestamp, tags, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 	`
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		quote.ID, quote.Body, quote.AuthorID, quote.AuthorDiscordID, quote.GuildID,
 		quote.SourceMsgID, quote.SourceChannelID, quote.SourceChannelName, quote.SourceMsgAuthorDiscordID,
 		quote.SourceMsgAuthorUsername, quote.SourceMsgTimestamp, pq.Array(quote.Tags), quote.CreatedAt,
@@ -47,6 +54,12 @@ func (r *quoteRepository) Create(ctx context.Context, quote *entities.Quote) err
 }
 
 func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID string) (*entities.Quote, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("quote", "get_by_id", time.Since(start), -1, err)
+	}()
+
 	query := `
 		SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name,
 		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
@@ -77,7 +90,6 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 
 	var authorDiscordID sql.NullString
 	var sourceMsgTimestamp sql.NullTime
-	var err error
 	if userDiscordID != "" {
 		err = r.db.QueryRowContext(ctx, query, id, userDiscordID).Scan(
 			&quote.ID, &quote.Body, &quote.AuthorID, &authorDiscordID, &authorUsername, &quote.GuildID, &guildName,
@@ -130,6 +142,13 @@ func (r *quoteRepository) GetByID(ctx context.Context, id string, userDiscordID 
 }
 
 func (r *quoteRepository) Delete(ctx context.Context, id string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("quote", "delete", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `
 		UPDATE quotes
 		SET deleted_at = $2
@@ -140,18 +159,26 @@ func (r *quoteRepository) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
-		return fmt.Errorf("quote not found: %s", id)
+	if rowsAffected == 0 {
+		err = fmt.Errorf("quote not found: %s", id)
+		return err
 	}
 
 	return nil
 }
 
 func (r *quoteRepository) Update(ctx context.Context, id, body string, tags []string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("quote", "update", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `
 		UPDATE quotes
 		SET body = $2, tags = $3
@@ -162,18 +189,26 @@ func (r *quoteRepository) Update(ctx context.Context, id, body string, tags []st
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
-		return fmt.Errorf("quote not found: %s", id)
+	if rowsAffected == 0 {
+		err = fmt.Errorf("quote not found: %s", id)
+		return err
 	}
 
 	return nil
 }
 
 func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.Quote, int, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("quote", "list", time.Since(start), rowCount, err)
+	}()
+
 	if limit <= 0 {
 		limit = 50
 	}
@@ -228,8 +263,8 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 	// Get total count
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %s WHERE %s", baseFrom, whereClause)
-	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
-	if err != nil {
+	if err2 := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err2 != nil {
+		err = err2
 		return nil, 0, err
 	}
 
@@ -299,10 +334,18 @@ func (r *quoteRepository) List(ctx context.Context, guildID string, limit, offse
 		quotes = append(quotes, quote)
 	}
 
+	rowCount = int64(len(quotes))
 	return quotes, total, nil
 }
 
 func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tags []string, limit, offset int, userDiscordID string) ([]*entities.Quote, int, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("quote", "search", time.Since(start), rowCount, err)
+	}()
+
 	if limit <= 0 {
 		limit = 10
 	}
@@ -349,8 +392,8 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 	// Get total count
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %s WHERE %s", baseFrom, whereClause)
-	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
-	if err != nil {
+	if err2 := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err2 != nil {
+		err = err2
 		return nil, 0, err
 	}
 
@@ -423,10 +466,16 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 		quotes = append(quotes, quote)
 	}
 
+	rowCount = int64(len(quotes))
 	return quotes, total, nil
 }
 
 func (r *quoteRepository) GetRandom(ctx context.Context, guildID string, tags []string) (*entities.Quote, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("quote", "get_random", time.Since(start), -1, err)
+	}()
 	// Build WHERE conditions
 	conditions := []string{"q.guild_id = $1", "q.deleted_at IS NULL"}
 	args := []interface{}{guildID}
@@ -461,17 +510,16 @@ func (r *quoteRepository) GetRandom(ctx context.Context, guildID string, tags []
 	var authorDisplayName, authorGuildNick, sourceAuthorDisplayName, sourceAuthorGuildNick sql.NullString
 	var sourceMsgTimestamp sql.NullTime
 
-	err := r.db.QueryRowContext(ctx, query, args...).Scan(
+	if err2 := r.db.QueryRowContext(ctx, query, args...).Scan(
 		&quote.ID, &quote.Body, &quote.AuthorID, &authorDiscordID, &authorUsername, &quote.GuildID, &guildName,
 		&quote.SourceMsgID, &quote.SourceChannelID, &sourceChannelName,
 		&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
 		&sourceMsgTimestamp, &tagArray, &quote.CreatedAt,
 		&authorDisplayName, &authorGuildNick, &sourceAuthorDisplayName, &sourceAuthorGuildNick,
-	)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("no quotes found")
-	}
-	if err != nil {
+	); err2 == sql.ErrNoRows {
+		return nil, nil // No quote found
+	} else if err2 != nil {
+		err = err2
 		return nil, err
 	}
 

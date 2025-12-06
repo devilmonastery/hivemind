@@ -11,6 +11,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 type wikiTitleRepository struct {
@@ -27,6 +28,12 @@ func NewWikiTitleRepository(db *sql.DB) repositories.WikiTitleRepository {
 }
 
 func (r *wikiTitleRepository) Create(ctx context.Context, title *entities.WikiTitle) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("wiki_title", "create", time.Since(start), 1, err)
+	}()
+
 	if title.ID == "" {
 		title.ID = idgen.GenerateID()
 	}
@@ -44,7 +51,7 @@ func (r *wikiTitleRepository) Create(ctx context.Context, title *entities.WikiTi
 		INSERT INTO wiki_titles (id, guild_id, display_title, page_slug, page_id, is_canonical, created_at, created_by_user_id, created_by_merge)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		title.ID,
 		title.GuildID,
 		title.DisplayTitle,
@@ -59,6 +66,12 @@ func (r *wikiTitleRepository) Create(ctx context.Context, title *entities.WikiTi
 }
 
 func (r *wikiTitleRepository) GetByGuildAndSlug(ctx context.Context, guildID, inputSlug string) (*entities.WikiTitle, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("wiki_title", "get_by_guild_and_slug", time.Since(start), -1, err)
+	}()
+
 	// Normalize slug for lookup
 	normalizedSlug := slug.Make(inputSlug)
 
@@ -73,10 +86,10 @@ func (r *wikiTitleRepository) GetByGuildAndSlug(ctx context.Context, guildID, in
 		WHERE guild_id = $1 AND page_slug = $2
 	`
 
-	var wt entities.WikiTitle
+	wt := &entities.WikiTitle{}
 	var createdByUserID sql.NullString
 
-	err := r.db.QueryRowContext(ctx, query, guildID, normalizedSlug).Scan(
+	err = r.db.QueryRowContext(ctx, query, guildID, normalizedSlug).Scan(
 		&wt.ID,
 		&wt.GuildID,
 		&wt.DisplayTitle,
@@ -97,11 +110,17 @@ func (r *wikiTitleRepository) GetByGuildAndSlug(ctx context.Context, guildID, in
 
 	wt.CreatedByUserID = createdByUserID.String
 
-	return &wt, nil
+	return wt, nil
 }
 
 func (r *wikiTitleRepository) GetCanonicalTitle(ctx context.Context, pageID string) (*entities.WikiTitle, error) {
-	r.log.Debug("getting canonical title", slog.String("page_id", pageID))
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("wiki_title", "get_canonical_title", time.Since(start), -1, err)
+	}()
+
+	r.log.Debug("getting canonical title for page", slog.String("page_id", pageID))
 
 	query := `
 		SELECT id, guild_id, display_title, page_slug, page_id, is_canonical, created_at, created_by_user_id, created_by_merge
@@ -109,10 +128,10 @@ func (r *wikiTitleRepository) GetCanonicalTitle(ctx context.Context, pageID stri
 		WHERE page_id = $1 AND is_canonical = TRUE
 	`
 
-	var wt entities.WikiTitle
+	wt := &entities.WikiTitle{}
 	var createdByUserID sql.NullString
 
-	err := r.db.QueryRowContext(ctx, query, pageID).Scan(
+	err = r.db.QueryRowContext(ctx, query, pageID).Scan(
 		&wt.ID,
 		&wt.GuildID,
 		&wt.DisplayTitle,
@@ -133,11 +152,18 @@ func (r *wikiTitleRepository) GetCanonicalTitle(ctx context.Context, pageID stri
 
 	wt.CreatedByUserID = createdByUserID.String
 
-	return &wt, nil
+	return wt, nil
 }
 
 func (r *wikiTitleRepository) ListByPageID(ctx context.Context, pageID string) ([]*entities.WikiTitle, error) {
-	r.log.Debug("listing titles by page id", slog.String("page_id", pageID))
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_title", "list_by_page_id", time.Since(start), rowCount, err)
+	}()
+
+	r.log.Debug("listing titles for page", slog.String("page_id", pageID))
 
 	query := `
 		SELECT id, guild_id, display_title, page_slug, page_id, is_canonical, created_at, created_by_user_id, created_by_merge
@@ -175,7 +201,9 @@ func (r *wikiTitleRepository) ListByPageID(ctx context.Context, pageID string) (
 		titles = append(titles, &wt)
 	}
 
-	if err := rows.Err(); err != nil {
+	rowCount = int64(len(titles))
+	if err2 := rows.Err(); err2 != nil {
+		err = err2
 		return nil, err
 	}
 
@@ -183,7 +211,14 @@ func (r *wikiTitleRepository) ListByPageID(ctx context.Context, pageID string) (
 }
 
 func (r *wikiTitleRepository) UpdatePageID(ctx context.Context, oldPageID, newPageID string) (int, error) {
-	r.log.Debug("updating page id for non-canonical titles",
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_title", "update_page_id", time.Since(start), rowsAffected, err)
+	}()
+
+	r.log.Debug("updating page IDs",
 		slog.String("old_page_id", oldPageID),
 		slog.String("new_page_id", newPageID))
 
@@ -208,7 +243,14 @@ func (r *wikiTitleRepository) UpdatePageID(ctx context.Context, oldPageID, newPa
 }
 
 func (r *wikiTitleRepository) ConvertToAlias(ctx context.Context, oldPageID, newPageID string) (int, error) {
-	r.log.Debug("converting canonical title to alias",
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_title", "convert_to_alias", time.Since(start), rowsAffected, err)
+	}()
+
+	r.log.Debug("converting title to alias",
 		slog.String("old_page_id", oldPageID),
 		slog.String("new_page_id", newPageID))
 
@@ -230,5 +272,6 @@ func (r *wikiTitleRepository) ConvertToAlias(ctx context.Context, oldPageID, new
 		return 0, err
 	}
 
+	rowsAffected = rows
 	return int(rows), nil
 }

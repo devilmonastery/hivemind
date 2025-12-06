@@ -15,6 +15,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 // UserRepository implements the UserRepository interface for PostgreSQL
@@ -131,6 +132,12 @@ func userRowFromEntity(user *entities.User) *userRow {
 
 // Create creates a new user
 func (r *UserRepository) Create(ctx context.Context, user *entities.User) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("user", "create", time.Since(start), 1, err)
+	}()
+
 	if user.ID == "" {
 		user.ID = idgen.GenerateID()
 	}
@@ -157,7 +164,7 @@ func (r *UserRepository) Create(ctx context.Context, user *entities.User) error 
 			:disabled, :created_at, :updated_at, :last_seen, :avatar_url, :timezone
 		)`
 
-	_, err := r.db.NamedExecContext(ctx, query, row)
+	_, err = r.db.NamedExecContext(ctx, query, row)
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
@@ -167,6 +174,13 @@ func (r *UserRepository) Create(ctx context.Context, user *entities.User) error 
 
 // GetByID retrieves a user by their ID
 func (r *UserRepository) GetByID(ctx context.Context, id string) (*entities.User, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("user", "get_by_id", time.Since(start), rowCount, err)
+	}()
+
 	var row userRow
 	query := `
 		SELECT id, email, name, password_hash, role, user_type,
@@ -174,23 +188,33 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*entities.User
 		FROM users 
 		WHERE id = $1`
 
-	err := r.db.GetContext(ctx, &row, query, id)
+	err = r.db.GetContext(ctx, &row, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, repositories.ErrUserNotFound
+			err = repositories.ErrUserNotFound
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
 	if row.Disabled {
-		return nil, repositories.ErrUserInactive
+		err = repositories.ErrUserInactive
+		return nil, err
 	}
 
+	rowCount = 1
 	return row.toEntity(), nil
 }
 
 // GetByEmail retrieves a user by their email address
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("user", "get_by_email", time.Since(start), rowCount, err)
+	}()
+
 	var row userRow
 	query := `
 		SELECT id, email, name, password_hash, role, user_type,
@@ -198,18 +222,21 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*entitie
 		FROM users 
 		WHERE email = $1`
 
-	err := r.db.GetContext(ctx, &row, query, email)
+	err = r.db.GetContext(ctx, &row, query, email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, repositories.ErrUserNotFound
+			err = repositories.ErrUserNotFound
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed to get user by email: %w", err)
 	}
 
 	if row.Disabled {
-		return nil, repositories.ErrUserInactive
+		err = repositories.ErrUserInactive
+		return nil, err
 	}
 
+	rowCount = 1
 	return row.toEntity(), nil
 }
 
@@ -241,6 +268,13 @@ func (r *UserRepository) GetByOIDCSubject(ctx context.Context, subject string) (
 
 // Update an existing user
 func (r *UserRepository) Update(ctx context.Context, user *entities.User) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("user", "update", time.Since(start), rowsAffected, err)
+	}()
+
 	r.log.Debug("updating user",
 		slog.String("id", user.ID),
 		slog.String("email", user.Email))
@@ -249,8 +283,9 @@ func (r *UserRepository) Update(ctx context.Context, user *entities.User) error 
 
 	// Hash password if it's being updated and not already hashed
 	if user.PasswordHash != nil && *user.PasswordHash != "" && !strings.HasPrefix(*user.PasswordHash, "$2") {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*user.PasswordHash), bcrypt.DefaultCost)
-		if err != nil {
+		hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(*user.PasswordHash), bcrypt.DefaultCost)
+		if hashErr != nil {
+			err = hashErr
 			return fmt.Errorf("failed to hash password: %w", err)
 		}
 		hashedStr := string(hashedPassword)
@@ -277,13 +312,14 @@ func (r *UserRepository) Update(ctx context.Context, user *entities.User) error 
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("user not found")
+		err = fmt.Errorf("user not found")
+		return err
 	}
 
 	return nil
@@ -291,13 +327,21 @@ func (r *UserRepository) Update(ctx context.Context, user *entities.User) error 
 
 // Delete a user (soft delete by setting disabled = true)
 func (r *UserRepository) Delete(ctx context.Context, id string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("user", "delete", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `UPDATE users SET disabled = true, updated_at = $1 WHERE id = $2`
 
-	_, err := r.db.ExecContext(ctx, query, time.Now(), id)
+	result, err := r.db.ExecContext(ctx, query, time.Now(), id)
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
 
+	rowsAffected, _ = result.RowsAffected()
 	// Don't check rows affected - delete is idempotent
 	// Even if user doesn't exist, it's not an error
 	return nil
@@ -305,6 +349,13 @@ func (r *UserRepository) Delete(ctx context.Context, id string) error {
 
 // List users with pagination and optional filtering
 func (r *UserRepository) List(ctx context.Context, opts repositories.ListUsersOptions) ([]*entities.User, int64, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("user", "list", time.Since(start), rowCount, err)
+	}()
+
 	// Build query conditions
 	var conditions []string
 	var args []interface{}
@@ -345,7 +396,7 @@ func (r *UserRepository) List(ctx context.Context, opts repositories.ListUsersOp
 	// Count total records
 	countQuery := "SELECT COUNT(*) FROM users " + whereClause
 	var total int64
-	err := r.db.GetContext(ctx, &total, countQuery, args...)
+	err = r.db.GetContext(ctx, &total, countQuery, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count users: %w", err)
 	}
@@ -396,6 +447,8 @@ func (r *UserRepository) List(ctx context.Context, opts repositories.ListUsersOp
 		return nil, 0, fmt.Errorf("failed to list users: %w", err)
 	}
 
+	rowCount = int64(len(rows))
+
 	// Convert to entities
 	users := make([]*entities.User, len(rows))
 	for i, row := range rows {
@@ -407,6 +460,13 @@ func (r *UserRepository) List(ctx context.Context, opts repositories.ListUsersOp
 
 // UpdateLastLogin updates the user's last login timestamp
 func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID string, loginTime time.Time) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("user", "update_last_login", time.Since(start), rowsAffected, err)
+	}()
+
 	r.log.Debug("updating user last login",
 		slog.String("user_id", userID),
 		slog.Time("login_time", loginTime))
@@ -418,13 +478,14 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID string, log
 		return fmt.Errorf("failed to update last login: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("user not found")
+		err = fmt.Errorf("user not found")
+		return err
 	}
 
 	return nil
@@ -432,26 +493,42 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID string, log
 
 // Exists checks if a user exists by ID
 func (r *UserRepository) Exists(ctx context.Context, id string) (bool, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("user", "exists", time.Since(start), rowCount, err)
+	}()
+
 	var count int
 	query := `SELECT COUNT(*) FROM users WHERE id = $1`
 
-	err := r.db.GetContext(ctx, &count, query, id)
+	err = r.db.GetContext(ctx, &count, query, id)
 	if err != nil {
 		return false, fmt.Errorf("failed to check user existence: %w", err)
 	}
 
+	rowCount = int64(count)
 	return count > 0, nil
 }
 
 // ExistsByEmail checks if a user exists by email
 func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("user", "exists_by_email", time.Since(start), rowCount, err)
+	}()
+
 	var count int
 	query := `SELECT COUNT(*) FROM users WHERE email = $1`
 
-	err := r.db.GetContext(ctx, &count, query, email)
+	err = r.db.GetContext(ctx, &count, query, email)
 	if err != nil {
 		return false, fmt.Errorf("failed to check user existence by email: %w", err)
 	}
 
+	rowCount = int64(count)
 	return count > 0, nil
 }

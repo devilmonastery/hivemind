@@ -10,6 +10,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 type noteMessageReferenceRepository struct {
@@ -26,6 +27,12 @@ func NewNoteMessageReferenceRepository(db *sql.DB) repositories.NoteMessageRefer
 }
 
 func (r *noteMessageReferenceRepository) Create(ctx context.Context, ref *entities.NoteMessageReference) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("note_message_reference", "create", time.Since(start), 1, err)
+	}()
+
 	if ref.ID == "" {
 		ref.ID = idgen.GenerateID()
 	}
@@ -38,8 +45,9 @@ func (r *noteMessageReferenceRepository) Create(ctx context.Context, ref *entiti
 	// Marshal attachments to JSON for JSONB column
 	var attachmentMetadata interface{}
 	if len(ref.Attachments) > 0 {
-		jsonData, err := json.Marshal(ref.Attachments)
-		if err != nil {
+		jsonData, marshalErr := json.Marshal(ref.Attachments)
+		if marshalErr != nil {
+			err = marshalErr
 			return err
 		}
 		attachmentMetadata = jsonData
@@ -60,7 +68,7 @@ func (r *noteMessageReferenceRepository) Create(ctx context.Context, ref *entiti
 
 	var returnedID string
 	var returnedAddedAt time.Time
-	err := r.db.QueryRowContext(ctx, query,
+	err = r.db.QueryRowContext(ctx, query,
 		ref.ID, ref.NoteID, ref.MessageID, ref.ChannelID, nullString(ref.GuildID),
 		ref.Content, ref.AuthorID, ref.AuthorUsername, nullString(ref.AuthorDisplayName),
 		ref.MessageTimestamp, attachmentMetadata, ref.AddedAt,
@@ -81,6 +89,13 @@ func (r *noteMessageReferenceRepository) Create(ctx context.Context, ref *entiti
 }
 
 func (r *noteMessageReferenceRepository) GetByNoteID(ctx context.Context, noteID string) ([]*entities.NoteMessageReference, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("note_message_reference", "get_by_note_id", time.Since(start), rowCount, err)
+	}()
+
 	r.log.Debug("getting message references by note id", slog.String("note_id", noteID))
 
 	query := `
@@ -95,8 +110,9 @@ func (r *noteMessageReferenceRepository) GetByNoteID(ctx context.Context, noteID
 		ORDER BY nmr.added_at DESC
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, noteID)
-	if err != nil {
+	rows, queryErr := r.db.QueryContext(ctx, query, noteID)
+	if queryErr != nil {
+		err = queryErr
 		return nil, err
 	}
 	defer rows.Close()
@@ -107,13 +123,14 @@ func (r *noteMessageReferenceRepository) GetByNoteID(ctx context.Context, noteID
 		var authorDisplayName, guildID, guildAvatarHash, userAvatarHash sql.NullString
 		var attachmentMetadata []byte
 
-		err := rows.Scan(
+		scanErr := rows.Scan(
 			&ref.ID, &ref.NoteID, &ref.MessageID, &ref.ChannelID, &guildID,
 			&ref.Content, &ref.AuthorID, &ref.AuthorUsername, &authorDisplayName,
 			&ref.MessageTimestamp, &attachmentMetadata, &ref.AddedAt,
 			&guildAvatarHash, &userAvatarHash,
 		)
-		if err != nil {
+		if scanErr != nil {
+			err = scanErr
 			return nil, err
 		}
 
@@ -124,7 +141,7 @@ func (r *noteMessageReferenceRepository) GetByNoteID(ctx context.Context, noteID
 
 		// Unmarshal attachment metadata if present
 		if len(attachmentMetadata) > 0 {
-			if err := json.Unmarshal(attachmentMetadata, &ref.Attachments); err != nil {
+			if unmarshalErr := json.Unmarshal(attachmentMetadata, &ref.Attachments); unmarshalErr != nil {
 				// Log error but don't fail - attachments are optional
 				ref.Attachments = []entities.AttachmentMetadata{}
 			}
@@ -133,10 +150,19 @@ func (r *noteMessageReferenceRepository) GetByNoteID(ctx context.Context, noteID
 		refs = append(refs, ref)
 	}
 
-	return refs, rows.Err()
+	rowCount = int64(len(refs))
+	err = rows.Err()
+	return refs, err
 }
 
 func (r *noteMessageReferenceRepository) GetByMessageID(ctx context.Context, messageID string) ([]*entities.NoteMessageReference, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("note_message_reference", "get_by_message_id", time.Since(start), rowCount, err)
+	}()
+
 	query := `
 		SELECT 
 			nmr.id, nmr.note_id, nmr.message_id, nmr.channel_id, nmr.guild_id,
@@ -149,8 +175,9 @@ func (r *noteMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 		ORDER BY nmr.added_at DESC
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, messageID)
-	if err != nil {
+	rows, queryErr := r.db.QueryContext(ctx, query, messageID)
+	if queryErr != nil {
+		err = queryErr
 		return nil, err
 	}
 	defer rows.Close()
@@ -161,13 +188,14 @@ func (r *noteMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 		var authorDisplayName, guildID, guildAvatarHash, userAvatarHash sql.NullString
 		var attachmentMetadata []byte
 
-		err := rows.Scan(
+		scanErr := rows.Scan(
 			&ref.ID, &ref.NoteID, &ref.MessageID, &ref.ChannelID, &guildID,
 			&ref.Content, &ref.AuthorID, &ref.AuthorUsername, &authorDisplayName,
 			&ref.MessageTimestamp, &attachmentMetadata, &ref.AddedAt,
 			&guildAvatarHash, &userAvatarHash,
 		)
-		if err != nil {
+		if scanErr != nil {
+			err = scanErr
 			return nil, err
 		}
 
@@ -178,7 +206,7 @@ func (r *noteMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 
 		// Unmarshal attachment metadata if present
 		if len(attachmentMetadata) > 0 {
-			if err := json.Unmarshal(attachmentMetadata, &ref.Attachments); err != nil {
+			if unmarshalErr := json.Unmarshal(attachmentMetadata, &ref.Attachments); unmarshalErr != nil {
 				ref.Attachments = []entities.AttachmentMetadata{}
 			}
 		}
@@ -186,10 +214,19 @@ func (r *noteMessageReferenceRepository) GetByMessageID(ctx context.Context, mes
 		refs = append(refs, ref)
 	}
 
-	return refs, rows.Err()
+	rowCount = int64(len(refs))
+	err = rows.Err()
+	return refs, err
 }
 
 func (r *noteMessageReferenceRepository) Delete(ctx context.Context, id string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("note_message_reference", "delete", time.Since(start), rowsAffected, err)
+	}()
+
 	r.log.Debug("deleting note message reference", slog.String("id", id))
 
 	query := `DELETE FROM note_message_references WHERE id = $1`
@@ -198,19 +235,32 @@ func (r *noteMessageReferenceRepository) Delete(ctx context.Context, id string) 
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
-		return sql.ErrNoRows
+	if rowsAffected == 0 {
+		err = sql.ErrNoRows
+		return err
 	}
 
 	return nil
 }
 
 func (r *noteMessageReferenceRepository) DeleteByMessageID(ctx context.Context, messageID string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("note_message_reference", "delete_by_message_id", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `DELETE FROM note_message_references WHERE message_id = $1`
-	_, err := r.db.ExecContext(ctx, query, messageID)
+	result, err := r.db.ExecContext(ctx, query, messageID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err = result.RowsAffected()
 	return err
 }

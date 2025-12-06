@@ -14,6 +14,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 type wikiPageRepository struct {
@@ -32,6 +33,12 @@ func NewWikiPageRepository(db *sql.DB, titleRepo repositories.WikiTitleRepositor
 }
 
 func (r *wikiPageRepository) Create(ctx context.Context, page *entities.WikiPage) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("wiki_page", "create", time.Since(start), 1, err)
+	}()
+
 	if page.ID == "" {
 		page.ID = idgen.GenerateID()
 	}
@@ -51,7 +58,7 @@ func (r *wikiPageRepository) Create(ctx context.Context, page *entities.WikiPage
 		slog.String("title", page.Title),
 		slog.String("guild_id", page.GuildID),
 		slog.String("author_id", page.AuthorID))
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		page.ID, page.Title, page.Body, page.AuthorID, page.GuildID,
 		nullString(page.ChannelID), "", pq.Array(page.Tags),
 		page.CreatedAt, page.UpdatedAt,
@@ -70,10 +77,17 @@ func (r *wikiPageRepository) Create(ctx context.Context, page *entities.WikiPage
 		CreatedAt:    page.CreatedAt,
 	}
 
-	return r.titleRepo.Create(ctx, wikiTitle)
+	err = r.titleRepo.Create(ctx, wikiTitle)
+	return err
 }
 
 func (r *wikiPageRepository) GetByID(ctx context.Context, id string, userDiscordID string) (*entities.WikiPage, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("wiki_page", "get_by_id", time.Since(start), -1, err)
+	}()
+
 	r.log.Debug("getting wiki page by id",
 		slog.String("id", id),
 		slog.String("user_discord_id", userDiscordID))
@@ -104,7 +118,6 @@ func (r *wikiPageRepository) GetByID(ctx context.Context, id string, userDiscord
 	var channelID, authorDisplayName sql.NullString
 	var deletedAt sql.NullTime
 
-	var err error
 	if userDiscordID != "" {
 		err = r.db.QueryRowContext(ctx, query, id, userDiscordID).Scan(
 			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
@@ -119,7 +132,8 @@ func (r *wikiPageRepository) GetByID(ctx context.Context, id string, userDiscord
 		)
 	}
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("wiki page not found: %s", id)
+		err = fmt.Errorf("wiki page not found: %s", id)
+		return nil, err
 	}
 	if err != nil {
 		return nil, err
@@ -137,6 +151,12 @@ func (r *wikiPageRepository) GetByID(ctx context.Context, id string, userDiscord
 }
 
 func (r *wikiPageRepository) GetByGuildAndSlug(ctx context.Context, guildID, pageSlug string, userDiscordID string) (*entities.WikiPage, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("wiki_page", "get_by_guild_and_slug", time.Since(start), -1, err)
+	}()
+
 	// Normalize slug for lookup
 	titleSlug := slug.Make(pageSlug)
 
@@ -150,7 +170,8 @@ func (r *wikiPageRepository) GetByGuildAndSlug(ctx context.Context, guildID, pag
 	}
 
 	// Get the page by ID (with ACL check)
-	page, err := r.GetByID(ctx, wikiTitle.PageID, userDiscordID)
+	var page *entities.WikiPage
+	page, err = r.GetByID(ctx, wikiTitle.PageID, userDiscordID)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +196,13 @@ func (r *wikiPageRepository) GetByGuildAndSlug(ctx context.Context, guildID, pag
 }
 
 func (r *wikiPageRepository) Update(ctx context.Context, page *entities.WikiPage) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_page", "update", time.Since(start), rowsAffected, err)
+	}()
+
 	page.UpdatedAt = time.Now()
 
 	r.log.Debug("updating wiki page",
@@ -193,18 +221,26 @@ func (r *wikiPageRepository) Update(ctx context.Context, page *entities.WikiPage
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
-		return fmt.Errorf("wiki page not found: %s", page.ID)
+	if rowsAffected == 0 {
+		err = fmt.Errorf("wiki page not found: %s", page.ID)
+		return err
 	}
 
 	return nil
 }
 
 func (r *wikiPageRepository) Delete(ctx context.Context, id string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_page", "delete", time.Since(start), rowsAffected, err)
+	}()
+
 	r.log.Debug("deleting wiki page", slog.String("id", id))
 
 	query := `
@@ -217,18 +253,26 @@ func (r *wikiPageRepository) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	rows, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
-		return fmt.Errorf("wiki page not found: %s", id)
+	if rowsAffected == 0 {
+		err = fmt.Errorf("wiki page not found: %s", id)
+		return err
 	}
 
 	return nil
 }
 
 func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, offset int, orderBy string, ascending bool, userDiscordID string) ([]*entities.WikiPage, int, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_page", "list", time.Since(start), rowCount, err)
+	}()
+
 	if limit <= 0 {
 		limit = 50
 	}
@@ -276,8 +320,8 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 		slog.String("guild_id", guildID),
 		slog.String("user_discord_id", userDiscordID),
 		slog.String("query", countQuery))
-	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
-	if err != nil {
+	if err2 := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err2 != nil {
+		err = err2
 		return nil, 0, err
 	}
 
@@ -336,10 +380,18 @@ func (r *wikiPageRepository) List(ctx context.Context, guildID string, limit, of
 		pages = append(pages, page)
 	}
 
+	rowCount = int64(len(pages))
 	return pages, total, nil
 }
 
 func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, tags []string, limit, offset int, userDiscordID string) ([]*entities.WikiPage, int, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_page", "search", time.Since(start), rowCount, err)
+	}()
+
 	if limit <= 0 {
 		limit = 10
 	}
@@ -391,8 +443,8 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		slog.String("search_query", query),
 		slog.Any("tags", tags),
 		slog.String("count_query", countQuery))
-	err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total)
-	if err != nil {
+	if err2 := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err2 != nil {
+		err = err2
 		return nil, 0, err
 	}
 
@@ -464,6 +516,7 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		pages = append(pages, page)
 	}
 
+	rowCount = int64(len(pages))
 	return pages, total, nil
 }
 
@@ -474,6 +527,13 @@ func (r *wikiPageRepository) GetTitlesForGuild(ctx context.Context, guildID stri
 	Slug  string
 }, error,
 ) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("wiki_page", "get_titles_for_guild", time.Since(start), rowCount, err)
+	}()
+
 	r.log.Debug("getting titles for guild", slog.String("guild_id", guildID))
 
 	query := `
@@ -515,7 +575,9 @@ func (r *wikiPageRepository) GetTitlesForGuild(ctx context.Context, guildID stri
 		titles = append(titles, t)
 	}
 
-	return titles, rows.Err()
+	rowCount = int64(len(titles))
+	err = rows.Err()
+	return titles, err
 }
 
 func nullString(s string) sql.NullString {

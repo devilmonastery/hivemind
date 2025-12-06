@@ -11,6 +11,7 @@ import (
 
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 // DiscordUserRepository implements repositories.DiscordUserRepository for PostgreSQL
@@ -29,6 +30,12 @@ func NewDiscordUserRepository(db *sqlx.DB) repositories.DiscordUserRepository {
 
 // Create creates a new Discord user record
 func (r *DiscordUserRepository) Create(ctx context.Context, discordUser *entities.DiscordUser) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("discord_user", "create", time.Since(start), 1, err)
+	}()
+
 	query := `
 		INSERT INTO discord_users (
 			discord_id, user_id, discord_username, discord_global_name,
@@ -36,7 +43,7 @@ func (r *DiscordUserRepository) Create(ctx context.Context, discordUser *entitie
 		) VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		discordUser.DiscordID,
 		discordUser.UserID,
 		discordUser.DiscordUsername,
@@ -85,6 +92,13 @@ func (r *DiscordUserRepository) Upsert(ctx context.Context, discordUser *entitie
 
 // GetByDiscordID retrieves a Discord user by their Discord ID
 func (r *DiscordUserRepository) GetByDiscordID(ctx context.Context, discordID string) (*entities.DiscordUser, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("discord_user", "get_by_discord_id", time.Since(start), rowCount, err)
+	}()
+
 	query := `
 		SELECT discord_id, user_id, discord_username, discord_global_name,
 		       avatar_hash, linked_at, last_seen
@@ -93,7 +107,7 @@ func (r *DiscordUserRepository) GetByDiscordID(ctx context.Context, discordID st
 	`
 
 	var user entities.DiscordUser
-	err := r.db.GetContext(ctx, &user, query, discordID)
+	err = r.db.GetContext(ctx, &user, query, discordID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, repositories.ErrDiscordUserNotFound
@@ -101,6 +115,7 @@ func (r *DiscordUserRepository) GetByDiscordID(ctx context.Context, discordID st
 		return nil, err
 	}
 
+	rowCount = 1
 	return &user, nil
 }
 
@@ -127,6 +142,13 @@ func (r *DiscordUserRepository) GetByUserID(ctx context.Context, userID string) 
 
 // Update updates a Discord user record
 func (r *DiscordUserRepository) Update(ctx context.Context, discordUser *entities.DiscordUser) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("discord_user", "update", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `
 		UPDATE discord_users
 		SET user_id = $2,
@@ -154,8 +176,8 @@ func (r *DiscordUserRepository) Update(ctx context.Context, discordUser *entitie
 		return err
 	}
 
-	rows, _ := result.RowsAffected()
-	r.log.Debug("discord user updated", slog.Int64("rows_affected", rows))
+	rowsAffected, _ = result.RowsAffected()
+	r.log.Debug("discord user updated", slog.Int64("rows_affected", rowsAffected))
 
 	return nil
 }

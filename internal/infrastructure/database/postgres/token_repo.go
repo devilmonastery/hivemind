@@ -14,6 +14,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 // TokenRepository implements the TokenRepository interface for PostgreSQL
@@ -99,6 +100,12 @@ func tokenRowFromEntity(token *entities.APIToken) (*tokenRow, error) {
 
 // Create creates a new API token
 func (r *TokenRepository) Create(ctx context.Context, token *entities.APIToken) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("token", "create", time.Since(start), 1, err)
+	}()
+
 	if token.ID == "" {
 		token.ID = idgen.GenerateID()
 	}
@@ -106,8 +113,9 @@ func (r *TokenRepository) Create(ctx context.Context, token *entities.APIToken) 
 	now := time.Now()
 	token.CreatedAt = now
 
-	row, err := tokenRowFromEntity(token)
-	if err != nil {
+	row, convertErr := tokenRowFromEntity(token)
+	if convertErr != nil {
+		err = convertErr
 		return fmt.Errorf("failed to convert token to row: %w", err)
 	}
 
@@ -127,13 +135,20 @@ func (r *TokenRepository) Create(ctx context.Context, token *entities.APIToken) 
 
 // GetByID retrieves a token by its ID
 func (r *TokenRepository) GetByID(ctx context.Context, id string) (*entities.APIToken, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("token", "get_by_id", time.Since(start), rowCount, err)
+	}()
+
 	var row tokenRow
 	query := `
 		SELECT id, user_id, token_hash, device_name, scopes, expires_at, created_at, last_used, revoked_at
 		FROM api_tokens 
 		WHERE id = $1`
 
-	err := r.db.GetContext(ctx, &row, query, id)
+	err = r.db.GetContext(ctx, &row, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // token not found, but that's not an error
@@ -141,18 +156,26 @@ func (r *TokenRepository) GetByID(ctx context.Context, id string) (*entities.API
 		return nil, fmt.Errorf("failed to get token: %w", err)
 	}
 
+	rowCount = 1
 	return row.toEntity()
 }
 
 // GetByTokenHash retrieves a token by its hash (for authentication)
 func (r *TokenRepository) GetByTokenHash(ctx context.Context, tokenHash string) (*entities.APIToken, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("token", "get_by_token_hash", time.Since(start), rowCount, err)
+	}()
+
 	var row tokenRow
 	query := `
 		SELECT id, user_id, token_hash, device_name, scopes, expires_at, created_at, last_used, revoked_at
 		FROM api_tokens 
 		WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > $2`
 
-	err := r.db.GetContext(ctx, &row, query, tokenHash, time.Now())
+	err = r.db.GetContext(ctx, &row, query, tokenHash, time.Now())
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // token not found or expired/revoked
@@ -160,13 +183,22 @@ func (r *TokenRepository) GetByTokenHash(ctx context.Context, tokenHash string) 
 		return nil, fmt.Errorf("failed to get token by hash: %w", err)
 	}
 
+	rowCount = 1
 	return row.toEntity()
 }
 
 // Update an existing token
 func (r *TokenRepository) Update(ctx context.Context, token *entities.APIToken) error {
-	row, err := tokenRowFromEntity(token)
-	if err != nil {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("token", "update", time.Since(start), rowsAffected, err)
+	}()
+
+	row, convertErr := tokenRowFromEntity(token)
+	if convertErr != nil {
+		err = convertErr
 		return fmt.Errorf("failed to convert token to row: %w", err)
 	}
 
@@ -186,13 +218,14 @@ func (r *TokenRepository) Update(ctx context.Context, token *entities.APIToken) 
 		return fmt.Errorf("failed to update token: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("token not found")
+		err = fmt.Errorf("token not found")
+		return err
 	}
 
 	return nil
@@ -200,19 +233,34 @@ func (r *TokenRepository) Update(ctx context.Context, token *entities.APIToken) 
 
 // Revoke a token by ID
 func (r *TokenRepository) Revoke(ctx context.Context, tokenID string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("token", "revoke", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `UPDATE api_tokens SET revoked_at = $1 WHERE id = $2 AND revoked_at IS NULL`
 
-	_, err := r.db.ExecContext(ctx, query, time.Now(), tokenID)
+	result, err := r.db.ExecContext(ctx, query, time.Now(), tokenID)
 	if err != nil {
 		return fmt.Errorf("failed to revoke token: %w", err)
 	}
 
+	rowsAffected, _ = result.RowsAffected()
 	// Don't check rows affected - revoke is idempotent
 	return nil
 }
 
 // RevokeAllForUser revokes all tokens for a user
 func (r *TokenRepository) RevokeAllForUser(ctx context.Context, userID string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("token", "revoke_all_for_user", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `UPDATE api_tokens SET revoked_at = $1 WHERE user_id = $2 AND revoked_at IS NULL`
 
 	result, err := r.db.ExecContext(ctx, query, time.Now(), userID)
@@ -221,7 +269,7 @@ func (r *TokenRepository) RevokeAllForUser(ctx context.Context, userID string) e
 	}
 
 	// Return the number of tokens revoked (could be useful for logging)
-	_, _ = result.RowsAffected()
+	rowsAffected, _ = result.RowsAffected()
 	return nil
 }
 
@@ -234,6 +282,13 @@ func (r *TokenRepository) ListByUser(ctx context.Context, userID string, opts re
 
 // List all tokens with pagination and filtering
 func (r *TokenRepository) List(ctx context.Context, opts repositories.ListTokensOptions) ([]*entities.APIToken, int64, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("token", "list", time.Since(start), rowCount, err)
+	}()
+
 	// Build query conditions
 	var conditions []string
 	var args []interface{}
@@ -292,7 +347,7 @@ func (r *TokenRepository) List(ctx context.Context, opts repositories.ListTokens
 	// Count total records
 	countQuery := "SELECT COUNT(*) FROM api_tokens " + whereClause
 	var total int64
-	err := r.db.GetContext(ctx, &total, countQuery, args...)
+	err = r.db.GetContext(ctx, &total, countQuery, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count tokens: %w", err)
 	}
@@ -345,18 +400,27 @@ func (r *TokenRepository) List(ctx context.Context, opts repositories.ListTokens
 	// Convert rows to entities
 	tokens := make([]*entities.APIToken, len(rows))
 	for i, row := range rows {
-		token, err := row.toEntity()
-		if err != nil {
+		token, convertErr := row.toEntity()
+		if convertErr != nil {
+			err = convertErr
 			return nil, 0, fmt.Errorf("failed to convert row to entity: %w", err)
 		}
 		tokens[i] = token
 	}
 
+	rowCount = int64(len(rows))
 	return tokens, total, nil
 }
 
 // DeleteExpired deletes expired tokens (cleanup job)
 func (r *TokenRepository) DeleteExpired(ctx context.Context, before time.Time) (int64, error) {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("token", "delete_expired", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `DELETE FROM api_tokens WHERE expires_at <= $1`
 
 	result, err := r.db.ExecContext(ctx, query, before)
@@ -364,7 +428,7 @@ func (r *TokenRepository) DeleteExpired(ctx context.Context, before time.Time) (
 		return 0, fmt.Errorf("failed to delete expired tokens: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get rows affected: %w", err)
 	}
@@ -374,6 +438,13 @@ func (r *TokenRepository) DeleteExpired(ctx context.Context, before time.Time) (
 
 // DeleteRevokedBefore deletes revoked tokens older than specified time (cleanup job)
 func (r *TokenRepository) DeleteRevokedBefore(ctx context.Context, before time.Time) (int64, error) {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("token", "delete_revoked_before", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `DELETE FROM api_tokens WHERE revoked_at IS NOT NULL AND revoked_at <= $1`
 
 	result, err := r.db.ExecContext(ctx, query, before)
@@ -381,7 +452,7 @@ func (r *TokenRepository) DeleteRevokedBefore(ctx context.Context, before time.T
 		return 0, fmt.Errorf("failed to delete revoked tokens: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get rows affected: %w", err)
 	}
@@ -391,28 +462,44 @@ func (r *TokenRepository) DeleteRevokedBefore(ctx context.Context, before time.T
 
 // UpdateLastUsed updates the last_used timestamp for a token
 func (r *TokenRepository) UpdateLastUsed(ctx context.Context, tokenID string, lastUsed time.Time) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("token", "update_last_used", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `UPDATE api_tokens SET last_used = $1 WHERE id = $2`
 
-	_, err := r.db.ExecContext(ctx, query, lastUsed, tokenID)
+	result, err := r.db.ExecContext(ctx, query, lastUsed, tokenID)
 	if err != nil {
 		return fmt.Errorf("failed to update last used: %w", err)
 	}
 
+	rowsAffected, _ = result.RowsAffected()
 	return nil
 }
 
 // CountActiveByUser counts active tokens for a user
 func (r *TokenRepository) CountActiveByUser(ctx context.Context, userID string) (int64, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("token", "count_active_by_user", time.Since(start), rowCount, err)
+	}()
+
 	query := `
 		SELECT COUNT(*) 
 		FROM api_tokens 
 		WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > $2`
 
 	var count int64
-	err := r.db.GetContext(ctx, &count, query, userID, time.Now())
+	err = r.db.GetContext(ctx, &count, query, userID, time.Now())
 	if err != nil {
 		return 0, fmt.Errorf("failed to count active tokens: %w", err)
 	}
 
+	rowCount = count
 	return count, nil
 }

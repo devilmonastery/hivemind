@@ -13,6 +13,7 @@ import (
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 	"github.com/devilmonastery/hivemind/internal/domain/repositories"
 	"github.com/devilmonastery/hivemind/internal/pkg/idgen"
+	"github.com/devilmonastery/hivemind/internal/pkg/metrics"
 )
 
 // SessionRepository implements the SessionRepository interface for SQLite
@@ -102,6 +103,12 @@ func oidcSessionRowFromEntity(session *entities.OIDCSession) (*oidcSessionRow, e
 
 // CreateOIDCSession creates a new OIDC session
 func (r *SessionRepository) CreateOIDCSession(ctx context.Context, session *entities.OIDCSession) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("session", "create", time.Since(start), 1, err)
+	}()
+
 	// Generate ID if not set
 	if session.ID == "" {
 		session.ID = idgen.GenerateID()
@@ -112,8 +119,9 @@ func (r *SessionRepository) CreateOIDCSession(ctx context.Context, session *enti
 		session.CreatedAt = time.Now()
 	}
 
-	row, err := oidcSessionRowFromEntity(session)
-	if err != nil {
+	row, convertErr := oidcSessionRowFromEntity(session)
+	if convertErr != nil {
+		err = convertErr
 		return err
 	}
 
@@ -133,10 +141,17 @@ func (r *SessionRepository) CreateOIDCSession(ctx context.Context, session *enti
 
 // GetOIDCSessionByID retrieves an OIDC session by its ID
 func (r *SessionRepository) GetOIDCSessionByID(ctx context.Context, id string) (*entities.OIDCSession, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("session", "get_by_id", time.Since(start), rowCount, err)
+	}()
+
 	var row oidcSessionRow
 	query := `SELECT * FROM oidc_sessions WHERE id = $1 LIMIT 1`
 
-	err := r.db.GetContext(ctx, &row, query, id)
+	err = r.db.GetContext(ctx, &row, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -144,6 +159,7 @@ func (r *SessionRepository) GetOIDCSessionByID(ctx context.Context, id string) (
 		return nil, fmt.Errorf("failed to get OIDC session by ID: %w", err)
 	}
 
+	rowCount = 1
 	return row.toEntity()
 }
 
@@ -156,10 +172,17 @@ func (r *SessionRepository) GetOIDCSessionByState(ctx context.Context, state str
 
 // GetOIDCSessionByUserAndProvider retrieves the OIDC session (with refresh token) for a user+provider
 func (r *SessionRepository) GetOIDCSessionByUserAndProvider(ctx context.Context, userID, provider string) (*entities.OIDCSession, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("session", "get_by_user_and_provider", time.Since(start), rowCount, err)
+	}()
+
 	var row oidcSessionRow
 	query := `SELECT * FROM oidc_sessions WHERE user_id = $1 AND provider = $2 ORDER BY last_refreshed DESC LIMIT 1`
 
-	err := r.db.GetContext(ctx, &row, query, userID, provider)
+	err = r.db.GetContext(ctx, &row, query, userID, provider)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -167,13 +190,22 @@ func (r *SessionRepository) GetOIDCSessionByUserAndProvider(ctx context.Context,
 		return nil, fmt.Errorf("failed to get OIDC session by user and provider: %w", err)
 	}
 
+	rowCount = 1
 	return row.toEntity()
 }
 
 // UpdateOIDCSession updates an existing OIDC session
 func (r *SessionRepository) UpdateOIDCSession(ctx context.Context, session *entities.OIDCSession) error {
-	row, err := oidcSessionRowFromEntity(session)
-	if err != nil {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("session", "update", time.Since(start), rowsAffected, err)
+	}()
+
+	row, convertErr := oidcSessionRowFromEntity(session)
+	if convertErr != nil {
+		err = convertErr
 		return err
 	}
 
@@ -189,13 +221,14 @@ func (r *SessionRepository) UpdateOIDCSession(ctx context.Context, session *enti
 		return fmt.Errorf("failed to update OIDC session: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("OIDC session not found: %s", session.ID)
+		err = fmt.Errorf("OIDC session not found: %s", session.ID)
+		return err
 	}
 
 	return nil
@@ -203,16 +236,31 @@ func (r *SessionRepository) UpdateOIDCSession(ctx context.Context, session *enti
 
 // DeleteOIDCSession deletes an OIDC session by ID
 func (r *SessionRepository) DeleteOIDCSession(ctx context.Context, id string) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("session", "delete", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `DELETE FROM oidc_sessions WHERE id = $1`
-	_, err := r.db.ExecContext(ctx, query, id)
+	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete OIDC session: %w", err)
 	}
+	rowsAffected, _ = result.RowsAffected()
 	return nil
 }
 
 // DeleteExpiredOIDCSessions deletes expired OIDC sessions
 func (r *SessionRepository) DeleteExpiredOIDCSessions(ctx context.Context, before time.Time) (int64, error) {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("session", "delete_expired", time.Since(start), rowsAffected, err)
+	}()
+
 	query := `DELETE FROM oidc_sessions WHERE expires_at < $1`
 	result, err := r.db.ExecContext(ctx, query, before)
 	if err != nil {
@@ -224,11 +272,19 @@ func (r *SessionRepository) DeleteExpiredOIDCSessions(ctx context.Context, befor
 		return 0, fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
+	rowsAffected = deleted
 	return deleted, nil
 }
 
 // ListOIDCSessionsByUser lists OIDC sessions for a user with pagination
 func (r *SessionRepository) ListOIDCSessionsByUser(ctx context.Context, userID string, opts repositories.ListSessionsOptions) ([]*entities.OIDCSession, int64, error) {
+	start := time.Now()
+	var err error
+	var rowCount int64
+	defer func() {
+		metrics.RecordDBOperation("session", "list", time.Since(start), rowCount, err)
+	}()
+
 	// Build query conditions
 	var conditions []string
 	var args []interface{}
@@ -267,7 +323,7 @@ func (r *SessionRepository) ListOIDCSessionsByUser(ctx context.Context, userID s
 	// Count total records
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM oidc_sessions %s", whereClause)
 	var total int64
-	err := r.db.GetContext(ctx, &total, countQuery, args...)
+	err = r.db.GetContext(ctx, &total, countQuery, args...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count OIDC sessions: %w", err)
 	}
@@ -314,18 +370,25 @@ func (r *SessionRepository) ListOIDCSessionsByUser(ctx context.Context, userID s
 	// Convert to entities
 	sessions := make([]*entities.OIDCSession, len(rows))
 	for i, row := range rows {
-		session, err := row.toEntity()
-		if err != nil {
+		session, convertErr := row.toEntity()
+		if convertErr != nil {
+			err = convertErr
 			return nil, 0, fmt.Errorf("failed to convert OIDC session row: %w", err)
 		}
 		sessions[i] = session
 	}
 
+	rowCount = int64(len(rows))
 	return sessions, total, nil
 }
 
 // CleanupExpiredSessions deletes expired sessions and returns counts
 func (r *SessionRepository) CleanupExpiredSessions(ctx context.Context, before time.Time) (oidcDeleted int64, err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordDBOperation("session", "cleanup", time.Since(start), oidcDeleted, err)
+	}()
+
 	// Delete expired OIDC sessions
 	oidcDeleted, err = r.DeleteExpiredOIDCSessions(ctx, before)
 	if err != nil {
