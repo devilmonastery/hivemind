@@ -11,7 +11,7 @@ import (
 )
 
 // PostWikiCreated posts an announcement for a newly created wiki page
-func PostWikiCreated(s *discordgo.Session, grpcClient *client.Client, guildID, title, authorName, wikiID string, log *slog.Logger) {
+func PostWikiCreated(s *discordgo.Session, grpcClient *client.Client, guildID, title, authorName, wikiID, webBaseURL string, log *slog.Logger) {
 	ctx := context.Background()
 	discordClient := discordpb.NewDiscordServiceClient(grpcClient.Conn())
 
@@ -45,8 +45,10 @@ func PostWikiCreated(s *discordgo.Session, grpcClient *client.Client, guildID, t
 		},
 	}
 
-	// TODO: Add web link when available
-	// embed.URL = fmt.Sprintf("https://hivemind.example.com/wiki/%s", wikiID)
+	// Add web link if web base URL is configured
+	if webBaseURL != "" {
+		embed.URL = fmt.Sprintf("%s/wiki/%s", webBaseURL, wikiID)
+	}
 
 	// Post message
 	msg, err := s.ChannelMessageSendEmbed(channelID, embed)
@@ -67,7 +69,7 @@ func PostWikiCreated(s *discordgo.Session, grpcClient *client.Client, guildID, t
 }
 
 // PostQuoteCreated posts an announcement for a newly created quote
-func PostQuoteCreated(s *discordgo.Session, grpcClient *client.Client, guildID, quoteBody, authorName, quoteID string, log *slog.Logger) {
+func PostQuoteCreated(s *discordgo.Session, grpcClient *client.Client, guildID, quoteBody, authorName, quoteID, sourceChannelID, sourceMessageID string, log *slog.Logger) {
 	ctx := context.Background()
 	discordClient := discordpb.NewDiscordServiceClient(grpcClient.Conn())
 
@@ -105,6 +107,12 @@ func PostQuoteCreated(s *discordgo.Session, grpcClient *client.Client, guildID, 
 		Footer: &discordgo.MessageEmbedFooter{
 			Text: "Use /quote random to see quotes",
 		},
+	}
+
+	// Add link to original message if available
+	if sourceChannelID != "" && sourceMessageID != "" {
+		messageURL := fmt.Sprintf("https://discord.com/channels/%s/%s/%s", guildID, sourceChannelID, sourceMessageID)
+		embed.Description += fmt.Sprintf("\n\n[Jump to original message](%s)", messageURL)
 	}
 
 	// Post message

@@ -189,12 +189,11 @@ func (h *Handler) getDiscordInstallURLs(ctx context.Context) (guildURL, userURL 
 		return "", ""
 	}
 
-	// Discord OAuth permissions: 277025507392
-	// This includes: Send Messages, Embed Links, Read Message History, etc.
-	// TODO: move to config
-	permissions := "277025507328"
-	guildURL = urlutil.DiscordOAuthURL(discordClientID, permissions, 0)
-	userURL = urlutil.DiscordOAuthURL(discordClientID, permissions, 1)
+	// Use simple Discord install URLs that rely on Default Install Settings
+	// configured in the Discord Developer Portal (Installation tab).
+	// This allows permissions to be managed centrally without hardcoding them here.
+	guildURL = urlutil.DiscordOAuthURL(discordClientID, "", 0)
+	userURL = urlutil.DiscordOAuthURL(discordClientID, "", 1)
 	return guildURL, userURL
 }
 

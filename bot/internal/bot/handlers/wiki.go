@@ -610,7 +610,7 @@ func handleWikiMerge(s *discordgo.Session, i *discordgo.InteractionCreate, subco
 }
 
 // handleWikiEditModal processes the modal submission for wiki page creation/editing
-func handleWikiEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+func handleWikiEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
 	data := i.ModalSubmitData()
 
 	// Check if this is an edit (custom ID format: wiki_edit_modal:OriginalTitle)
@@ -708,6 +708,7 @@ func handleWikiEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, l
 			resp.Page.Title,
 			i.Member.User.Username,
 			resp.Page.Id,
+			cfg.Backend.WebBaseURL,
 			log,
 		)
 	}

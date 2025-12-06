@@ -90,7 +90,7 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *co
 	case "Save as Quote":
 		handleContextMenuQuote(s, i, log, grpcClient)
 	case "Create Note":
-		handleContextMenuNote(s, i, log, grpcClient)
+		handleContextMenuNote(s, i, cfg, log, grpcClient)
 	case "Add to Wiki":
 		handleContextMenuWiki(s, i, log, grpcClient)
 	// User context menu commands
@@ -184,9 +184,9 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 	switch handlerType {
 	case "context_wiki_unified_modal":
 		log.Info("routing to handleContextWikiUnifiedModal", slog.String("custom_id", customID))
-		handleContextWikiUnifiedModal(s, i, log, grpcClient)
+		handleContextWikiUnifiedModal(s, i, cfg, log, grpcClient)
 	case "wiki_edit_modal":
-		handleWikiEditModal(s, i, log, grpcClient)
+		handleWikiEditModal(s, i, cfg, log, grpcClient)
 	case "note_create_modal":
 		handleNoteCreateModal(s, i, cfg, log, grpcClient)
 	case "note_edit_modal":
@@ -194,7 +194,7 @@ func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *conf
 	case "quote_edit_modal":
 		handleQuoteEditModal(s, i, log, grpcClient)
 	case "context_quote_modal":
-		handleContextQuoteModal(s, i, log, grpcClient)
+		handleContextQuoteModal(s, i, cfg, log, grpcClient)
 	case "context_note_modal":
 		handleContextNoteModal(s, i, cfg, log, grpcClient)
 	case "context_wiki_modal":

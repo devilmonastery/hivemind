@@ -166,6 +166,16 @@ func (b *Bot) onReady(s *discordgo.Session, event *discordgo.Ready) {
 		slog.Int("guilds", len(event.Guilds)),
 	)
 
+	// Log reactions configuration
+	if b.config.Features.Reactions.Enabled {
+		b.log.Info("reactions enabled",
+			slog.String("quote_emoji_id", b.config.Features.Reactions.QuoteEmojiID),
+			slog.String("wiki_emoji_id", b.config.Features.Reactions.WikiEmojiID),
+			slog.String("hivemind_emoji_id", b.config.Features.Reactions.HivemindEmojiID))
+	} else {
+		b.log.Info("reactions disabled")
+	}
+
 	// Mark gateway as connected
 	metrics.DiscordGatewayConnected.WithLabelValues("0").Set(1)
 
