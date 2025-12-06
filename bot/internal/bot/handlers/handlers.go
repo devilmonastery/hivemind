@@ -84,6 +84,8 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *co
 		handleNote(s, i, cfg, log, grpcClient)
 	case "quote":
 		handleQuote(s, i, log, grpcClient)
+	case "hivemind":
+		handleHivemind(s, i, log, grpcClient)
 	// Context menu commands
 	case "Save as Quote":
 		handleContextMenuQuote(s, i, log, grpcClient)

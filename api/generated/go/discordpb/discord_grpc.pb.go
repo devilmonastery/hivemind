@@ -27,6 +27,8 @@ const (
 	DiscordService_RemoveGuildMember_FullMethodName       = "/hivemind.discord.DiscordService/RemoveGuildMember"
 	DiscordService_CheckGuildMembership_FullMethodName    = "/hivemind.discord.DiscordService/CheckGuildMembership"
 	DiscordService_ListUserGuilds_FullMethodName          = "/hivemind.discord.DiscordService/ListUserGuilds"
+	DiscordService_UpdateGuildSettings_FullMethodName     = "/hivemind.discord.DiscordService/UpdateGuildSettings"
+	DiscordService_GetGuildSettings_FullMethodName        = "/hivemind.discord.DiscordService/GetGuildSettings"
 )
 
 // DiscordServiceClient is the client API for DiscordService service.
@@ -51,6 +53,10 @@ type DiscordServiceClient interface {
 	CheckGuildMembership(ctx context.Context, in *CheckGuildMembershipRequest, opts ...grpc.CallOption) (*CheckGuildMembershipResponse, error)
 	// ListUserGuilds returns all guilds a user is a member of
 	ListUserGuilds(ctx context.Context, in *ListUserGuildsRequest, opts ...grpc.CallOption) (*ListUserGuildsResponse, error)
+	// UpdateGuildSettings updates guild-specific settings
+	UpdateGuildSettings(ctx context.Context, in *UpdateGuildSettingsRequest, opts ...grpc.CallOption) (*UpdateGuildSettingsResponse, error)
+	// GetGuildSettings retrieves guild settings
+	GetGuildSettings(ctx context.Context, in *GetGuildSettingsRequest, opts ...grpc.CallOption) (*GetGuildSettingsResponse, error)
 }
 
 type discordServiceClient struct {
@@ -141,6 +147,26 @@ func (c *discordServiceClient) ListUserGuilds(ctx context.Context, in *ListUserG
 	return out, nil
 }
 
+func (c *discordServiceClient) UpdateGuildSettings(ctx context.Context, in *UpdateGuildSettingsRequest, opts ...grpc.CallOption) (*UpdateGuildSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateGuildSettingsResponse)
+	err := c.cc.Invoke(ctx, DiscordService_UpdateGuildSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *discordServiceClient) GetGuildSettings(ctx context.Context, in *GetGuildSettingsRequest, opts ...grpc.CallOption) (*GetGuildSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetGuildSettingsResponse)
+	err := c.cc.Invoke(ctx, DiscordService_GetGuildSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DiscordServiceServer is the server API for DiscordService service.
 // All implementations should embed UnimplementedDiscordServiceServer
 // for forward compatibility.
@@ -163,6 +189,10 @@ type DiscordServiceServer interface {
 	CheckGuildMembership(context.Context, *CheckGuildMembershipRequest) (*CheckGuildMembershipResponse, error)
 	// ListUserGuilds returns all guilds a user is a member of
 	ListUserGuilds(context.Context, *ListUserGuildsRequest) (*ListUserGuildsResponse, error)
+	// UpdateGuildSettings updates guild-specific settings
+	UpdateGuildSettings(context.Context, *UpdateGuildSettingsRequest) (*UpdateGuildSettingsResponse, error)
+	// GetGuildSettings retrieves guild settings
+	GetGuildSettings(context.Context, *GetGuildSettingsRequest) (*GetGuildSettingsResponse, error)
 }
 
 // UnimplementedDiscordServiceServer should be embedded to have
@@ -195,6 +225,12 @@ func (UnimplementedDiscordServiceServer) CheckGuildMembership(context.Context, *
 }
 func (UnimplementedDiscordServiceServer) ListUserGuilds(context.Context, *ListUserGuildsRequest) (*ListUserGuildsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListUserGuilds not implemented")
+}
+func (UnimplementedDiscordServiceServer) UpdateGuildSettings(context.Context, *UpdateGuildSettingsRequest) (*UpdateGuildSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateGuildSettings not implemented")
+}
+func (UnimplementedDiscordServiceServer) GetGuildSettings(context.Context, *GetGuildSettingsRequest) (*GetGuildSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetGuildSettings not implemented")
 }
 func (UnimplementedDiscordServiceServer) testEmbeddedByValue() {}
 
@@ -360,6 +396,42 @@ func _DiscordService_ListUserGuilds_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DiscordService_UpdateGuildSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateGuildSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordServiceServer).UpdateGuildSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordService_UpdateGuildSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordServiceServer).UpdateGuildSettings(ctx, req.(*UpdateGuildSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DiscordService_GetGuildSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGuildSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscordServiceServer).GetGuildSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscordService_GetGuildSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscordServiceServer).GetGuildSettings(ctx, req.(*GetGuildSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DiscordService_ServiceDesc is the grpc.ServiceDesc for DiscordService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -398,6 +470,14 @@ var DiscordService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListUserGuilds",
 			Handler:    _DiscordService_ListUserGuilds_Handler,
+		},
+		{
+			MethodName: "UpdateGuildSettings",
+			Handler:    _DiscordService_UpdateGuildSettings_Handler,
+		},
+		{
+			MethodName: "GetGuildSettings",
+			Handler:    _DiscordService_GetGuildSettings_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

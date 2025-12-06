@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"time"
@@ -238,4 +239,77 @@ func (r *DiscordGuildRepository) Delete(ctx context.Context, guildID string) err
 	}
 
 	return nil
+}
+
+// UpdateSettings updates the settings JSONB for a guild
+func (r *DiscordGuildRepository) UpdateSettings(ctx context.Context, guildID string, settings map[string]interface{}) error {
+	start := time.Now()
+	var err error
+	var rowsAffected int64
+	defer func() {
+		metrics.RecordDBOperation("discord_guild", "update_settings", time.Since(start), rowsAffected, err)
+	}()
+
+	settingsJSON, err := json.Marshal(settings)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		UPDATE discord_guilds
+		SET settings = $1, last_activity = CURRENT_TIMESTAMP
+		WHERE guild_id = $2
+	`
+
+	result, err := r.db.ExecContext(ctx, query, settingsJSON, guildID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err = result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return repositories.ErrDiscordGuildNotFound
+	}
+
+	r.log.Debug("updated guild settings",
+		slog.String("guild_id", guildID))
+
+	return nil
+}
+
+// GetSettings retrieves the settings JSONB for a guild
+func (r *DiscordGuildRepository) GetSettings(ctx context.Context, guildID string) (map[string]interface{}, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("discord_guild", "get_settings", time.Since(start), -1, err)
+	}()
+
+	query := `
+		SELECT settings
+		FROM discord_guilds
+		WHERE guild_id = $1
+	`
+
+	var settingsJSON []byte
+	err = r.db.QueryRowContext(ctx, query, guildID).Scan(&settingsJSON)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repositories.ErrDiscordGuildNotFound
+		}
+		return nil, err
+	}
+
+	var settings map[string]interface{}
+	if len(settingsJSON) > 0 {
+		if err := json.Unmarshal(settingsJSON, &settings); err != nil {
+			return nil, err
+		}
+	}
+
+	return settings, nil
 }

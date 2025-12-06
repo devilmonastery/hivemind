@@ -10,6 +10,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 
 	wikipb "github.com/devilmonastery/hivemind/api/generated/go/wikipb"
+	"github.com/devilmonastery/hivemind/bot/internal/bot/announcements"
 	"github.com/devilmonastery/hivemind/bot/internal/config"
 	"github.com/devilmonastery/hivemind/internal/client"
 	"github.com/devilmonastery/hivemind/internal/pkg/urlutil"
@@ -696,6 +697,19 @@ func handleWikiEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, l
 	})
 	if err != nil {
 		log.Error("failed to respond to wiki create", slog.String("error", err.Error()))
+	}
+
+	// Post announcement if this was a new wiki page (not an edit)
+	if resp.Created && i.Member != nil && i.Member.User != nil {
+		announcements.PostWikiCreated(
+			s,
+			grpcClient,
+			i.GuildID,
+			resp.Page.Title,
+			i.Member.User.Username,
+			resp.Page.Id,
+			log,
+		)
 	}
 }
 

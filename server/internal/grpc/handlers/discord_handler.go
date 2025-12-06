@@ -281,3 +281,95 @@ func (h *DiscordHandler) ListUserGuilds(ctx context.Context, req *discordpb.List
 		GuildIds: guildIDs,
 	}, nil
 }
+
+// UpdateGuildSettings updates guild-specific settings
+// Should verify that caller has appropriate permissions to modify guild settings, e.g., is a guild admin.
+func (h *DiscordHandler) UpdateGuildSettings(ctx context.Context, req *discordpb.UpdateGuildSettingsRequest) (*discordpb.UpdateGuildSettingsResponse, error) {
+	if req.GuildId == "" {
+		return nil, status.Error(codes.InvalidArgument, "guild_id is required")
+	}
+
+	// Convert protobuf to map
+	settings := make(map[string]interface{})
+	settings["version"] = 1
+
+	if req.Settings != nil && req.Settings.Announcements != nil {
+		settings["announcements"] = map[string]interface{}{
+			"enabled":                     req.Settings.Announcements.Enabled,
+			"channel_id":                  req.Settings.Announcements.ChannelId,
+			"notify_wiki_create":          req.Settings.Announcements.NotifyWikiCreate,
+			"notify_wiki_edit":            req.Settings.Announcements.NotifyWikiEdit,
+			"notify_quote_create":         req.Settings.Announcements.NotifyQuoteCreate,
+			"create_threads":              req.Settings.Announcements.CreateThreads,
+			"thread_auto_archive_minutes": req.Settings.Announcements.ThreadAutoArchiveMinutes,
+		}
+	}
+
+	err := h.discordService.UpdateGuildSettings(ctx, req.GuildId, settings)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update guild settings: %v", err)
+	}
+
+	return &discordpb.UpdateGuildSettingsResponse{
+		Settings: req.Settings,
+	}, nil
+}
+
+// GetGuildSettings retrieves guild settings
+func (h *DiscordHandler) GetGuildSettings(ctx context.Context, req *discordpb.GetGuildSettingsRequest) (*discordpb.GetGuildSettingsResponse, error) {
+	if req.GuildId == "" {
+		return nil, status.Error(codes.InvalidArgument, "guild_id is required")
+	}
+
+	settings, err := h.discordService.GetGuildSettings(ctx, req.GuildId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get guild settings: %v", err)
+	}
+
+	// Convert map to protobuf
+	resp := &discordpb.GetGuildSettingsResponse{
+		Settings: &discordpb.GuildSettings{},
+	}
+
+	if announcements, ok := settings["announcements"].(map[string]interface{}); ok {
+		resp.Settings.Announcements = &discordpb.AnnouncementSettings{
+			Enabled:                  getBool(announcements, "enabled"),
+			ChannelId:                getString(announcements, "channel_id"),
+			NotifyWikiCreate:         getBool(announcements, "notify_wiki_create"),
+			NotifyWikiEdit:           getBool(announcements, "notify_wiki_edit"),
+			NotifyQuoteCreate:        getBool(announcements, "notify_quote_create"),
+			CreateThreads:            getBool(announcements, "create_threads"),
+			ThreadAutoArchiveMinutes: getInt32(announcements, "thread_auto_archive_minutes"),
+		}
+	}
+
+	return resp, nil
+}
+
+// Helper functions for type conversion
+func getBool(m map[string]interface{}, key string) bool {
+	if v, ok := m[key].(bool); ok {
+		return v
+	}
+	return false
+}
+
+func getString(m map[string]interface{}, key string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func getInt32(m map[string]interface{}, key string) int32 {
+	if v, ok := m[key].(float64); ok {
+		return int32(v)
+	}
+	if v, ok := m[key].(int32); ok {
+		return v
+	}
+	if v, ok := m[key].(int); ok {
+		return int32(v)
+	}
+	return 0
+}
