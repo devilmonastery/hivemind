@@ -485,3 +485,45 @@ func (s *DiscordService) UpdateMemberLastSeen(
 	}
 	return nil
 }
+
+// UpdateGuildSettings updates guild-specific settings
+func (s *DiscordService) UpdateGuildSettings(ctx context.Context, guildID string, settings map[string]interface{}) error {
+	// Validate guild exists
+	_, err := s.discordGuildRepo.GetByID(ctx, guildID)
+	if err != nil {
+		return fmt.Errorf("guild not found: %w", err)
+	}
+
+	// Add version if not present
+	if _, ok := settings["version"]; !ok {
+		settings["version"] = 1
+	}
+
+	err = s.discordGuildRepo.UpdateSettings(ctx, guildID, settings)
+	if err != nil {
+		return err
+	}
+
+	s.logger.Info("guild settings updated",
+		slog.String("component", "discord_service"),
+		slog.String("guild_id", guildID))
+
+	return nil
+}
+
+// GetGuildSettings retrieves guild settings
+func (s *DiscordService) GetGuildSettings(ctx context.Context, guildID string) (map[string]interface{}, error) {
+	settings, err := s.discordGuildRepo.GetSettings(ctx, guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return empty settings if none configured
+	if settings == nil {
+		settings = map[string]interface{}{
+			"version": 1,
+		}
+	}
+
+	return settings, nil
+}

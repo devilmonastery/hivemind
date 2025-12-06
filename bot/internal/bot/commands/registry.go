@@ -199,5 +199,44 @@ func GetDefinitions() []*discordgo.ApplicationCommand {
 			Name: "View Note for User",
 			Type: discordgo.UserApplicationCommand,
 		},
+		// Admin configuration command
+		getHivemindCommand(),
+	}
+}
+
+// getHivemindCommand returns the /hivemind admin configuration command
+func getHivemindCommand() *discordgo.ApplicationCommand {
+	adminPerms := int64(discordgo.PermissionManageServer)
+	dmDisabled := false
+
+	return &discordgo.ApplicationCommand{
+		Name:                     "hivemind",
+		Description:              "Configure Hivemind bot settings (Admin only)",
+		DefaultMemberPermissions: &adminPerms,
+		DMPermission:             &dmDisabled,
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionSubCommand,
+				Name:        "setup-announcements",
+				Description: "Configure announcement channel for new wikis/quotes",
+				Options: []*discordgo.ApplicationCommandOption{
+					{
+						Type:        discordgo.ApplicationCommandOptionChannel,
+						Name:        "channel",
+						Description: "Channel for announcements (leave empty to disable)",
+						Required:    false,
+						ChannelTypes: []discordgo.ChannelType{
+							discordgo.ChannelTypeGuildText,
+							discordgo.ChannelTypeGuildNews,
+						},
+					},
+				},
+			},
+			{
+				Type:        discordgo.ApplicationCommandOptionSubCommand,
+				Name:        "show",
+				Description: "Show current bot configuration",
+			},
+		},
 	}
 }

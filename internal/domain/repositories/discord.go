@@ -52,6 +52,12 @@ type DiscordGuildRepository interface {
 
 	// Delete removes a guild record
 	Delete(ctx context.Context, guildID string) error
+
+	// UpdateSettings updates the settings JSONB for a guild
+	UpdateSettings(ctx context.Context, guildID string, settings map[string]interface{}) error
+
+	// GetSettings retrieves the settings JSONB for a guild
+	GetSettings(ctx context.Context, guildID string) (map[string]interface{}, error)
 }
 
 // GuildMemberRepository handles Discord guild membership data persistence

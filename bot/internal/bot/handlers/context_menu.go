@@ -11,6 +11,7 @@ import (
 	notespb "github.com/devilmonastery/hivemind/api/generated/go/notespb"
 	quotespb "github.com/devilmonastery/hivemind/api/generated/go/quotespb"
 	wikipb "github.com/devilmonastery/hivemind/api/generated/go/wikipb"
+	"github.com/devilmonastery/hivemind/bot/internal/bot/announcements"
 	"github.com/devilmonastery/hivemind/bot/internal/config"
 	"github.com/devilmonastery/hivemind/internal/client"
 )
@@ -261,6 +262,19 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)
+	}
+
+	// Post announcement for new quote
+	if i.Member != nil && i.Member.User != nil && resp != nil {
+		announcements.PostQuoteCreated(
+			s,
+			grpcClient,
+			i.GuildID,
+			resp.Body,
+			i.Member.User.Username,
+			resp.Id,
+			log,
+		)
 	}
 }
 
