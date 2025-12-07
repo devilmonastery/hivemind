@@ -1,4 +1,4 @@
-.PHONY: all build clean server cli web bot test lint proto assets build-css watch-css tidy run-server run-web run-bot db-shell docker-server docker-web docker-bot docker-all docker-publish-server docker-publish-web docker-publish-bot docker-publish-all buildx-remote-setup buildx-remote-teardown buildx-info help
+.PHONY: all build clean server web bot test lint proto assets build-css watch-css tidy run-server run-web run-bot db-shell docker-server docker-web docker-bot docker-all docker-publish-server docker-publish-web docker-publish-bot docker-publish-all buildx-remote-setup buildx-remote-teardown buildx-info help
 
 # Load .env file if it exists
 -include .env
@@ -6,7 +6,6 @@ export
 
 # Binary names
 SERVER_BIN := bin/hivemind-server
-CLI_BIN := bin/hivemind
 WEB_BIN := bin/hivemind-web
 BOT_BIN := bin/hivemind-bot
 
@@ -33,17 +32,12 @@ GOMOD := $(GOCMD) mod
 all: build
 
 ## build: Build all binaries
-build: server cli web bot
+build: server web bot
 
 ## server: Build the gRPC server
 server:
 	@echo "Building hivemind server..."
 	@$(GOBUILD) -o $(SERVER_BIN) ./server
-
-## cli: Build the CLI client
-cli:
-	@echo "Building hivemind CLI..."
-	@$(GOBUILD) -o $(CLI_BIN) ./cli
 
 ## web: Build the web server
 web:
@@ -59,7 +53,7 @@ bot:
 clean:
 	@echo "Cleaning..."
 	@$(GOCLEAN)
-	@rm -f $(SERVER_BIN) $(CLI_BIN) $(WEB_BIN) $(BOT_BIN)
+	@rm -f $(SERVER_BIN) $(WEB_BIN) $(BOT_BIN)
 
 ## test: Run tests
 test:
@@ -118,11 +112,6 @@ force-migration: server
 	fi
 	@echo "Forcing migration to version $(VERSION)..."
 	@$(SERVER_BIN) --config configs/dev-server.yaml --force-migration $(VERSION)
-
-## run-cli: Build and run the CLI
-run-cli: cli
-	@echo "Starting hivemind CLI..."
-	@$(CLI_BIN)
 
 ## run-web: Build and run the web server
 run-web: web
