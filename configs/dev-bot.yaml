@@ -21,3 +21,8 @@ features:
   enable_notes: true
   max_note_size: 10000
   max_wiki_size: 50000
+  reactions:
+    enabled: true
+    quote_emoji_id: "1446824194288517256"
+    wiki_emoji_id: "1446824195798335560"
+    hivemind_emoji_id: "1446824197354688594"

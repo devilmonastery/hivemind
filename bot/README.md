@@ -14,6 +14,20 @@ Discord bot for managing collaborative knowledge bases (wikis, notes, and quotes
 6. Under "Privileged Gateway Intents", enable:
    - Server Members Intent
    - Message Content Intent
+7. **Configure Default Install Settings** (for "Install to Server" link):
+   - Go to "Installation" tab
+   - Under "Default Install Settings"
+   - Select "Guild Install"
+   - Under "Permissions", add:
+     - Read Messages/View Channels
+     - Send Messages
+     - Send Messages in Threads
+     - Embed Links
+     - Attach Files
+     - Read Message History
+     - Add Reactions
+     - Use Application Commands
+   - Click "Save Changes"
 
 ### 2. Configure Bot
 
@@ -31,6 +45,31 @@ Edit `configs/dev-bot.yaml` and fill in:
 - `backend.grpc_port`: Backend server gRPC port (default: 50051)
 - `web.base_url`: Web interface URL for generating links (optional)
 
+### Emoji Reactions (Optional)
+
+The bot can automatically add emoji reactions to messages when they're saved as quotes, added to wiki pages, or referenced in notes. This provides visual feedback that content has been archived.
+
+**Setup:**
+1. Upload custom emoji to your Discord application (not to a server):
+   - Go to Discord Developer Portal → Your Application → Emojis
+   - Upload emoji for quotes, wiki, and general hivemind reactions
+   - Copy the emoji IDs
+
+2. Configure in `configs/dev-bot.yaml`:
+```yaml
+features:
+  reactions:
+    enabled: true                           # Set to false to disable reactions
+    quote_emoji_id: "1446823963882950838"   # Application emoji ID for quotes
+    wiki_emoji_id: "1446823965204025426"    # Application emoji ID for wiki pages
+    hivemind_emoji_id: "1446823966588014733" # Application emoji ID for notes
+```
+
+**Notes:**
+- Application emoji work across all servers automatically
+- If reactions fail (missing permissions, etc.), the bot logs a warning but continues the operation
+- Reactions are purely visual feedback and optional
+
 Or use environment variables:
 ```bash
 export DISCORD_BOT_TOKEN="your-token-here"
@@ -40,14 +79,25 @@ export BACKEND_SERVICE_TOKEN="your-service-token-here"
 
 ### 3. Invite Bot to Server
 
-Generate an invite URL:
+**Option A: Use "Install to Server" (Recommended)**
+1. In Discord Developer Portal, go to your application
+2. Click "Installation" in the left sidebar
+3. Ensure "Default Install Settings" are configured (see step 1.7 above)
+4. Use the "Install Link" or click "Install to Server" button
+5. Select a server and authorize
+
+**Option B: Generate Custom OAuth2 URL**
 1. Go to your application's "OAuth2" → "URL Generator"
 2. Select scopes: `bot`, `applications.commands`
 3. Select permissions:
    - Read Messages/View Channels
    - Send Messages
+   - Send Messages in Threads
    - Embed Links
-   - Use Slash Commands
+   - Attach Files
+   - Read Message History
+   - Add Reactions (required for emoji reactions feature)
+   - Use Application Commands
 4. Copy the generated URL and open it in your browser
 5. Select a server and authorize
 
@@ -113,7 +163,7 @@ This means the bot doesn't have the `applications.commands` scope in that guild.
 1. Generate a new invite URL with BOTH scopes:
    - Go to Discord Developer Portal → Your App → OAuth2 → URL Generator
    - Select scopes: `bot` **AND** `applications.commands`
-   - Select required permissions (Read Messages, Send Messages, Embed Links, etc.)
+   - Select required permissions (Read Messages, Send Messages, Embed Links, Add Reactions, etc.)
 2. Visit the generated URL
 3. Select the same server (Discord will update the bot's scopes)
 4. Try the cleanup/register command again
