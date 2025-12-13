@@ -121,11 +121,122 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 		return
 	}
 
-	// Show modal with title and body inputs for creating a new wiki page
+	// Defer to avoid timeout while fetching pages
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if err != nil {
+		log.Error("Failed to defer response", "error", err)
+		return
+	}
+
+	// Fetch existing wiki pages for this guild
+	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
+	ctx := discordContextFor(i)
+
+	pagesResp, err := wikiClient.ListWikiPages(ctx, &wikipb.ListWikiPagesRequest{
+		GuildId: i.GuildID,
+		Limit:   25, // Discord limit for select menu options
+	})
+
+	var selectOptions []discordgo.SelectMenuOption
+
+	// Always add "Create New Page" as first option
+	selectOptions = append(selectOptions, discordgo.SelectMenuOption{
+		Label:       "📝 Create New Page",
+		Value:       "__NEW_PAGE__",
+		Description: "Create a new wiki page",
+		Default:     false,
+	})
+
+	// Add existing pages if available
+	if err == nil && pagesResp != nil && len(pagesResp.Pages) > 0 {
+		for _, page := range pagesResp.Pages {
+			// Truncate title if too long for display
+			displayTitle := page.Title
+			if len(displayTitle) > 100 {
+				displayTitle = displayTitle[:97] + "..."
+			}
+
+			selectOptions = append(selectOptions, discordgo.SelectMenuOption{
+				Label: displayTitle,
+				Value: page.Title, // Store full title in value
+			})
+		}
+	} else if err != nil {
+		log.Warn("Failed to fetch wiki pages for select menu", "error", err)
+	}
+
+	// Show ephemeral message with select menu
+	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+		Content: "**Add this message to a wiki page:**\n\nSelect an existing page to append to, or create a new one:",
+		Flags:   discordgo.MessageFlagsEphemeral,
+		Components: []discordgo.MessageComponent{
+			discordgo.ActionsRow{
+				Components: []discordgo.MessageComponent{
+					discordgo.SelectMenu{
+						CustomID:    fmt.Sprintf("wiki_page_select:%s", targetID),
+						Placeholder: "Choose a wiki page...",
+						Options:     selectOptions,
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		log.Error("Failed to show wiki page select menu", "error", err)
+	}
+}
+
+// handleWikiPageSelect handles the select menu for choosing a wiki page
+func handleWikiPageSelect(s *discordgo.Session, i *discordgo.InteractionCreate, log *slog.Logger, grpcClient *client.Client) {
+	data := i.MessageComponentData()
+
+	// Extract message ID from CustomID (format: "wiki_page_select:MESSAGE_ID")
+	parts := strings.Split(data.CustomID, ":")
+	if len(parts) != 2 {
+		log.Error("Invalid wiki page select CustomID", "custom_id", data.CustomID)
+		respondError(s, i, "Invalid interaction", log)
+		return
+	}
+	messageID := parts[1]
+
+	// Get selected page title
+	if len(data.Values) == 0 {
+		respondError(s, i, "No page selected", log)
+		return
+	}
+	selectedTitle := data.Values[0]
+
+	// Fetch the original message to get its content
+	message, err := s.ChannelMessage(i.ChannelID, messageID)
+	if err != nil {
+		log.Warn("Failed to fetch original message", "message_id", messageID, "error", err)
+	}
+
+	messageContent := ""
+	if message != nil {
+		messageContent = message.Content
+	}
+
+	// Show modal with title pre-filled (or empty for new page)
+	var titleValue string
+	var titlePlaceholder string
+	if selectedTitle == "__NEW_PAGE__" {
+		titleValue = ""
+		titlePlaceholder = "Enter new page title"
+	} else {
+		titleValue = selectedTitle
+		titlePlaceholder = "Wiki page title"
+	}
+
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
-			CustomID: fmt.Sprintf("context_wiki_modal:%s", targetID),
+			CustomID: fmt.Sprintf("context_wiki_modal:%s", messageID),
 			Title:    "Add to Wiki Page",
 			Components: []discordgo.MessageComponent{
 				discordgo.ActionsRow{
@@ -135,8 +246,9 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 							Label:       "Wiki Page Title",
 							Style:       discordgo.TextInputShort,
 							Required:    true,
+							Value:       titleValue,
 							MaxLength:   200,
-							Placeholder: "Enter page title",
+							Placeholder: titlePlaceholder,
 						},
 					},
 				},
@@ -147,7 +259,7 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 							Label:       "Wiki Content",
 							Style:       discordgo.TextInputParagraph,
 							Required:    true,
-							Value:       message.Content,
+							Value:       messageContent,
 							MaxLength:   4000,
 							Placeholder: "Edit content. Use #hashtags for tags",
 						},
@@ -158,6 +270,13 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 	})
 	if err != nil {
 		log.Error("Failed to show wiki modal", "error", err)
+		return
+	}
+
+	// Delete the ephemeral select menu message
+	err = s.InteractionResponseDelete(i.Interaction)
+	if err != nil {
+		log.Warn("Failed to delete select menu message", "error", err)
 	}
 }
 
@@ -271,12 +390,35 @@ func handleContextQuoteModal(s *discordgo.Session, i *discordgo.InteractionCreat
 
 	// Post announcement for new quote
 	if i.Member != nil && i.Member.User != nil && resp != nil {
+		// Get guild nickname for the person who saved the quote
+		saverName := i.Member.User.Username
+		if i.Member.Nick != "" {
+			saverName = i.Member.Nick
+		}
+
+		// Get guild nickname for the original quote author
+		quoteAuthorName := ""
+		if sourceAuthorDiscordID != "" {
+			member, err := s.GuildMember(i.GuildID, sourceAuthorDiscordID)
+			if err == nil {
+				if member.Nick != "" {
+					quoteAuthorName = member.Nick
+				} else if member.User != nil {
+					quoteAuthorName = member.User.Username
+				}
+			} else {
+				// Fallback to the username we already have
+				quoteAuthorName = sourceAuthorUsername
+			}
+		}
+
 		announcements.PostQuoteCreated(
 			s,
 			grpcClient,
 			i.GuildID,
 			resp.Body,
-			i.Member.User.Username,
+			quoteAuthorName,
+			saverName,
 			resp.Id,
 			sourceChannelID,
 			sourceMessageID,
@@ -587,6 +729,26 @@ func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate
 	})
 	if err != nil {
 		log.Error("Failed to send followup", "error", err)
+	}
+
+	// Post announcement if this was a new wiki page (not an edit)
+	if resp.Created && i.Member != nil && i.Member.User != nil {
+		// Get guild nickname for the author
+		authorName := i.Member.User.Username
+		if i.Member.Nick != "" {
+			authorName = i.Member.Nick
+		}
+
+		announcements.PostWikiCreated(
+			s,
+			grpcClient,
+			i.GuildID,
+			page.Title,
+			authorName,
+			page.Id,
+			cfg.Backend.WebBaseURL,
+			log,
+		)
 	}
 }
 

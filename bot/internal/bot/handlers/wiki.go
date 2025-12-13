@@ -701,12 +701,18 @@ func handleWikiEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, c
 
 	// Post announcement if this was a new wiki page (not an edit)
 	if resp.Created && i.Member != nil && i.Member.User != nil {
+		// Get guild nickname for the author
+		authorName := i.Member.User.Username
+		if i.Member.Nick != "" {
+			authorName = i.Member.Nick
+		}
+
 		announcements.PostWikiCreated(
 			s,
 			grpcClient,
 			i.GuildID,
 			resp.Page.Title,
-			i.Member.User.Username,
+			authorName,
 			resp.Page.Id,
 			cfg.Backend.WebBaseURL,
 			log,

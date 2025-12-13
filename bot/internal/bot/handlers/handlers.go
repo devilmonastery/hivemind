@@ -138,6 +138,8 @@ func handleComponent(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *
 	case "wiki_unified_select":
 		log.Info("routing to handleWikiUnifiedSelect", slog.String("messageID", remainder))
 		handleWikiUnifiedSelect(s, i, remainder, log, grpcClient)
+	case "wiki_page_select":
+		handleWikiPageSelect(s, i, log, grpcClient)
 	case "note_edit_btn":
 		handleNoteEditButton(s, i, remainder, log, grpcClient)
 	case "note_delete_btn":

@@ -69,7 +69,7 @@ func PostWikiCreated(s *discordgo.Session, grpcClient *client.Client, guildID, t
 }
 
 // PostQuoteCreated posts an announcement for a newly created quote
-func PostQuoteCreated(s *discordgo.Session, grpcClient *client.Client, guildID, quoteBody, authorName, quoteID, sourceChannelID, sourceMessageID string, log *slog.Logger) {
+func PostQuoteCreated(s *discordgo.Session, grpcClient *client.Client, guildID, quoteBody, quoteAuthorName, saverName, quoteID, sourceChannelID, sourceMessageID string, log *slog.Logger) {
 	ctx := context.Background()
 	discordClient := discordpb.NewDiscordServiceClient(grpcClient.Conn())
 
@@ -100,9 +100,16 @@ func PostQuoteCreated(s *discordgo.Session, grpcClient *client.Client, guildID, 
 	}
 
 	// Build embed
+	var description string
+	if quoteAuthorName != "" {
+		description = fmt.Sprintf("%s said:\n> %s\n\n*Saved by %s*", quoteAuthorName, displayBody, saverName)
+	} else {
+		description = fmt.Sprintf("> %s\n\n*Saved by %s*", displayBody, saverName)
+	}
+
 	embed := &discordgo.MessageEmbed{
 		Title:       "💬 New Quote Added",
-		Description: fmt.Sprintf("> %s\n\n*Saved by %s*", displayBody, authorName),
+		Description: description,
 		Color:       0xFF00D9, // Magenta
 		Footer: &discordgo.MessageEmbedFooter{
 			Text: "Use /quote random to see quotes",
