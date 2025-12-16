@@ -745,7 +745,7 @@ func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate
 			i.GuildID,
 			page.Title,
 			authorName,
-			page.Id,
+			page.Slug,
 			cfg.Backend.WebBaseURL,
 			log,
 		)

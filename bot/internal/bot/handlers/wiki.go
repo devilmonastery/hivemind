@@ -713,7 +713,7 @@ func handleWikiEditModal(s *discordgo.Session, i *discordgo.InteractionCreate, c
 			i.GuildID,
 			resp.Page.Title,
 			authorName,
-			resp.Page.Id,
+			resp.Page.Slug,
 			cfg.Backend.WebBaseURL,
 			log,
 		)
