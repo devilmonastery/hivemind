@@ -219,6 +219,9 @@ func createRouter(h *handlers.Handler, authMw *middleware.AuthMiddleware) http.H
 	router.Handle("/quote/preview", authMw.RequireAuth(http.HandlerFunc(h.QuotePreview))).Methods("POST")
 	router.Handle("/quote/save", authMw.RequireAuth(http.HandlerFunc(h.QuoteSave))).Methods("POST")
 
+	// 404 handler for all unmatched routes
+	router.NotFoundHandler = http.HandlerFunc(h.NotFound)
+
 	// Wrap router with logging middleware
 	return middleware.LogRequest(router)
 }

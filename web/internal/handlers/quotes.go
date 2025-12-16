@@ -72,10 +72,17 @@ func (h *Handler) QuotePage(w http.ResponseWriter, r *http.Request) {
 		Id: quoteID,
 	})
 	if err != nil {
-		h.log.Error("Failed to fetch quote",
+		h.log.Error("Failed to find quote",
 			slog.String("quote_id", quoteID),
 			slog.String("error", err.Error()))
-		http.Error(w, "Quote not found", http.StatusNotFound)
+		h.renderError(w, r, ErrorPageOptions{
+			StatusCode:        http.StatusNotFound,
+			ErrorTitle:        "Quote Not Found",
+			ErrorMessage:      "The quote you're looking for could not be found.",
+			ErrorDetails:      "It may have been deleted or you might not have access to it.",
+			SuggestedLink:     "/quotes",
+			SuggestedLinkText: "💬 View All Quotes",
+		})
 		return
 	}
 
