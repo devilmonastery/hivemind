@@ -81,7 +81,14 @@ func (h *Handler) WikiPage(w http.ResponseWriter, r *http.Request) {
 			slog.String("slug", slugParam),
 			slog.String("guild_id", guildID),
 			slog.String("error", err.Error()))
-		http.Error(w, "Wiki page not found", http.StatusNotFound)
+		h.renderError(w, r, ErrorPageOptions{
+			StatusCode:        http.StatusNotFound,
+			ErrorTitle:        "Wiki Page Not Found",
+			ErrorMessage:      fmt.Sprintf("The wiki page '%s' could not be found.", slugParam),
+			ErrorDetails:      "It may have been deleted, renamed, or you might not have access to it.",
+			SuggestedLink:     "/wikis",
+			SuggestedLinkText: "📚 View All Wiki Pages",
+		})
 		return
 	}
 
@@ -139,7 +146,14 @@ func (h *Handler) WikiEdit(w http.ResponseWriter, r *http.Request) {
 	guildID := r.URL.Query().Get("guild_id")
 
 	if slugParam == "" || guildID == "" {
-		http.Error(w, "Missing wiki page slug or guild_id", http.StatusBadRequest)
+		h.renderError(w, r, ErrorPageOptions{
+			StatusCode:        http.StatusBadRequest,
+			ErrorTitle:        "Missing Information",
+			ErrorMessage:      "The wiki page link is incomplete or malformed.",
+			ErrorDetails:      "Wiki pages require both a slug and guild_id parameter.",
+			SuggestedLink:     "/wikis",
+			SuggestedLinkText: "📚 View All Wiki Pages",
+		})
 		return
 	}
 

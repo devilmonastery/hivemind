@@ -3,9 +3,11 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -128,6 +130,51 @@ func (h *Handler) renderContentOnly(w http.ResponseWriter, name string, data int
 	}
 }
 
+// ErrorPageOptions configures the error page display
+type ErrorPageOptions struct {
+	StatusCode        int
+	ErrorTitle        string
+	ErrorMessage      string
+	ErrorDetails      string
+	ErrorEmoji        string
+	SuggestedLink     string
+	SuggestedLinkText string
+}
+
+// renderError renders a friendly error page with optional suggestions
+func (h *Handler) renderError(w http.ResponseWriter, r *http.Request, opts ErrorPageOptions) {
+	// Set default emoji if not provided
+	if opts.ErrorEmoji == "" {
+		switch opts.StatusCode {
+		case http.StatusNotFound:
+			opts.ErrorEmoji = "🔍"
+		case http.StatusBadRequest:
+			opts.ErrorEmoji = "⚠️"
+		case http.StatusUnauthorized, http.StatusForbidden:
+			opts.ErrorEmoji = "🔒"
+		default:
+			opts.ErrorEmoji = "❌"
+		}
+	}
+
+	// Set default title if not provided
+	if opts.ErrorTitle == "" {
+		opts.ErrorTitle = http.StatusText(opts.StatusCode)
+	}
+
+	// Prepare template data
+	data := h.newTemplateData(r)
+	data["ErrorTitle"] = opts.ErrorTitle
+	data["ErrorMessage"] = opts.ErrorMessage
+	data["ErrorDetails"] = opts.ErrorDetails
+	data["ErrorEmoji"] = opts.ErrorEmoji
+	data["SuggestedLink"] = opts.SuggestedLink
+	data["SuggestedLinkText"] = opts.SuggestedLinkText
+
+	w.WriteHeader(opts.StatusCode)
+	h.renderTemplate(w, "error.html", data)
+}
+
 // isAuthError checks if a gRPC error indicates authentication failure
 func isAuthError(err error) bool {
 	if err == nil {
@@ -195,6 +242,32 @@ func (h *Handler) getDiscordInstallURLs(ctx context.Context) (guildURL, userURL 
 	guildURL = urlutil.DiscordOAuthURL(discordClientID, "", 0)
 	userURL = urlutil.DiscordOAuthURL(discordClientID, "", 1)
 	return guildURL, userURL
+}
+
+// NotFound handles 404 errors with a friendly error page
+func (h *Handler) NotFound(w http.ResponseWriter, r *http.Request) {
+	// Determine context-aware suggestions based on URL path
+	var suggestedLink, suggestedLinkText string
+
+	if strings.HasPrefix(r.URL.Path, "/wiki") {
+		suggestedLink = "/wikis"
+		suggestedLinkText = "📚 View All Wiki Pages"
+	} else if strings.HasPrefix(r.URL.Path, "/note") {
+		suggestedLink = "/notes"
+		suggestedLinkText = "📝 View All Notes"
+	} else if strings.HasPrefix(r.URL.Path, "/quote") {
+		suggestedLink = "/quotes"
+		suggestedLinkText = "💬 View All Quotes"
+	}
+
+	h.renderError(w, r, ErrorPageOptions{
+		StatusCode:        http.StatusNotFound,
+		ErrorTitle:        "Page Not Found",
+		ErrorMessage:      fmt.Sprintf("The page '%s' does not exist.", r.URL.Path),
+		ErrorDetails:      "Please check the URL or use the navigation to find what you're looking for.",
+		SuggestedLink:     suggestedLink,
+		SuggestedLinkText: suggestedLinkText,
+	})
 }
 
 // SetTimezone stores the client's timezone in the session for use during OAuth flow

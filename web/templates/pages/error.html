@@ -1,0 +1,39 @@
+{{ define "title" }}Error{{ end }}
+
+{{ define "content" }}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    <div class="bg-hive-surface rounded-lg shadow-lg border border-hive-metal p-8">
+        <div class="text-center mb-6">
+            <div class="text-6xl mb-4">{{ .ErrorEmoji }}</div>
+            <h1 class="text-3xl font-bold font-heading text-white mb-3 text-glitch">
+                {{ .ErrorTitle }}
+            </h1>
+            <p class="text-lg text-gray-300">
+                {{ .ErrorMessage }}
+            </p>
+        </div>
+
+        {{ if .ErrorDetails }}
+        <div class="bg-hive-bg rounded-lg border border-hive-metal p-4 mb-6">
+            <p class="text-sm text-gray-400 font-mono">
+                {{ .ErrorDetails }}
+            </p>
+        </div>
+        {{ end }}
+
+        <div class="space-y-3">
+            {{ if .SuggestedLink }}
+            <a href="{{ .SuggestedLink }}" 
+               class="block w-full bg-neon-cyan hover:bg-cyan-400 text-hive-bg font-semibold font-heading py-3 px-6 rounded-lg text-center transition-all shadow-neon-cyan hover:shadow-neon-cyan">
+                {{ .SuggestedLinkText }}
+            </a>
+            {{ else }}
+            <a href="/" 
+               class="block w-full bg-neon-cyan hover:bg-cyan-400 text-hive-bg font-semibold font-heading py-3 px-6 rounded-lg text-center transition-all shadow-neon-cyan hover:shadow-neon-cyan">
+                🏠 Go to Home
+            </a>
+            {{ end }}
+        </div>
+    </div>
+</div>
+{{ end }}

@@ -93,7 +93,14 @@ func (h *Handler) NotePage(w http.ResponseWriter, r *http.Request) {
 		h.log.Error("Failed to fetch note",
 			slog.String("note_id", noteID),
 			slog.String("error", err.Error()))
-		http.Error(w, "Note not found", http.StatusNotFound)
+		h.renderError(w, r, ErrorPageOptions{
+			StatusCode:        http.StatusNotFound,
+			ErrorTitle:        "Note Not Found",
+			ErrorMessage:      "The note you're looking for could not be found.",
+			ErrorDetails:      "It may have been deleted or you might not have access to it.",
+			SuggestedLink:     "/notes",
+			SuggestedLinkText: "📝 View All Notes",
+		})
 		return
 	}
 
@@ -150,7 +157,14 @@ func (h *Handler) NoteEdit(w http.ResponseWriter, r *http.Request) {
 		h.log.Error("Failed to fetch note for editing",
 			slog.String("note_id", noteID),
 			slog.String("error", err.Error()))
-		http.Error(w, "Note not found", http.StatusNotFound)
+		h.renderError(w, r, ErrorPageOptions{
+			StatusCode:        http.StatusNotFound,
+			ErrorTitle:        "Note Not Found",
+			ErrorMessage:      "The note you're looking for could not be found.",
+			ErrorDetails:      "It may have been deleted or you might not have access to it.",
+			SuggestedLink:     "/notes",
+			SuggestedLinkText: "📝 View All Notes",
+		})
 		return
 	}
 
