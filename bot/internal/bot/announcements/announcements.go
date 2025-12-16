@@ -11,7 +11,7 @@ import (
 )
 
 // PostWikiCreated posts an announcement for a newly created wiki page
-func PostWikiCreated(s *discordgo.Session, grpcClient *client.Client, guildID, title, authorName, wikiID, webBaseURL string, log *slog.Logger) {
+func PostWikiCreated(s *discordgo.Session, grpcClient *client.Client, guildID, title, authorName, slug, webBaseURL string, log *slog.Logger) {
 	ctx := context.Background()
 	discordClient := discordpb.NewDiscordServiceClient(grpcClient.Conn())
 
@@ -46,8 +46,8 @@ func PostWikiCreated(s *discordgo.Session, grpcClient *client.Client, guildID, t
 	}
 
 	// Add web link if web base URL is configured
-	if webBaseURL != "" {
-		embed.URL = fmt.Sprintf("%s/wiki/%s", webBaseURL, wikiID)
+	if webBaseURL != "" && slug != "" {
+		embed.URL = fmt.Sprintf("%s/wiki?slug=%s&guild_id=%s", webBaseURL, slug, guildID)
 	}
 
 	// Post message
