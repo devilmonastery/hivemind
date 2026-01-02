@@ -1,0 +1,13 @@
+# Tilt ignore file - prevents unnecessary rebuilds
+
+.git/
+.github/
+*.md
+bin/
+.env
+.env.example
+.devcontainer/
+dev/
+plans/
+*.code-workspace
+.vscode/
