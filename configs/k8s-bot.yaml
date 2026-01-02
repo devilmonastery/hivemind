@@ -1,0 +1,32 @@
+# Kubernetes Bot Configuration
+# This configuration is used when deploying to Kubernetes
+
+bot:
+  token: "${DISCORD_BOT_TOKEN}"
+  application_id: "${DISCORD_APPLICATION_ID}"
+
+backend:
+  # Kubernetes service name for gRPC server
+  grpc_host: "hivemind-server"
+  grpc_port: 4153
+  tls_enabled: false
+  service_token: "${DEV_BOT_TOKEN}"
+  web_base_url: "http://localhost:8080"
+  metrics_port: 9091
+
+logging:
+  level: "debug"
+  format: "json"
+  output: "stdout"
+
+features:
+  enable_quotes: true
+  enable_wiki: true
+  enable_notes: true
+  max_note_size: 10000
+  max_wiki_size: 50000
+  reactions:
+    enabled: true
+    quote_emoji_id: "1446824194288517256"
+    wiki_emoji_id: "1446824195798335560"
+    hivemind_emoji_id: "1446824197354688594"

@@ -169,6 +169,11 @@ spec:
             secretKeyRef:
               name: hivemind-secrets
               key: DISCORD_CLIENT_SECRET
+        - name: DEV_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: DEV_BOT_TOKEN
         volumeMounts:
         - name: config
           mountPath: /app/configs
@@ -255,3 +260,58 @@ spec:
       - name: config
         configMap:
           name: hivemind-web-config
+---
+# Bot Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivemind-bot
+  labels:
+    app: hivemind-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hivemind-bot
+  template:
+    metadata:
+      labels:
+        app: hivemind-bot
+    spec:
+      containers:
+      - name: bot
+        image: hivemind-bot
+        imagePullPolicy: Always
+        args: ["run", "--config", "/app/configs/config.yaml"]
+        env:
+        - name: DISABLE_LEADER_ELECTION
+          value: "true"
+        - name: DISCORD_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: DISCORD_BOT_TOKEN
+        - name: DISCORD_APPLICATION_ID
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: DISCORD_APPLICATION_ID
+        - name: DEV_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: DEV_BOT_TOKEN
+        volumeMounts:
+        - name: config
+          mountPath: /app/configs
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: config
+        configMap:
+          name: hivemind-bot-config
