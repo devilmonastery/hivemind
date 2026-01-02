@@ -90,6 +90,8 @@ metadata:
             'SESSION_SECRET': os.getenv('SESSION_SECRET', ''),
             'DISCORD_APPLICATION_ID': os.getenv('DISCORD_APPLICATION_ID', ''),
             'DISCORD_CLIENT_SECRET': os.getenv('DISCORD_CLIENT_SECRET', ''),
+            'DISCORD_BOT_TOKEN': os.getenv('DISCORD_BOT_TOKEN', ''),
+            'DEV_BOT_TOKEN': os.getenv('DEV_BOT_TOKEN', ''),
         }
     ))
     
@@ -99,6 +101,9 @@ metadata:
     
     web_config = local('kubectl create configmap hivemind-web-config --from-file=config.yaml=configs/k8s-web.yaml --dry-run=client -o yaml --namespace=' + namespace)
     k8s_yaml(web_config)
+    
+    bot_config = local('kubectl create configmap hivemind-bot-config --from-file=config.yaml=configs/k8s-bot.yaml --dry-run=client -o yaml --namespace=' + namespace)
+    k8s_yaml(bot_config)
     
     # Create ConfigMap for migrations
     migrations_config = local('kubectl create configmap hivemind-migrations --from-file=migrations/postgres --dry-run=client -o yaml --namespace=' + namespace)
@@ -158,6 +163,30 @@ metadata:
             },
         )
     
+    # Build bot image
+    if use_remote_build:
+        custom_build(
+            'hivemind-bot',
+            'docker buildx build --builder=remote --platform=linux/amd64 --build-arg GOPROXY=' + goproxy + ' -f Dockerfile.bot --tag $EXPECTED_REF --push .',
+            deps=[
+                './bot',
+                './internal',
+                './api',
+                './configs',
+                './go.mod',
+                './go.sum',
+            ],
+            env={'BUILDKIT_HOST': buildkit_host},
+            skips_local_docker=True,
+        )
+    else:
+        docker_build(
+            'hivemind-bot',
+            '.',
+            dockerfile='Dockerfile.bot',
+            build_args={'GOPROXY': goproxy},
+        )
+    
     # Deploy to Kubernetes with namespace injection
     yaml_with_namespace = local('kubectl create -f k8s/deployment.yaml --dry-run=client -o yaml --namespace=' + namespace)
     k8s_yaml(yaml_with_namespace)
@@ -190,6 +219,18 @@ metadata:
         ],
         links=[
             link('http://localhost:8080', 'Web UI'),
+        ],
+        resource_deps=['hivemind-server'],
+    )
+    
+    k8s_resource(
+        'hivemind-bot',
+        labels=['bot'],
+        port_forwards=[
+            port_forward(9091, 9091, name='metrics'),
+        ],
+        links=[
+            link('http://localhost:9091/metrics', 'Bot Metrics'),
         ],
         resource_deps=['hivemind-server'],
     )

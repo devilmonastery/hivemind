@@ -115,7 +115,8 @@ func (b *Bot) Start() error {
 
 	// Start background member sync job
 	// Use leader election if running in Kubernetes, otherwise run directly
-	if b.isKubernetes() {
+	// Can be disabled with DISABLE_LEADER_ELECTION=true for dev/testing
+	if b.isKubernetes() && os.Getenv("DISABLE_LEADER_ELECTION") != "true" {
 		b.log.Info("detected Kubernetes environment, using leader election for syncs")
 		go b.startWithLeaderElection(b.syncCtx)
 	} else {
