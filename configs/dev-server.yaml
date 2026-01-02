@@ -7,7 +7,7 @@ database:
   # PostgreSQL configuration
   postgres:
     # Database server hostname (use full container name in dev container)
-    host: "hivemind_devcontainer-postgres-1"
+    host: "postgres"
     # Database server port
     port: 5432
     # Database name

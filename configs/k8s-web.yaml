@@ -1,0 +1,45 @@
+# Kubernetes Web Server Configuration
+# This configuration is used when deploying to Kubernetes
+
+# HTTP server configuration
+server:
+  # Bind to all interfaces in K8s
+  host: "0.0.0.0"
+  port: 8080
+  metrics_port: 9092
+
+# gRPC backend configuration
+grpc:
+  # Kubernetes service name for gRPC server
+  address: "hivemind-server:4153"
+
+# OAuth callback configuration
+oauth:
+  # In K8s, this would be your ingress URL
+  redirect_uri: "http://localhost:8080/auth/callback"
+
+# Template paths
+templates:
+  # Use embedded templates in Docker image
+  path: "web/templates"
+
+# Static file paths  
+static:
+  # Use embedded static files in Docker image
+  path: "web/static"
+
+# Session configuration
+session:
+  # Session secret from k8s secret
+  secret: "${SESSION_SECRET}"
+  # Cookie settings
+  secure: false  # Set to true in production with HTTPS
+  http_only: true
+  same_site: "lax"
+  max_age: 86400  # 24 hours
+
+# Logging configuration
+logging:
+  level: "debug"
+  format: "json"
+  output: "stdout"

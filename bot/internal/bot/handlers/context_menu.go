@@ -154,6 +154,7 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 
 	// Add existing pages if available
 	if err == nil && pagesResp != nil && len(pagesResp.Pages) > 0 {
+		log.Info("Fetched wiki pages for select menu", "count", len(pagesResp.Pages), "guild_id", i.GuildID)
 		for _, page := range pagesResp.Pages {
 			// Truncate title if too long for display
 			displayTitle := page.Title
@@ -167,11 +168,16 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 			})
 		}
 	} else if err != nil {
-		log.Warn("Failed to fetch wiki pages for select menu", "error", err)
+		log.Error("Failed to fetch wiki pages for select menu", "error", err, "guild_id", i.GuildID)
+		// Continue with just "Create New Page" option
+	} else {
+		log.Info("No existing wiki pages found", "guild_id", i.GuildID)
 	}
 
+	log.Info("Showing wiki page select menu", "option_count", len(selectOptions), "target_message_id", targetID)
+
 	// Show ephemeral message with select menu
-	_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+	followupMsg, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 		Content: "**Add this message to a wiki page:**\n\nSelect an existing page to append to, or create a new one:",
 		Flags:   discordgo.MessageFlagsEphemeral,
 		Components: []discordgo.MessageComponent{
@@ -187,7 +193,13 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 		},
 	})
 	if err != nil {
-		log.Error("Failed to show wiki page select menu", "error", err)
+		log.Error("Failed to show wiki page select menu", 
+			"error", err, 
+			"guild_id", i.GuildID,
+			"channel_id", i.ChannelID,
+			"user_id", i.Member.User.ID)
+	} else {
+		log.Info("Successfully created wiki page select menu", "message_id", followupMsg.ID)
 	}
 }
 

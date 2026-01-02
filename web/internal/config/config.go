@@ -63,6 +63,7 @@ var DefaultConfigPaths = []string{
 	"./configs/web.yaml",
 	"./configs/web.yml",
 	"./configs/development.yaml",
+	"/app/configs/config.yaml", // Kubernetes ConfigMap mount
 	"/etc/hivemind/config.yaml",
 	"/etc/hivemind/config.yml",
 }

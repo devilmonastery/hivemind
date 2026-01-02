@@ -1,0 +1,257 @@
+# PostgreSQL Database
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgres
+  selector:
+    app: postgres
+  clusterIP: None  # Headless service for StatefulSet
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  labels:
+    app: postgres
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:18.1
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: "hivemind"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: DB_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+              - pg_isready
+              - -U
+              - postgres
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+              - pg_isready
+              - -U
+              - postgres
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-data
+---
+# gRPC Server Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: hivemind-server
+  labels:
+    app: hivemind-server
+spec:
+  ports:
+  - port: 4153
+    targetPort: 4153
+    protocol: TCP
+    name: grpc
+  selector:
+    app: hivemind-server
+---
+# gRPC Server Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivemind-server
+  labels:
+    app: hivemind-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hivemind-server
+  template:
+    metadata:
+      labels:
+        app: hivemind-server
+    spec:
+      containers:
+      - name: server
+        image: hivemind-server
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 4153
+          name: grpc
+        env:
+        - name: DB_HOST
+          value: "postgres"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "hivemind"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: DB_PASSWORD
+        - name: JWT_SIGNING_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: JWT_SIGNING_KEY
+        - name: OAUTH_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: OAUTH_ENCRYPTION_KEY
+        - name: DISCORD_APPLICATION_ID
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: DISCORD_APPLICATION_ID
+        - name: DISCORD_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: DISCORD_CLIENT_SECRET
+        volumeMounts:
+        - name: config
+          mountPath: /app/configs
+        - name: migrations
+          mountPath: /app/migrations
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: config
+        configMap:
+          name: hivemind-server-config
+      - name: migrations
+        configMap:
+          name: hivemind-migrations
+---
+# Web Server Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: hivemind-web
+  labels:
+    app: hivemind-web
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: hivemind-web
+---
+# Web Server Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivemind-web
+  labels:
+    app: hivemind-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hivemind-web
+  template:
+    metadata:
+      labels:
+        app: hivemind-web
+    spec:
+      containers:
+      - name: web
+        image: hivemind-web
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: SESSION_SECRET
+        - name: DISCORD_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: DISCORD_CLIENT_SECRET
+              optional: true
+        volumeMounts:
+        - name: config
+          mountPath: /app/configs
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: config
+        configMap:
+          name: hivemind-web-config

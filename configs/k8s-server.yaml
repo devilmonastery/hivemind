@@ -1,0 +1,48 @@
+# Kubernetes Server Configuration
+# This configuration is used when deploying to Kubernetes
+
+# Database configuration
+database:
+  postgres:
+    # Kubernetes postgres service name
+    host: "postgres"
+    port: 5432
+    database: "hivemind"
+    user: "postgres"
+    # Password comes from secret
+    password: "${DB_PASSWORD}"
+    sslmode: "disable"
+
+# gRPC server configuration
+grpc:
+  # Bind to all interfaces in K8s
+  host: "0.0.0.0"
+  port: 4153
+  metrics_port: 0  # 0 = auto (port + 10)
+
+# Logging configuration
+logging:
+  level: "debug"
+  format: "json"
+  output: "stdout"
+
+# Authentication configuration
+auth:
+  jwt:
+    signing_key: "${JWT_SIGNING_KEY}"
+    lifetime: "10m"
+  
+  encryption_key: "${OAUTH_ENCRYPTION_KEY}"
+  
+  dev_bot_token: "${DEV_BOT_TOKEN}"
+  
+  # OAuth providers
+  providers:
+    - name: discord
+      type: oidc
+      issuer: "https://discord.com"
+      client_id: "${DISCORD_APPLICATION_ID}"
+      client_secret: "${DISCORD_CLIENT_SECRET}"
+      scopes: ["openid", "identify", "email"]
+      auto_provision: true
+

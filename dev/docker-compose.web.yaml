@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  hivemind-web:
+    image: hivemind-web
+    container_name: hivemind-web
+    ports:
+      - "8080:8080"
+    environment:
+      - CGO_ENABLED=0
+    volumes:
+      - ./configs/dev-web.yaml:/app/configs/dev-web.yaml:ro
+      - ./web/static:/app/web/static:ro
+      - ./web/templates:/app/web/templates:ro
+    networks:
+      - default
+    command: ["-config", "/app/configs/dev-web.yaml"]
+
+networks:
+  default:
+    external: true
+    name: dev_default
