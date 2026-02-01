@@ -121,19 +121,7 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 		return
 	}
 
-	// Defer to avoid timeout while fetching pages
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Flags: discordgo.MessageFlagsEphemeral,
-		},
-	})
-	if err != nil {
-		log.Error("Failed to defer response", "error", err)
-		return
-	}
-
-	// Fetch existing wiki pages for this guild
+	// Fetch existing wiki pages for this guild (do this synchronously since we're showing a modal)
 	wikiClient := wikipb.NewWikiServiceClient(grpcClient.Conn())
 	ctx := discordContextFor(i)
 
@@ -142,14 +130,14 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 		Limit:   25, // Discord limit for select menu options
 	})
 
-	var selectOptions []discordgo.SelectMenuOption
+	// Build select menu options
+	var selectOptions []map[string]interface{}
 
 	// Always add "Create New Page" as first option
-	selectOptions = append(selectOptions, discordgo.SelectMenuOption{
-		Label:       "📝 Create New Page",
-		Value:       "__NEW_PAGE__",
-		Description: "Create a new wiki page",
-		Default:     false,
+	selectOptions = append(selectOptions, map[string]interface{}{
+		"label":       "📝 Create New Page",
+		"value":       "__NEW_PAGE__",
+		"description": "Create a new wiki page",
 	})
 
 	// Add existing pages if available
@@ -162,9 +150,9 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 				displayTitle = displayTitle[:97] + "..."
 			}
 
-			selectOptions = append(selectOptions, discordgo.SelectMenuOption{
-				Label: displayTitle,
-				Value: page.Title, // Store full title in value
+			selectOptions = append(selectOptions, map[string]interface{}{
+				"label": displayTitle,
+				"value": page.Title, // Store full title in value
 			})
 		}
 	} else if err != nil {
@@ -174,33 +162,70 @@ func handleContextMenuWiki(s *discordgo.Session, i *discordgo.InteractionCreate,
 		log.Info("No existing wiki pages found", "guild_id", i.GuildID)
 	}
 
-	log.Info("Showing wiki page select menu", "option_count", len(selectOptions), "target_message_id", targetID)
+	log.Info("Showing wiki modal with select menu", "option_count", len(selectOptions), "target_message_id", targetID)
 
-	// Show ephemeral message with select menu
-	followupMsg, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: "**Add this message to a wiki page:**\n\nSelect an existing page to append to, or create a new one:",
-		Flags:   discordgo.MessageFlagsEphemeral,
-		Components: []discordgo.MessageComponent{
-			discordgo.ActionsRow{
-				Components: []discordgo.MessageComponent{
-					discordgo.SelectMenu{
-						CustomID:    fmt.Sprintf("wiki_page_select:%s", targetID),
-						Placeholder: "Choose a wiki page...",
-						Options:     selectOptions,
+	// Build a list of existing page titles to show in the placeholder
+	existingPagesHint := "Create new page or type existing page name"
+	if len(selectOptions) > 1 { // More than just "Create New Page"
+		pageNames := make([]string, 0, len(selectOptions)-1)
+		for _, opt := range selectOptions {
+			if opt["value"] != "__NEW_PAGE__" {
+				pageName := opt["label"].(string)
+				if len(pageName) > 30 {
+					pageName = pageName[:27] + "..."
+				}
+				pageNames = append(pageNames, pageName)
+			}
+		}
+		if len(pageNames) > 0 {
+			existingPagesHint = "Existing: " + strings.Join(pageNames, ", ")
+			if len(existingPagesHint) > 100 {
+				existingPagesHint = existingPagesHint[:97] + "..."
+			}
+		}
+	}
+
+	// Show modal with text inputs (can't use select menu until discordgo supports Label components)
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseModal,
+		Data: &discordgo.InteractionResponseData{
+			CustomID: fmt.Sprintf("context_wiki_modal:%s", targetID),
+			Title:    "Add to Wiki Page",
+			Components: []discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.TextInput{
+							CustomID:    "wiki_title",
+							Label:       "Wiki Page Title",
+							Style:       discordgo.TextInputShort,
+							Required:    true,
+							MaxLength:   200,
+							Placeholder: existingPagesHint,
+						},
+					},
+				},
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.TextInput{
+							CustomID:    "wiki_body",
+							Label:       "Content to Add",
+							Style:       discordgo.TextInputParagraph,
+							Required:    true,
+							Value:       message.Content,
+							MaxLength:   4000,
+							Placeholder: "Edit content. Use #hashtags for tags",
+						},
 					},
 				},
 			},
 		},
 	})
 	if err != nil {
-		log.Error("Failed to show wiki page select menu", 
-			"error", err, 
-			"guild_id", i.GuildID,
-			"channel_id", i.ChannelID,
-			"user_id", i.Member.User.ID)
-	} else {
-		log.Info("Successfully created wiki page select menu", "message_id", followupMsg.ID)
+		log.Error("Failed to send modal", "error", err)
+		return
 	}
+
+	log.Info("Successfully sent modal with select menu", "target_message_id", targetID)
 }
 
 // handleWikiPageSelect handles the select menu for choosing a wiki page
@@ -577,6 +602,8 @@ func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate
 	data := i.ModalSubmitData()
 
 	var title, body string
+
+	// Extract values from modal
 	for _, comp := range data.Components {
 		if actionRow, ok := comp.(*discordgo.ActionsRow); ok {
 			for _, innerComp := range actionRow.Components {
@@ -591,6 +618,11 @@ func handleContextWikiModal(s *discordgo.Session, i *discordgo.InteractionCreate
 			}
 		}
 	}
+
+	log.Info("Processing wiki modal submission",
+		"title", title,
+		"body_len", len(body),
+		"guild_id", i.GuildID)
 
 	// Extract message ID from CustomID (format: "context_wiki_modal:MESSAGE_ID")
 	parts := strings.Split(data.CustomID, ":")

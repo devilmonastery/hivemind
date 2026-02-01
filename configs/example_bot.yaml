@@ -47,7 +47,16 @@ backend:
   
   # Base URL for the web interface (used in bot response links)
   web_base_url: "http://localhost:8080"
-  
+
+# Database connection for distributed sync coordination
+# Required for multiple bot replicas to coordinate member syncs
+database:
+  host: "localhost"
+  port: 5432
+  user: "hivemind"
+  password: "password"
+  dbname: "hivemind"
+  sslmode: "disable"  # use "require" in production
   # Metrics server port (for Prometheus scraping)
   metrics_port: 9091
 
