@@ -30,7 +30,11 @@ func HandleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, cfg
 		case discordgo.InteractionMessageComponent:
 			customID = i.MessageComponentData().CustomID
 		case discordgo.InteractionModalSubmit:
-			customID = i.ModalSubmitData().CustomID
+			if i.Data != nil {
+				if modalData, ok := i.Data.(discordgo.ModalSubmitInteractionData); ok {
+					customID = modalData.CustomID
+				}
+			}
 		}
 
 		metrics.DiscordInteractions.WithLabelValues(interactionType, customID, status).Inc()
@@ -166,7 +170,13 @@ func handleComponent(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *
 }
 
 func handleModal(s *discordgo.Session, i *discordgo.InteractionCreate, cfg *config.Config, log *slog.Logger, grpcClient *client.Client) {
-	customID := i.ModalSubmitData().CustomID
+	// Extract custom ID from modal data
+	var customID string
+	if i.Data != nil {
+		if modalData, ok := i.Data.(discordgo.ModalSubmitInteractionData); ok {
+			customID = modalData.CustomID
+		}
+	}
 
 	log.Info("modal submission received",
 		slog.String("custom_id", customID),

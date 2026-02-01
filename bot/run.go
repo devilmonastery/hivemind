@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
@@ -85,6 +87,47 @@ func newRunCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create bot: %w", err)
 			}
+
+			// Initialize database connection for sync coordination
+			connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+				cfg.Database.Host,
+				cfg.Database.Port,
+				cfg.Database.User,
+				cfg.Database.Password,
+				cfg.Database.DBName,
+				cfg.Database.SSLMode,
+			)
+
+			db, err := sql.Open("postgres", connStr)
+			if err != nil {
+				return fmt.Errorf("failed to open database connection: %w", err)
+			}
+			defer db.Close()
+
+			// Test the connection
+			if err := db.Ping(); err != nil {
+				return fmt.Errorf("failed to ping database: %w", err)
+			}
+
+			log.Info("database connection established",
+				slog.String("host", cfg.Database.Host),
+				slog.Int("port", cfg.Database.Port))
+
+			// Generate instance ID for this bot replica
+			instanceID := os.Getenv("HOSTNAME")
+			if instanceID == "" {
+				instanceID, _ = os.Hostname()
+			}
+			if instanceID == "" {
+				instanceID = "unknown"
+			}
+
+			// Create and inject sync coordinator
+			coordinator := bot.NewGuildSyncCoordinator(db, instanceID, log)
+			b.SetSyncCoordinator(coordinator)
+
+			log.Info("sync coordinator initialized",
+				slog.String("instance_id", instanceID))
 
 			// Start the bot
 			if err := b.Start(); err != nil {

@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Bot      BotConfig      `yaml:"bot"`
 	Backend  BackendConfig  `yaml:"backend"`
+	Database DatabaseConfig `yaml:"database"`
 	Logging  LoggingConfig  `yaml:"logging"`
 	Features FeaturesConfig `yaml:"features"`
 }
@@ -29,6 +30,16 @@ type BackendConfig struct {
 	ServiceToken string `yaml:"service_token"`               // Service account token for bot auth
 	WebBaseURL   string `yaml:"web_base_url"`                // Base URL for web interface links
 	MetricsPort  int    `yaml:"metrics_port" default:"9100"` // Metrics server port
+}
+
+// DatabaseConfig holds database connection details for sync coordination
+type DatabaseConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	DBName   string `yaml:"dbname"`
+	SSLMode  string `yaml:"sslmode"`
 }
 
 // LoggingConfig holds logging configuration
