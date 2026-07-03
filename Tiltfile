@@ -15,19 +15,42 @@ dotenv(fn='.env')
 k8s_context = os.getenv('K8S_CONTEXT', '')
 use_k8s = k8s_context != ''
 
-# BuildKit configuration (for remote builds)
-buildkit_remote = os.getenv('BUILDKIT_REMOTE_HOST', '')
-buildkit_cluster = os.getenv('BUILDKIT_CLUSTER_HOST', 'tcp://buildkitd.buildkit.svc.cluster.local:1234')
-use_remote_build = buildkit_remote != ''
-buildkit_host = buildkit_remote if buildkit_remote else buildkit_cluster
+# Registry configuration: external registry accessible from everywhere (matches daisybot)
+registry = os.getenv('DOCKER_REGISTRY', 'registry.local.rothwell.us')
+default_registry(registry)
 
-# Go proxy configuration
-goproxy = os.getenv('GOPROXY', 'https://proxy.golang.org,direct')
+# BuildKit configuration (matches daisybot).
+# Default: local buildx (`default` builder). Set BUILDKIT_HOST to build with the
+# cluster BuildKit (e.g. tcp://buildkit.local.rothwell.us:PORT); the remote builder
+# is created on demand if it does not already exist.
+buildkit_host = os.getenv('BUILDKIT_HOST', os.getenv('BUILDKIT_REMOTE_HOST', ''))
+buildkit_builder = os.getenv('BUILDKIT_BUILDER', 'remote' if buildkit_host else 'default')
+docker_context = os.getenv('DOCKER_CONTEXT', 'desktop-linux')
+use_remote_build = buildkit_host != ''
 
-# Registry configuration (required for Kubernetes mode)
-registry = os.getenv('DOCKER_REGISTRY', '')
-if registry:
-    default_registry(registry)
+# Go proxy: Athens with public fallback (matches daisybot; required so builds can
+# resolve the private github.com/devilmonastery/hivemind/api module).
+goproxy = os.getenv('GOPROXY', 'https://athens.local.rothwell.us,https://proxy.golang.org,direct')
+
+os.putenv('DOCKER_BUILDKIT', '1')
+if buildkit_host:
+    os.putenv('BUILDKIT_HOST', buildkit_host)
+
+# buildkit_build runs a buildx build via the cluster/remote BuildKit when
+# BUILDKIT_HOST is set (creating the remote builder if missing), otherwise via the
+# local `default` builder. Mirrors daisybot's Tiltfile.
+def buildkit_build(image, dockerfile, deps, extra_build_args=''):
+    remote = 'docker --context="$DOCKER_CONTEXT" buildx inspect "$BUILDKIT_BUILDER" >/dev/null 2>&1 || docker --context="$DOCKER_CONTEXT" buildx create --name "$BUILDKIT_BUILDER" --driver remote "$BUILDKIT_HOST"; docker --context="$DOCKER_CONTEXT" buildx build --builder="$BUILDKIT_BUILDER"'
+    localb = 'docker --context="$DOCKER_CONTEXT" buildx build --builder=default'
+    common = ' --platform=linux/amd64 --build-arg GOPROXY=' + goproxy + ' ' + extra_build_args + ' -f ' + dockerfile + ' --tag $EXPECTED_REF --push .'
+    cmd = 'if [ -n "$BUILDKIT_HOST" ]; then ' + remote + common + '; else ' + localb + common + '; fi'
+    custom_build(
+        image,
+        cmd,
+        deps=deps,
+        env={'BUILDKIT_HOST': buildkit_host, 'BUILDKIT_BUILDER': buildkit_builder, 'DOCKER_CONTEXT': docker_context},
+        skips_local_docker=True,
+    )
 
 # Kubernetes configuration
 if k8s_context:
@@ -49,10 +72,6 @@ if use_k8s:
     print('🐹 GOPROXY: ' + goproxy)
 else:
     print('💻 Mode: Local (go run)')
-    
-if use_remote_build:
-    os.putenv('DOCKER_BUILDKIT', '1')
-    os.putenv('BUILDKIT_HOST', buildkit_host)
 
 # =============================================================================
 # Database
@@ -110,82 +129,50 @@ metadata:
     k8s_yaml(migrations_config)
     
     # Build server image
-    if use_remote_build:
-        custom_build(
-            'hivemind-server',
-            'docker buildx build --builder=remote --platform=linux/amd64 --build-arg GOPROXY=' + goproxy + ' -f Dockerfile.server --tag $EXPECTED_REF --push .',
-            deps=[
-                './server',
-                './internal',
-                './api',
-                './migrations',
-                './configs',
-                './go.mod',
-                './go.sum',
-            ],
-            env={'BUILDKIT_HOST': buildkit_host},
-            skips_local_docker=True,
-        )
-    else:
-        docker_build(
-            'hivemind-server',
-            '.',
-            dockerfile='Dockerfile.server',
-            build_args={'GOPROXY': goproxy},
-        )
+    buildkit_build(
+        'hivemind-server',
+        'Dockerfile.server',
+        deps=[
+            './server',
+            './internal',
+            './api',
+            './migrations',
+            './configs',
+            './go.mod',
+            './go.sum',
+        ],
+    )
     
     # Build web image
     # Generate version string for cache busting
     version = str(local('git rev-parse --short HEAD 2>/dev/null || echo "dev"')).strip()
-    if use_remote_build:
-        custom_build(
-            'hivemind-web',
-            'docker buildx build --builder=remote --platform=linux/amd64 --build-arg GOPROXY=' + goproxy + ' --build-arg VERSION=' + version + ' -f Dockerfile.web --tag $EXPECTED_REF --push .',
-            deps=[
-                './web',
-                './internal',
-                './api',
-                './configs',
-                './go.mod',
-                './go.sum',
-            ],
-            env={'BUILDKIT_HOST': buildkit_host},
-            skips_local_docker=True,
-        )
-    else:
-        docker_build(
-            'hivemind-web',
-            '.',
-            dockerfile='Dockerfile.web',
-            build_args={
-                'GOPROXY': goproxy,
-                'VERSION': version,
-            },
-        )
+    buildkit_build(
+        'hivemind-web',
+        'Dockerfile.web',
+        deps=[
+            './web',
+            './internal',
+            './api',
+            './configs',
+            './go.mod',
+            './go.sum',
+        ],
+        extra_build_args='--build-arg VERSION=' + version,
+    )
     
     # Build bot image
-    if use_remote_build:
-        custom_build(
-            'hivemind-bot',
-            'docker buildx build --builder=remote --platform=linux/amd64 --build-arg GOPROXY=' + goproxy + ' -f Dockerfile.bot --tag $EXPECTED_REF --push .',
-            deps=[
-                './bot',
-                './internal',
-                './api',
-                './configs',
-                './go.mod',
-                './go.sum',
-            ],
-            env={'BUILDKIT_HOST': buildkit_host},
-            skips_local_docker=True,
-        )
-    else:
-        docker_build(
-            'hivemind-bot',
-            '.',
-            dockerfile='Dockerfile.bot',
-            build_args={'GOPROXY': goproxy},
-        )
+    buildkit_build(
+        'hivemind-bot',
+        'Dockerfile.bot',
+        deps=[
+            './bot',
+            './internal',
+            './api',
+            './configs',
+            './go.mod',
+            './go.sum',
+        ],
+    )
     
     # Deploy to Kubernetes with namespace injection
     yaml_with_namespace = local('kubectl create -f k8s/deployment.yaml --dry-run=client -o yaml --namespace=' + namespace)
