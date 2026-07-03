@@ -1,6 +1,6 @@
 module github.com/devilmonastery/hivemind
 
-go 1.24.10
+go 1.26.4
 
 require (
 	github.com/bwmarrin/snowflake v0.3.0
@@ -13,10 +13,10 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/cobra v1.10.1
-	golang.org/x/crypto v0.43.0
-	golang.org/x/oauth2 v0.33.0
-	google.golang.org/grpc v1.77.0
-	google.golang.org/protobuf v1.36.10
+	golang.org/x/crypto v0.50.0
+	golang.org/x/oauth2 v0.36.0
+	google.golang.org/grpc v1.82.0
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -35,6 +35,7 @@ require (
 	github.com/bwmarrin/discordgo v0.29.1-0.20251229161010-9f6aa8159fc6
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/devilmonastery/hivemind/api v0.0.0
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gosimple/slug v1.15.0
@@ -50,8 +51,10 @@ require (
 	github.com/spf13/pflag v1.0.9 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/net v0.46.1-0.20251013234738-63d1a5100f82 // indirect
-	golang.org/x/sys v0.37.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8 // indirect
+	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 )
+
+replace github.com/devilmonastery/hivemind/api => ./api

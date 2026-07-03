@@ -2,6 +2,10 @@
 .git
 .gitignore
 
+# Go workspace (local dev only; Docker builds use go.mod + replace)
+go.work
+go.work.sum
+
 # Build artifacts
 bin/
 *.exe
