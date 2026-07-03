@@ -70,6 +70,9 @@ message WikiPage {
 
   // URL-friendly slug for the page title
   string slug = 14;
+
+  // Full-text relevance score, populated by SearchWikiPages only (0 otherwise)
+  double score = 15;
 }
 
 message CreateWikiPageRequest {

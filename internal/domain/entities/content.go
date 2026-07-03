@@ -17,6 +17,7 @@ type WikiPage struct {
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 	DeletedAt         *time.Time `json:"deleted_at,omitempty"`
+	Score             float64    `json:"score,omitempty"` // Full-text relevance, populated by Search only
 }
 
 // Note represents a private user note

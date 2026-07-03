@@ -43,7 +43,9 @@ type WikiPage struct {
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// URL-friendly slug for the page title
-	Slug          string `protobuf:"bytes,14,opt,name=slug,proto3" json:"slug,omitempty"`
+	Slug string `protobuf:"bytes,14,opt,name=slug,proto3" json:"slug,omitempty"`
+	// Full-text relevance score, populated by SearchWikiPages only (0 otherwise)
+	Score         float64 `protobuf:"fixed64,15,opt,name=score,proto3" json:"score,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -174,6 +176,13 @@ func (x *WikiPage) GetSlug() string {
 		return x.Slug
 	}
 	return ""
+}
+
+func (x *WikiPage) GetScore() float64 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
 }
 
 type CreateWikiPageRequest struct {
@@ -1529,7 +1538,7 @@ var File_wiki_proto protoreflect.FileDescriptor
 const file_wiki_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"wiki.proto\x12\rhivemind.wiki\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xcc\x03\n" +
+	"wiki.proto\x12\rhivemind.wiki\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe2\x03\n" +
 	"\bWikiPage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
@@ -1549,7 +1558,8 @@ const file_wiki_proto_rawDesc = "" +
 	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x12\n" +
-	"\x04slug\x18\x0e \x01(\tR\x04slug\"\x8f\x01\n" +
+	"\x04slug\x18\x0e \x01(\tR\x04slug\x12\x14\n" +
+	"\x05score\x18\x0f \x01(\x01R\x05score\"\x8f\x01\n" +
 	"\x15CreateWikiPageRequest\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x19\n" +
