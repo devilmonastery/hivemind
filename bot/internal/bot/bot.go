@@ -89,6 +89,11 @@ func (b *Bot) SetSyncCoordinator(coordinator *GuildSyncCoordinator) {
 	b.syncCoordinator = coordinator
 }
 
+// GRPCConn returns the gRPC client connection
+func (b *Bot) GRPCConn() *client.Client {
+	return b.grpcClient
+}
+
 // registerHandlers sets up all event and interaction handlers
 func (b *Bot) registerHandlers() {
 	// Ready event

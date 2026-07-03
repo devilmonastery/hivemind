@@ -67,7 +67,7 @@ func (b *Bot) syncAllGuildMembers(ctx context.Context) {
 // syncGuildWithCoordinator syncs a guild using the coordinator for distributed locking
 func (b *Bot) syncGuildWithCoordinator(ctx context.Context, discordClient discordpb.DiscordServiceClient, guildID string) error {
 	// Check if sync is needed (last sync > 24h ago)
-	needsSync, err := b.syncCoordinator.NeedsSyncSince(ctx, guildID, 24*time.Hour)
+	needsSync, lastSync, err := b.syncCoordinator.NeedsSyncSince(ctx, guildID, 24*time.Hour)
 	if err != nil {
 		b.log.Warn("failed to check sync status, skipping",
 			slog.String("guild_id", guildID),
@@ -77,24 +77,22 @@ func (b *Bot) syncGuildWithCoordinator(ctx context.Context, discordClient discor
 
 	if !needsSync {
 		b.log.Debug("guild does not need sync yet",
-			slog.String("guild_id", guildID))
+			slog.String("guild_id", guildID),
+			slog.Any("last_sync", lastSync))
 		return nil
 	}
 
 	// Try to acquire lease (10 minute expiry is plenty for guild member sync)
-	acquired, err := b.syncCoordinator.TryAcquireLease(ctx, guildID, 10*time.Minute)
+	acquired, currentHolder, err := b.syncCoordinator.TryAcquireLease(ctx, guildID, 10*time.Minute)
 	if err != nil {
 		return fmt.Errorf("failed to acquire lease: %w", err)
 	}
 
 	if !acquired {
 		// Another instance is syncing this guild
-		holder, _ := b.syncCoordinator.GetLeaseHolder(ctx, guildID)
-		if holder != nil {
-			b.log.Debug("guild sync lease held by another instance",
-				slog.String("guild_id", guildID),
-				slog.String("holder", *holder))
-		}
+		b.log.Debug("guild sync lease held by another instance",
+			slog.String("guild_id", guildID),
+			slog.String("holder", currentHolder))
 		return nil
 	}
 
@@ -103,15 +101,7 @@ func (b *Bot) syncGuildWithCoordinator(ctx context.Context, discordClient discor
 	memberCount, syncErr := b.syncGuildMembersInternal(ctx, discordClient, guildID)
 
 	// Always release the lease, recording the result
-	result := SyncResult{
-		GuildID:       guildID,
-		MemberCount:   memberCount,
-		Duration:      time.Since(syncStart),
-		Error:         syncErr,
-		SyncStartTime: syncStart,
-	}
-
-	if err := b.syncCoordinator.ReleaseLease(ctx, result); err != nil {
+	if err := b.syncCoordinator.ReleaseLease(ctx, guildID, syncErr == nil, memberCount, syncStart); err != nil {
 		b.log.Error("failed to release lease",
 			slog.String("guild_id", guildID),
 			slog.String("error", err.Error()))

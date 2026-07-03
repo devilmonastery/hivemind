@@ -2,175 +2,77 @@ package bot
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
-	"log/slog"
 	"time"
+
+	discordpb "github.com/devilmonastery/hivemind/api/generated/go/discordpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// GuildSyncCoordinator manages distributed guild member sync coordination via database leases
+// GuildSyncCoordinator manages distributed guild member sync coordination via gRPC
 type GuildSyncCoordinator struct {
-	db         *sql.DB
-	instanceID string
-	logger     *slog.Logger
+	instanceID    string
+	discordClient discordpb.DiscordServiceClient
 }
 
-// SyncResult captures the outcome of a guild sync operation
-type SyncResult struct {
-	GuildID       string
-	MemberCount   int
-	Duration      time.Duration
-	Error         error
-	SyncStartTime time.Time
-}
-
-// NewGuildSyncCoordinator creates a coordinator with a unique instance ID
-func NewGuildSyncCoordinator(db *sql.DB, instanceID string, logger *slog.Logger) *GuildSyncCoordinator {
+// NewGuildSyncCoordinator creates a new gRPC-based guild sync coordinator
+func NewGuildSyncCoordinator(instanceID string, discordClient discordpb.DiscordServiceClient) *GuildSyncCoordinator {
 	return &GuildSyncCoordinator{
-		db:         db,
-		instanceID: instanceID,
-		logger:     logger,
+		instanceID:    instanceID,
+		discordClient: discordClient,
 	}
 }
 
-// TryAcquireLease attempts to acquire the sync lease for a guild.
-// Returns true if lease acquired, false if another instance holds it.
-func (c *GuildSyncCoordinator) TryAcquireLease(ctx context.Context, guildID string, leaseDuration time.Duration) (bool, error) {
-	query := `
-		UPDATE discord_guilds
-		SET 
-			sync_lease_holder = $1,
-			sync_lease_expires_at = NOW() + $2::INTERVAL
-		WHERE guild_id = $3
-		  AND (
-			sync_lease_holder IS NULL 
-			OR sync_lease_expires_at < NOW() 
-			OR sync_lease_holder = $1
-		  )
-		RETURNING guild_id
-	`
-
-	var returnedGuildID string
-	err := c.db.QueryRowContext(ctx, query,
-		c.instanceID,
-		fmt.Sprintf("%d seconds", int(leaseDuration.Seconds())),
-		guildID,
-	).Scan(&returnedGuildID)
-
-	if err == sql.ErrNoRows {
-		// Someone else holds the lease
-		return false, nil
-	}
+// TryAcquireLease attempts to acquire a sync lease for a guild
+// Returns: acquired (bool), currentHolder (string), error
+func (c *GuildSyncCoordinator) TryAcquireLease(ctx context.Context, guildID string, leaseDuration time.Duration) (bool, string, error) {
+	resp, err := c.discordClient.TryAcquireGuildSyncLease(ctx, &discordpb.TryAcquireGuildSyncLeaseRequest{
+		GuildId:              guildID,
+		InstanceId:           c.instanceID,
+		LeaseDurationSeconds: int32(leaseDuration.Seconds()),
+	})
 	if err != nil {
-		return false, fmt.Errorf("failed to acquire lease: %w", err)
+		return false, "", err
 	}
 
-	c.logger.Debug("acquired guild sync lease",
-		slog.String("guild_id", guildID),
-		slog.String("instance", c.instanceID),
-		slog.Duration("duration", leaseDuration))
-
-	return true, nil
+	return resp.Acquired, resp.CurrentHolder, nil
 }
 
-// ReleaseLease releases the lease and records sync completion
-func (c *GuildSyncCoordinator) ReleaseLease(ctx context.Context, result SyncResult) error {
-	if result.Error != nil {
-		// Failed sync - release lease but don't update last_member_sync
-		query := `
-			UPDATE discord_guilds
-			SET 
-				sync_lease_holder = NULL,
-				sync_lease_expires_at = NULL
-			WHERE guild_id = $1
-			  AND sync_lease_holder = $2
-		`
-		_, err := c.db.ExecContext(ctx, query, result.GuildID, c.instanceID)
-		if err != nil {
-			return fmt.Errorf("failed to release lease after error: %w", err)
-		}
-
-		c.logger.Warn("released guild sync lease after error",
-			slog.String("guild_id", result.GuildID),
-			slog.String("error", result.Error.Error()))
-		return nil
-	}
-
-	// Successful sync - release lease and update last_member_sync
-	query := `
-		UPDATE discord_guilds
-		SET 
-			sync_lease_holder = NULL,
-			sync_lease_expires_at = NULL,
-			last_member_sync = $1
-		WHERE guild_id = $2
-		  AND sync_lease_holder = $3
-	`
-
-	_, err := c.db.ExecContext(ctx, query,
-		result.SyncStartTime,
-		result.GuildID,
-		c.instanceID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to release lease: %w", err)
-	}
-
-	c.logger.Info("released guild sync lease",
-		slog.String("guild_id", result.GuildID),
-		slog.Int("members", result.MemberCount),
-		slog.Duration("duration", result.Duration))
-
-	return nil
+// ReleaseLease releases a sync lease for a guild
+func (c *GuildSyncCoordinator) ReleaseLease(ctx context.Context, guildID string, success bool, memberCount int, syncStartedAt time.Time) error {
+	_, err := c.discordClient.ReleaseGuildSyncLease(ctx, &discordpb.ReleaseGuildSyncLeaseRequest{
+		GuildId:       guildID,
+		InstanceId:    c.instanceID,
+		Success:       success,
+		MemberCount:   int32(memberCount),
+		SyncStartedAt: timestamppb.New(syncStartedAt),
+	})
+	return err
 }
 
-// NeedsSyncSince checks if a guild needs syncing based on the last sync time
-func (c *GuildSyncCoordinator) NeedsSyncSince(ctx context.Context, guildID string, interval time.Duration) (bool, error) {
-	query := `
-		SELECT 
-			last_member_sync IS NULL 
-			OR last_member_sync + $1::INTERVAL < NOW()
-		FROM discord_guilds
-		WHERE guild_id = $2
-	`
-
-	var needsSync bool
-	err := c.db.QueryRowContext(ctx, query,
-		fmt.Sprintf("%d seconds", int(interval.Seconds())),
-		guildID,
-	).Scan(&needsSync)
-
-	if err == sql.ErrNoRows {
-		// Guild doesn't exist in DB yet - needs sync
-		return true, nil
-	}
+// NeedsSyncSince checks if a guild needs syncing based on interval
+// Returns: needsSync (bool), lastSync (*time.Time), error
+func (c *GuildSyncCoordinator) NeedsSyncSince(ctx context.Context, guildID string, interval time.Duration) (bool, *time.Time, error) {
+	resp, err := c.discordClient.CheckGuildNeedsSync(ctx, &discordpb.CheckGuildNeedsSyncRequest{
+		GuildId:         guildID,
+		IntervalSeconds: int32(interval.Seconds()),
+	})
 	if err != nil {
-		return false, fmt.Errorf("failed to check sync status: %w", err)
+		return false, nil, err
 	}
 
-	return needsSync, nil
+	var lastSync *time.Time
+	if resp.LastSync != nil {
+		t := resp.LastSync.AsTime()
+		lastSync = &t
+	}
+
+	return resp.NeedsSync, lastSync, nil
 }
 
-// GetLeaseHolder returns the current lease holder for a guild, if any
-func (c *GuildSyncCoordinator) GetLeaseHolder(ctx context.Context, guildID string) (*string, error) {
-	query := `
-		SELECT sync_lease_holder, sync_lease_expires_at
-		FROM discord_guilds
-		WHERE guild_id = $1
-		  AND sync_lease_holder IS NOT NULL
-		  AND sync_lease_expires_at > NOW()
-	`
-
-	var holder string
-	var expiresAt time.Time
-	err := c.db.QueryRowContext(ctx, query, guildID).Scan(&holder, &expiresAt)
-
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to get lease holder: %w", err)
-	}
-
-	return &holder, nil
+// GetLeaseHolder returns the current lease holder for a guild (for logging/debugging)
+// This is derived from the TryAcquireLease response when acquisition fails
+func (c *GuildSyncCoordinator) GetLeaseHolder(ctx context.Context, guildID string) (string, error) {
+	// Try to acquire with 0 duration - will fail if someone else has it
+	_, holder, err := c.TryAcquireLease(ctx, guildID, 0)
+	return holder, err
 }

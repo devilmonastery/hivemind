@@ -313,3 +313,152 @@ func (r *DiscordGuildRepository) GetSettings(ctx context.Context, guildID string
 
 	return settings, nil
 }
+
+// TryAcquireSyncLease attempts to acquire a sync lease for a guild
+// Returns: acquired (bool), currentHolder (string), error
+func (r *DiscordGuildRepository) TryAcquireSyncLease(ctx context.Context, guildID, instanceID string, leaseDuration time.Duration) (bool, string, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("discord_guild", "try_acquire_sync_lease", time.Since(start), -1, err)
+	}()
+
+	// Convert Go duration to PostgreSQL interval format (seconds)
+	leaseSeconds := int(leaseDuration.Seconds())
+	
+	// Try to acquire the lease atomically
+	// Success cases:
+	// 1. No current lease holder (sync_lease_holder IS NULL)
+	// 2. Lease has expired (sync_lease_expires_at < NOW())
+	// 3. Same instance trying to reacquire (sync_lease_holder = $2)
+	query := `
+		UPDATE discord_guilds
+		SET sync_lease_holder = $2,
+		    sync_lease_expires_at = NOW() + ($3 || ' seconds')::interval
+		WHERE guild_id = $1
+		  AND (sync_lease_holder IS NULL 
+		       OR sync_lease_expires_at < NOW() 
+		       OR sync_lease_holder = $2)
+		RETURNING sync_lease_holder
+	`
+
+	var holder string
+	err = r.db.QueryRowContext(ctx, query, guildID, instanceID, leaseSeconds).Scan(&holder)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Failed to acquire - someone else has it
+			// Get the current holder
+			var currentHolder sql.NullString
+			getQuery := `SELECT sync_lease_holder FROM discord_guilds WHERE guild_id = $1`
+			if getErr := r.db.QueryRowContext(ctx, getQuery, guildID).Scan(&currentHolder); getErr != nil {
+				return false, "", getErr
+			}
+			return false, currentHolder.String, nil
+		}
+		return false, "", err
+	}
+
+	return true, holder, nil
+}
+
+// ReleaseSyncLease releases a sync lease for a guild
+func (r *DiscordGuildRepository) ReleaseSyncLease(ctx context.Context, guildID, instanceID string, success bool, memberCount int, syncStartedAt *time.Time) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("discord_guild", "release_sync_lease", time.Since(start), -1, err)
+	}()
+
+	// Only release if we're the current holder
+	// If sync was successful, update last_member_sync
+	var query string
+	var args []interface{}
+
+	if success && syncStartedAt != nil {
+		// Calculate sync duration
+		syncDuration := time.Since(*syncStartedAt)
+
+		query = `
+			UPDATE discord_guilds
+			SET sync_lease_holder = NULL,
+			    sync_lease_expires_at = NULL,
+			    last_member_sync = NOW()
+			WHERE guild_id = $1
+			  AND sync_lease_holder = $2
+		`
+		args = []interface{}{guildID, instanceID}
+
+		r.log.Info("released sync lease after successful sync",
+			slog.String("guild_id", guildID),
+			slog.String("instance_id", instanceID),
+			slog.Int("member_count", memberCount),
+			slog.Duration("sync_duration", syncDuration))
+	} else {
+		query = `
+			UPDATE discord_guilds
+			SET sync_lease_holder = NULL,
+			    sync_lease_expires_at = NULL
+			WHERE guild_id = $1
+			  AND sync_lease_holder = $2
+		`
+		args = []interface{}{guildID, instanceID}
+
+		r.log.Warn("released sync lease after failed sync",
+			slog.String("guild_id", guildID),
+			slog.String("instance_id", instanceID))
+	}
+
+	result, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		r.log.Warn("failed to release lease - not the holder",
+			slog.String("guild_id", guildID),
+			slog.String("instance_id", instanceID))
+	}
+
+	return nil
+}
+
+// NeedsSyncSince checks if a guild needs syncing based on last sync time
+// Returns: needsSync (bool), lastSync (*time.Time), error
+func (r *DiscordGuildRepository) NeedsSyncSince(ctx context.Context, guildID string, interval time.Duration) (bool, *time.Time, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.RecordDBOperation("discord_guild", "needs_sync_since", time.Since(start), -1, err)
+	}()
+
+	// Convert Go duration to PostgreSQL interval format (seconds)
+	intervalSeconds := int(interval.Seconds())
+	query := `
+		SELECT last_member_sync,
+		       (last_member_sync IS NULL OR last_member_sync < NOW() - ($2 || ' seconds')::interval) AS needs_sync
+		FROM discord_guilds
+		WHERE guild_id = $1
+	`
+
+	var lastSync sql.NullTime
+	var needsSync bool
+	err = r.db.QueryRowContext(ctx, query, guildID, intervalSeconds).Scan(&lastSync, &needsSync)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil, repositories.ErrDiscordGuildNotFound
+		}
+		return false, nil, err
+	}
+
+	var lastSyncPtr *time.Time
+	if lastSync.Valid {
+		lastSyncPtr = &lastSync.Time
+	}
+
+	return needsSync, lastSyncPtr, nil
+}

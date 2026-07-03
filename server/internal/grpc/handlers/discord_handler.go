@@ -373,3 +373,76 @@ func getInt32(m map[string]interface{}, key string) int32 {
 	}
 	return 0
 }
+
+// TryAcquireGuildSyncLease attempts to acquire a sync lease for a guild
+func (h *DiscordHandler) TryAcquireGuildSyncLease(ctx context.Context, req *discordpb.TryAcquireGuildSyncLeaseRequest) (*discordpb.TryAcquireGuildSyncLeaseResponse, error) {
+	if req.GuildId == "" {
+		return nil, status.Error(codes.InvalidArgument, "guild_id is required")
+	}
+	if req.InstanceId == "" {
+		return nil, status.Error(codes.InvalidArgument, "instance_id is required")
+	}
+	if req.LeaseDurationSeconds <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "lease_duration_seconds must be positive")
+	}
+
+	acquired, currentHolder, err := h.discordService.TryAcquireGuildSyncLease(ctx, req.GuildId, req.InstanceId, int(req.LeaseDurationSeconds))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to acquire sync lease: %v", err)
+	}
+
+	return &discordpb.TryAcquireGuildSyncLeaseResponse{
+		Acquired:      acquired,
+		CurrentHolder: currentHolder,
+	}, nil
+}
+
+// ReleaseGuildSyncLease releases a sync lease for a guild
+func (h *DiscordHandler) ReleaseGuildSyncLease(ctx context.Context, req *discordpb.ReleaseGuildSyncLeaseRequest) (*discordpb.ReleaseGuildSyncLeaseResponse, error) {
+	if req.GuildId == "" {
+		return nil, status.Error(codes.InvalidArgument, "guild_id is required")
+	}
+	if req.InstanceId == "" {
+		return nil, status.Error(codes.InvalidArgument, "instance_id is required")
+	}
+
+	var syncStartedAt *time.Time
+	if req.SyncStartedAt != nil {
+		t := req.SyncStartedAt.AsTime()
+		syncStartedAt = &t
+	}
+
+	err := h.discordService.ReleaseGuildSyncLease(ctx, req.GuildId, req.InstanceId, req.Success, int(req.MemberCount), syncStartedAt)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to release sync lease: %v", err)
+	}
+
+	return &discordpb.ReleaseGuildSyncLeaseResponse{
+		Success: true,
+	}, nil
+}
+
+// CheckGuildNeedsSync checks if a guild needs syncing based on last sync time
+func (h *DiscordHandler) CheckGuildNeedsSync(ctx context.Context, req *discordpb.CheckGuildNeedsSyncRequest) (*discordpb.CheckGuildNeedsSyncResponse, error) {
+	if req.GuildId == "" {
+		return nil, status.Error(codes.InvalidArgument, "guild_id is required")
+	}
+	if req.IntervalSeconds <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "interval_seconds must be positive")
+	}
+
+	needsSync, lastSync, err := h.discordService.CheckGuildNeedsSync(ctx, req.GuildId, int(req.IntervalSeconds))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check if guild needs sync: %v", err)
+	}
+
+	var lastSyncProto *timestamppb.Timestamp
+	if lastSync != nil {
+		lastSyncProto = timestamppb.New(*lastSync)
+	}
+
+	return &discordpb.CheckGuildNeedsSyncResponse{
+		NeedsSync: needsSync,
+		LastSync:  lastSyncProto,
+	}, nil
+}

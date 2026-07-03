@@ -29,6 +29,8 @@ bot:
   token: "YOUR_BOT_TOKEN_HERE"
   # Your Discord application ID (found on the same page)
   application_id: "YOUR_APPLICATION_ID_HERE"
+  # Metrics server port (for Prometheus scraping)
+  metrics_port: 9100
 
 backend:
   grpc_host: "localhost"
@@ -47,18 +49,6 @@ backend:
   
   # Base URL for the web interface (used in bot response links)
   web_base_url: "http://localhost:8080"
-
-# Database connection for distributed sync coordination
-# Required for multiple bot replicas to coordinate member syncs
-database:
-  host: "localhost"
-  port: 5432
-  user: "hivemind"
-  password: "password"
-  dbname: "hivemind"
-  sslmode: "disable"  # use "require" in production
-  # Metrics server port (for Prometheus scraping)
-  metrics_port: 9091
 
 logging:
   level: "info"      # debug, info, warn, error

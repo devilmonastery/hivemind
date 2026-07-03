@@ -1,7 +1,8 @@
 -- Add lease coordination columns to discord_guilds table
 ALTER TABLE discord_guilds 
     ADD COLUMN sync_lease_holder TEXT,
-    ADD COLUMN sync_lease_expires_at TIMESTAMPTZ;
+    ADD COLUMN sync_lease_expires_at TIMESTAMPTZ,
+    ADD COLUMN last_member_sync TIMESTAMPTZ;
 
 -- Index for finding expired leases
 CREATE INDEX idx_discord_guilds_sync_lease_expires 
