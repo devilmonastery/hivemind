@@ -10,7 +10,7 @@ WEB_BIN := bin/hivemind-web
 BOT_BIN := bin/hivemind-bot
 
 # Docker configuration
-DOCKER_REGISTRY := devilmonastery
+DOCKER_REGISTRY ?= registry.local.rothwell.us/devilmonastery
 DOCKER_VERSION ?= $(shell date +%Y.%m.%d.%H.%M)
 
 # BuildKit configuration (optional - set in .env)
