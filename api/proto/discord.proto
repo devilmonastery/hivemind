@@ -37,6 +37,11 @@ service DiscordService {
 
   // GetGuildSettings retrieves guild settings
   rpc GetGuildSettings(GetGuildSettingsRequest) returns (GetGuildSettingsResponse);
+
+  // Guild sync coordination (for distributed bot replicas)
+  rpc TryAcquireGuildSyncLease(TryAcquireGuildSyncLeaseRequest) returns (TryAcquireGuildSyncLeaseResponse);
+  rpc ReleaseGuildSyncLease(ReleaseGuildSyncLeaseRequest) returns (ReleaseGuildSyncLeaseResponse);
+  rpc CheckGuildNeedsSync(CheckGuildNeedsSyncRequest) returns (CheckGuildNeedsSyncResponse);
 }
 
 // Guild represents a Discord server
@@ -176,4 +181,38 @@ message GetGuildSettingsRequest {
 
 message GetGuildSettingsResponse {
   GuildSettings settings = 1;
+}
+
+// Guild sync coordination messages
+message TryAcquireGuildSyncLeaseRequest {
+  string guild_id = 1;
+  string instance_id = 2;
+  int32 lease_duration_seconds = 3;
+}
+
+message TryAcquireGuildSyncLeaseResponse {
+  bool acquired = 1;
+  string current_holder = 2; // Empty if acquired, otherwise who holds it
+}
+
+message ReleaseGuildSyncLeaseRequest {
+  string guild_id = 1;
+  string instance_id = 2;
+  bool success = 3; // Whether the sync succeeded
+  int32 member_count = 4; // Number of members synced
+  google.protobuf.Timestamp sync_started_at = 5;
+}
+
+message ReleaseGuildSyncLeaseResponse {
+  bool success = 1;
+}
+
+message CheckGuildNeedsSyncRequest {
+  string guild_id = 1;
+  int32 interval_seconds = 2; // Minimum time between syncs
+}
+
+message CheckGuildNeedsSyncResponse {
+  bool needs_sync = 1;
+  google.protobuf.Timestamp last_sync = 2;
 }

@@ -17,19 +17,13 @@ spec:
         app: hivemind-bot
         component: discord-bot
     spec:
-      serviceAccountName: hivemind-bot  # Required for leader election
+      serviceAccountName: hivemind-bot  # Default SA; no special RBAC required
       containers:
       - name: bot
         image: ghcr.io/example/hivemind-bot:latest  # Update with your registry
         imagePullPolicy: Always
         
         env:
-        # Kubernetes-specific: Required for leader election
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        
         # Bot configuration
         - name: DISCORD_BOT_TOKEN
           valueFrom:

@@ -205,55 +205,19 @@ The bot supports running multiple replicas for high availability and load distri
 
 In standalone mode (local dev or Docker Compose), each bot instance runs its own background sync jobs. This results in duplicate work but is safe - all operations are idempotent.
 
-### Kubernetes Deployment
+### Multi-Replica Coordination
 
-When running in Kubernetes, the bot automatically detects the environment and uses **leader election** for background sync jobs:
+Multiple bot replicas coordinate background sync work using **per-guild database leases** (via the server's gRPC `DiscordService`), so exactly one replica syncs a given guild at a time. This needs **no** Kubernetes leader election, RBAC, or `Lease` objects.
 
-- Only one replica (the "leader") runs the periodic guild member sync
-- If the leader fails, another replica automatically takes over
-- All replicas handle Discord interactions normally
-- This prevents duplicate Discord API calls and database writes
+- Every replica runs the periodic sync loop.
+- Before syncing a guild, a replica calls `TryAcquireGuildSyncLease` (gRPC). Only the replica that acquires the lease performs the sync; others skip that guild.
+- Leases are time-bounded (`sync_lease_expires_at`), so if a replica dies mid-sync the lease expires and another replica takes over.
+- `CheckGuildNeedsSync` skips guilds already synced within the interval (default 24h), tracked via `last_member_sync`.
+- Replica identity is the pod hostname (`HOSTNAME`).
 
-**Required Kubernetes Setup:**
+Because the server owns the database, the bot needs only its gRPC connection — no k8s API access. This works identically in Docker Compose, bare metal, or Kubernetes.
 
-1. **Service Account with RBAC permissions** for leader election
-2. **Environment variable**: `POD_NAMESPACE` (set via Downward API)
-3. **Lease resource access** in the namespace
-
-Example deployment snippet:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: hivemind-bot
-spec:
-  replicas: 3  # Multiple replicas for HA
-  template:
-    spec:
-      serviceAccountName: hivemind-bot  # Service account with RBAC
-      containers:
-      - name: bot
-        image: your-registry/hivemind-bot:latest
-        env:
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: DISCORD_BOT_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: hivemind-bot-secrets
-              key: discord-token
-```
-
-See `configs/k8s/` for complete RBAC and deployment examples.
-
-**How it works:**
-- Bot detects Kubernetes by checking for `/var/run/secrets/kubernetes.io/serviceaccount/token`
-- Uses a Lease resource named `hivemind-bot-sync-leader` for coordination
-- Leader holds lease for 15s, renews every 10s
-- Failed leaders are detected within 2-5 seconds
+See `configs/k8s/` for deployment examples.
 
 ## Background Jobs
 
@@ -264,9 +228,7 @@ The bot runs periodic background jobs:
 - **Frequency**: Every 24 hours
 - **Purpose**: Syncs guild member data (nicknames, roles, usernames) with the database
 - **Maintenance**: Automatically updates the `user_display_names` table for efficient display name lookups
-- **Behavior**:
-  - Standalone/Docker: All instances run sync jobs independently (idempotent, safe but duplicate work)
-  - Kubernetes: Only the leader replica runs sync jobs (via leader election)
+- **Behavior**: Every replica runs the sync loop, but a per-guild database lease ensures only one replica syncs each guild at a time (idempotent and safe even if leases briefly overlap)
 
 The sync ensures that display names (guild nick > global name > username) are always up-to-date in queries without expensive real-time joins.
 

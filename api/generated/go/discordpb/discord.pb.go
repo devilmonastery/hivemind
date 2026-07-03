@@ -1371,6 +1371,343 @@ func (x *GetGuildSettingsResponse) GetSettings() *GuildSettings {
 	return nil
 }
 
+// Guild sync coordination messages
+type TryAcquireGuildSyncLeaseRequest struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	GuildId              string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	InstanceId           string                 `protobuf:"bytes,2,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
+	LeaseDurationSeconds int32                  `protobuf:"varint,3,opt,name=lease_duration_seconds,json=leaseDurationSeconds,proto3" json:"lease_duration_seconds,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *TryAcquireGuildSyncLeaseRequest) Reset() {
+	*x = TryAcquireGuildSyncLeaseRequest{}
+	mi := &file_discord_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TryAcquireGuildSyncLeaseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TryAcquireGuildSyncLeaseRequest) ProtoMessage() {}
+
+func (x *TryAcquireGuildSyncLeaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TryAcquireGuildSyncLeaseRequest.ProtoReflect.Descriptor instead.
+func (*TryAcquireGuildSyncLeaseRequest) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *TryAcquireGuildSyncLeaseRequest) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *TryAcquireGuildSyncLeaseRequest) GetInstanceId() string {
+	if x != nil {
+		return x.InstanceId
+	}
+	return ""
+}
+
+func (x *TryAcquireGuildSyncLeaseRequest) GetLeaseDurationSeconds() int32 {
+	if x != nil {
+		return x.LeaseDurationSeconds
+	}
+	return 0
+}
+
+type TryAcquireGuildSyncLeaseResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Acquired      bool                   `protobuf:"varint,1,opt,name=acquired,proto3" json:"acquired,omitempty"`
+	CurrentHolder string                 `protobuf:"bytes,2,opt,name=current_holder,json=currentHolder,proto3" json:"current_holder,omitempty"` // Empty if acquired, otherwise who holds it
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TryAcquireGuildSyncLeaseResponse) Reset() {
+	*x = TryAcquireGuildSyncLeaseResponse{}
+	mi := &file_discord_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TryAcquireGuildSyncLeaseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TryAcquireGuildSyncLeaseResponse) ProtoMessage() {}
+
+func (x *TryAcquireGuildSyncLeaseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TryAcquireGuildSyncLeaseResponse.ProtoReflect.Descriptor instead.
+func (*TryAcquireGuildSyncLeaseResponse) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *TryAcquireGuildSyncLeaseResponse) GetAcquired() bool {
+	if x != nil {
+		return x.Acquired
+	}
+	return false
+}
+
+func (x *TryAcquireGuildSyncLeaseResponse) GetCurrentHolder() string {
+	if x != nil {
+		return x.CurrentHolder
+	}
+	return ""
+}
+
+type ReleaseGuildSyncLeaseRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GuildId       string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	InstanceId    string                 `protobuf:"bytes,2,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
+	Success       bool                   `protobuf:"varint,3,opt,name=success,proto3" json:"success,omitempty"`                            // Whether the sync succeeded
+	MemberCount   int32                  `protobuf:"varint,4,opt,name=member_count,json=memberCount,proto3" json:"member_count,omitempty"` // Number of members synced
+	SyncStartedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=sync_started_at,json=syncStartedAt,proto3" json:"sync_started_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReleaseGuildSyncLeaseRequest) Reset() {
+	*x = ReleaseGuildSyncLeaseRequest{}
+	mi := &file_discord_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReleaseGuildSyncLeaseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReleaseGuildSyncLeaseRequest) ProtoMessage() {}
+
+func (x *ReleaseGuildSyncLeaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReleaseGuildSyncLeaseRequest.ProtoReflect.Descriptor instead.
+func (*ReleaseGuildSyncLeaseRequest) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ReleaseGuildSyncLeaseRequest) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *ReleaseGuildSyncLeaseRequest) GetInstanceId() string {
+	if x != nil {
+		return x.InstanceId
+	}
+	return ""
+}
+
+func (x *ReleaseGuildSyncLeaseRequest) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ReleaseGuildSyncLeaseRequest) GetMemberCount() int32 {
+	if x != nil {
+		return x.MemberCount
+	}
+	return 0
+}
+
+func (x *ReleaseGuildSyncLeaseRequest) GetSyncStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SyncStartedAt
+	}
+	return nil
+}
+
+type ReleaseGuildSyncLeaseResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReleaseGuildSyncLeaseResponse) Reset() {
+	*x = ReleaseGuildSyncLeaseResponse{}
+	mi := &file_discord_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReleaseGuildSyncLeaseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReleaseGuildSyncLeaseResponse) ProtoMessage() {}
+
+func (x *ReleaseGuildSyncLeaseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReleaseGuildSyncLeaseResponse.ProtoReflect.Descriptor instead.
+func (*ReleaseGuildSyncLeaseResponse) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ReleaseGuildSyncLeaseResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+type CheckGuildNeedsSyncRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	GuildId         string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	IntervalSeconds int32                  `protobuf:"varint,2,opt,name=interval_seconds,json=intervalSeconds,proto3" json:"interval_seconds,omitempty"` // Minimum time between syncs
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CheckGuildNeedsSyncRequest) Reset() {
+	*x = CheckGuildNeedsSyncRequest{}
+	mi := &file_discord_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckGuildNeedsSyncRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckGuildNeedsSyncRequest) ProtoMessage() {}
+
+func (x *CheckGuildNeedsSyncRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckGuildNeedsSyncRequest.ProtoReflect.Descriptor instead.
+func (*CheckGuildNeedsSyncRequest) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *CheckGuildNeedsSyncRequest) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *CheckGuildNeedsSyncRequest) GetIntervalSeconds() int32 {
+	if x != nil {
+		return x.IntervalSeconds
+	}
+	return 0
+}
+
+type CheckGuildNeedsSyncResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NeedsSync     bool                   `protobuf:"varint,1,opt,name=needs_sync,json=needsSync,proto3" json:"needs_sync,omitempty"`
+	LastSync      *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=last_sync,json=lastSync,proto3" json:"last_sync,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckGuildNeedsSyncResponse) Reset() {
+	*x = CheckGuildNeedsSyncResponse{}
+	mi := &file_discord_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckGuildNeedsSyncResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckGuildNeedsSyncResponse) ProtoMessage() {}
+
+func (x *CheckGuildNeedsSyncResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_discord_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckGuildNeedsSyncResponse.ProtoReflect.Descriptor instead.
+func (*CheckGuildNeedsSyncResponse) Descriptor() ([]byte, []int) {
+	return file_discord_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *CheckGuildNeedsSyncResponse) GetNeedsSync() bool {
+	if x != nil {
+		return x.NeedsSync
+	}
+	return false
+}
+
+func (x *CheckGuildNeedsSyncResponse) GetLastSync() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSync
+	}
+	return nil
+}
+
 var File_discord_proto protoreflect.FileDescriptor
 
 const file_discord_proto_rawDesc = "" +
@@ -1472,7 +1809,31 @@ const file_discord_proto_rawDesc = "" +
 	"\x17GetGuildSettingsRequest\x12\x19\n" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\"W\n" +
 	"\x18GetGuildSettingsResponse\x12;\n" +
-	"\bsettings\x18\x01 \x01(\v2\x1f.hivemind.discord.GuildSettingsR\bsettings2\xb5\b\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1f.hivemind.discord.GuildSettingsR\bsettings\"\x93\x01\n" +
+	"\x1fTryAcquireGuildSyncLeaseRequest\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x1f\n" +
+	"\vinstance_id\x18\x02 \x01(\tR\n" +
+	"instanceId\x124\n" +
+	"\x16lease_duration_seconds\x18\x03 \x01(\x05R\x14leaseDurationSeconds\"e\n" +
+	" TryAcquireGuildSyncLeaseResponse\x12\x1a\n" +
+	"\bacquired\x18\x01 \x01(\bR\bacquired\x12%\n" +
+	"\x0ecurrent_holder\x18\x02 \x01(\tR\rcurrentHolder\"\xdb\x01\n" +
+	"\x1cReleaseGuildSyncLeaseRequest\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x1f\n" +
+	"\vinstance_id\x18\x02 \x01(\tR\n" +
+	"instanceId\x12\x18\n" +
+	"\asuccess\x18\x03 \x01(\bR\asuccess\x12!\n" +
+	"\fmember_count\x18\x04 \x01(\x05R\vmemberCount\x12B\n" +
+	"\x0fsync_started_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\rsyncStartedAt\"9\n" +
+	"\x1dReleaseGuildSyncLeaseResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"b\n" +
+	"\x1aCheckGuildNeedsSyncRequest\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12)\n" +
+	"\x10interval_seconds\x18\x02 \x01(\x05R\x0fintervalSeconds\"u\n" +
+	"\x1bCheckGuildNeedsSyncResponse\x12\x1d\n" +
+	"\n" +
+	"needs_sync\x18\x01 \x01(\bR\tneedsSync\x127\n" +
+	"\tlast_sync\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\blastSync2\xa7\v\n" +
 	"\x0eDiscordService\x12Z\n" +
 	"\vUpsertGuild\x12$.hivemind.discord.UpsertGuildRequest\x1a%.hivemind.discord.UpsertGuildResponse\x12]\n" +
 	"\fDisableGuild\x12%.hivemind.discord.DisableGuildRequest\x1a&.hivemind.discord.DisableGuildResponse\x12Q\n" +
@@ -1483,7 +1844,10 @@ const file_discord_proto_rawDesc = "" +
 	"\x14CheckGuildMembership\x12-.hivemind.discord.CheckGuildMembershipRequest\x1a..hivemind.discord.CheckGuildMembershipResponse\x12c\n" +
 	"\x0eListUserGuilds\x12'.hivemind.discord.ListUserGuildsRequest\x1a(.hivemind.discord.ListUserGuildsResponse\x12r\n" +
 	"\x13UpdateGuildSettings\x12,.hivemind.discord.UpdateGuildSettingsRequest\x1a-.hivemind.discord.UpdateGuildSettingsResponse\x12i\n" +
-	"\x10GetGuildSettings\x12).hivemind.discord.GetGuildSettingsRequest\x1a*.hivemind.discord.GetGuildSettingsResponseB?Z=github.com/devilmonastery/hivemind/api/generated/go/discordpbb\x06proto3"
+	"\x10GetGuildSettings\x12).hivemind.discord.GetGuildSettingsRequest\x1a*.hivemind.discord.GetGuildSettingsResponse\x12\x81\x01\n" +
+	"\x18TryAcquireGuildSyncLease\x121.hivemind.discord.TryAcquireGuildSyncLeaseRequest\x1a2.hivemind.discord.TryAcquireGuildSyncLeaseResponse\x12x\n" +
+	"\x15ReleaseGuildSyncLease\x12..hivemind.discord.ReleaseGuildSyncLeaseRequest\x1a/.hivemind.discord.ReleaseGuildSyncLeaseResponse\x12r\n" +
+	"\x13CheckGuildNeedsSync\x12,.hivemind.discord.CheckGuildNeedsSyncRequest\x1a-.hivemind.discord.CheckGuildNeedsSyncResponseB?Z=github.com/devilmonastery/hivemind/api/generated/go/discordpbb\x06proto3"
 
 var (
 	file_discord_proto_rawDescOnce sync.Once
@@ -1497,73 +1861,87 @@ func file_discord_proto_rawDescGZIP() []byte {
 	return file_discord_proto_rawDescData
 }
 
-var file_discord_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_discord_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_discord_proto_goTypes = []any{
-	(*Guild)(nil),                           // 0: hivemind.discord.Guild
-	(*UpsertGuildRequest)(nil),              // 1: hivemind.discord.UpsertGuildRequest
-	(*UpsertGuildResponse)(nil),             // 2: hivemind.discord.UpsertGuildResponse
-	(*DisableGuildRequest)(nil),             // 3: hivemind.discord.DisableGuildRequest
-	(*DisableGuildResponse)(nil),            // 4: hivemind.discord.DisableGuildResponse
-	(*GetGuildRequest)(nil),                 // 5: hivemind.discord.GetGuildRequest
-	(*GetGuildResponse)(nil),                // 6: hivemind.discord.GetGuildResponse
-	(*GuildMember)(nil),                     // 7: hivemind.discord.GuildMember
-	(*UpsertGuildMemberRequest)(nil),        // 8: hivemind.discord.UpsertGuildMemberRequest
-	(*UpsertGuildMemberResponse)(nil),       // 9: hivemind.discord.UpsertGuildMemberResponse
-	(*UpsertGuildMembersBatchRequest)(nil),  // 10: hivemind.discord.UpsertGuildMembersBatchRequest
-	(*UpsertGuildMembersBatchResponse)(nil), // 11: hivemind.discord.UpsertGuildMembersBatchResponse
-	(*RemoveGuildMemberRequest)(nil),        // 12: hivemind.discord.RemoveGuildMemberRequest
-	(*RemoveGuildMemberResponse)(nil),       // 13: hivemind.discord.RemoveGuildMemberResponse
-	(*CheckGuildMembershipRequest)(nil),     // 14: hivemind.discord.CheckGuildMembershipRequest
-	(*CheckGuildMembershipResponse)(nil),    // 15: hivemind.discord.CheckGuildMembershipResponse
-	(*ListUserGuildsRequest)(nil),           // 16: hivemind.discord.ListUserGuildsRequest
-	(*ListUserGuildsResponse)(nil),          // 17: hivemind.discord.ListUserGuildsResponse
-	(*GuildSettings)(nil),                   // 18: hivemind.discord.GuildSettings
-	(*AnnouncementSettings)(nil),            // 19: hivemind.discord.AnnouncementSettings
-	(*UpdateGuildSettingsRequest)(nil),      // 20: hivemind.discord.UpdateGuildSettingsRequest
-	(*UpdateGuildSettingsResponse)(nil),     // 21: hivemind.discord.UpdateGuildSettingsResponse
-	(*GetGuildSettingsRequest)(nil),         // 22: hivemind.discord.GetGuildSettingsRequest
-	(*GetGuildSettingsResponse)(nil),        // 23: hivemind.discord.GetGuildSettingsResponse
-	(*timestamppb.Timestamp)(nil),           // 24: google.protobuf.Timestamp
+	(*Guild)(nil),                            // 0: hivemind.discord.Guild
+	(*UpsertGuildRequest)(nil),               // 1: hivemind.discord.UpsertGuildRequest
+	(*UpsertGuildResponse)(nil),              // 2: hivemind.discord.UpsertGuildResponse
+	(*DisableGuildRequest)(nil),              // 3: hivemind.discord.DisableGuildRequest
+	(*DisableGuildResponse)(nil),             // 4: hivemind.discord.DisableGuildResponse
+	(*GetGuildRequest)(nil),                  // 5: hivemind.discord.GetGuildRequest
+	(*GetGuildResponse)(nil),                 // 6: hivemind.discord.GetGuildResponse
+	(*GuildMember)(nil),                      // 7: hivemind.discord.GuildMember
+	(*UpsertGuildMemberRequest)(nil),         // 8: hivemind.discord.UpsertGuildMemberRequest
+	(*UpsertGuildMemberResponse)(nil),        // 9: hivemind.discord.UpsertGuildMemberResponse
+	(*UpsertGuildMembersBatchRequest)(nil),   // 10: hivemind.discord.UpsertGuildMembersBatchRequest
+	(*UpsertGuildMembersBatchResponse)(nil),  // 11: hivemind.discord.UpsertGuildMembersBatchResponse
+	(*RemoveGuildMemberRequest)(nil),         // 12: hivemind.discord.RemoveGuildMemberRequest
+	(*RemoveGuildMemberResponse)(nil),        // 13: hivemind.discord.RemoveGuildMemberResponse
+	(*CheckGuildMembershipRequest)(nil),      // 14: hivemind.discord.CheckGuildMembershipRequest
+	(*CheckGuildMembershipResponse)(nil),     // 15: hivemind.discord.CheckGuildMembershipResponse
+	(*ListUserGuildsRequest)(nil),            // 16: hivemind.discord.ListUserGuildsRequest
+	(*ListUserGuildsResponse)(nil),           // 17: hivemind.discord.ListUserGuildsResponse
+	(*GuildSettings)(nil),                    // 18: hivemind.discord.GuildSettings
+	(*AnnouncementSettings)(nil),             // 19: hivemind.discord.AnnouncementSettings
+	(*UpdateGuildSettingsRequest)(nil),       // 20: hivemind.discord.UpdateGuildSettingsRequest
+	(*UpdateGuildSettingsResponse)(nil),      // 21: hivemind.discord.UpdateGuildSettingsResponse
+	(*GetGuildSettingsRequest)(nil),          // 22: hivemind.discord.GetGuildSettingsRequest
+	(*GetGuildSettingsResponse)(nil),         // 23: hivemind.discord.GetGuildSettingsResponse
+	(*TryAcquireGuildSyncLeaseRequest)(nil),  // 24: hivemind.discord.TryAcquireGuildSyncLeaseRequest
+	(*TryAcquireGuildSyncLeaseResponse)(nil), // 25: hivemind.discord.TryAcquireGuildSyncLeaseResponse
+	(*ReleaseGuildSyncLeaseRequest)(nil),     // 26: hivemind.discord.ReleaseGuildSyncLeaseRequest
+	(*ReleaseGuildSyncLeaseResponse)(nil),    // 27: hivemind.discord.ReleaseGuildSyncLeaseResponse
+	(*CheckGuildNeedsSyncRequest)(nil),       // 28: hivemind.discord.CheckGuildNeedsSyncRequest
+	(*CheckGuildNeedsSyncResponse)(nil),      // 29: hivemind.discord.CheckGuildNeedsSyncResponse
+	(*timestamppb.Timestamp)(nil),            // 30: google.protobuf.Timestamp
 }
 var file_discord_proto_depIdxs = []int32{
-	24, // 0: hivemind.discord.Guild.added_at:type_name -> google.protobuf.Timestamp
-	24, // 1: hivemind.discord.Guild.last_activity:type_name -> google.protobuf.Timestamp
+	30, // 0: hivemind.discord.Guild.added_at:type_name -> google.protobuf.Timestamp
+	30, // 1: hivemind.discord.Guild.last_activity:type_name -> google.protobuf.Timestamp
 	0,  // 2: hivemind.discord.UpsertGuildResponse.guild:type_name -> hivemind.discord.Guild
 	0,  // 3: hivemind.discord.GetGuildResponse.guild:type_name -> hivemind.discord.Guild
-	24, // 4: hivemind.discord.GuildMember.joined_at:type_name -> google.protobuf.Timestamp
-	24, // 5: hivemind.discord.GuildMember.synced_at:type_name -> google.protobuf.Timestamp
-	24, // 6: hivemind.discord.GuildMember.last_seen:type_name -> google.protobuf.Timestamp
-	24, // 7: hivemind.discord.UpsertGuildMemberRequest.joined_at:type_name -> google.protobuf.Timestamp
+	30, // 4: hivemind.discord.GuildMember.joined_at:type_name -> google.protobuf.Timestamp
+	30, // 5: hivemind.discord.GuildMember.synced_at:type_name -> google.protobuf.Timestamp
+	30, // 6: hivemind.discord.GuildMember.last_seen:type_name -> google.protobuf.Timestamp
+	30, // 7: hivemind.discord.UpsertGuildMemberRequest.joined_at:type_name -> google.protobuf.Timestamp
 	7,  // 8: hivemind.discord.UpsertGuildMembersBatchRequest.members:type_name -> hivemind.discord.GuildMember
 	19, // 9: hivemind.discord.GuildSettings.announcements:type_name -> hivemind.discord.AnnouncementSettings
 	18, // 10: hivemind.discord.UpdateGuildSettingsRequest.settings:type_name -> hivemind.discord.GuildSettings
 	18, // 11: hivemind.discord.UpdateGuildSettingsResponse.settings:type_name -> hivemind.discord.GuildSettings
 	18, // 12: hivemind.discord.GetGuildSettingsResponse.settings:type_name -> hivemind.discord.GuildSettings
-	1,  // 13: hivemind.discord.DiscordService.UpsertGuild:input_type -> hivemind.discord.UpsertGuildRequest
-	3,  // 14: hivemind.discord.DiscordService.DisableGuild:input_type -> hivemind.discord.DisableGuildRequest
-	5,  // 15: hivemind.discord.DiscordService.GetGuild:input_type -> hivemind.discord.GetGuildRequest
-	8,  // 16: hivemind.discord.DiscordService.UpsertGuildMember:input_type -> hivemind.discord.UpsertGuildMemberRequest
-	10, // 17: hivemind.discord.DiscordService.UpsertGuildMembersBatch:input_type -> hivemind.discord.UpsertGuildMembersBatchRequest
-	12, // 18: hivemind.discord.DiscordService.RemoveGuildMember:input_type -> hivemind.discord.RemoveGuildMemberRequest
-	14, // 19: hivemind.discord.DiscordService.CheckGuildMembership:input_type -> hivemind.discord.CheckGuildMembershipRequest
-	16, // 20: hivemind.discord.DiscordService.ListUserGuilds:input_type -> hivemind.discord.ListUserGuildsRequest
-	20, // 21: hivemind.discord.DiscordService.UpdateGuildSettings:input_type -> hivemind.discord.UpdateGuildSettingsRequest
-	22, // 22: hivemind.discord.DiscordService.GetGuildSettings:input_type -> hivemind.discord.GetGuildSettingsRequest
-	2,  // 23: hivemind.discord.DiscordService.UpsertGuild:output_type -> hivemind.discord.UpsertGuildResponse
-	4,  // 24: hivemind.discord.DiscordService.DisableGuild:output_type -> hivemind.discord.DisableGuildResponse
-	6,  // 25: hivemind.discord.DiscordService.GetGuild:output_type -> hivemind.discord.GetGuildResponse
-	9,  // 26: hivemind.discord.DiscordService.UpsertGuildMember:output_type -> hivemind.discord.UpsertGuildMemberResponse
-	11, // 27: hivemind.discord.DiscordService.UpsertGuildMembersBatch:output_type -> hivemind.discord.UpsertGuildMembersBatchResponse
-	13, // 28: hivemind.discord.DiscordService.RemoveGuildMember:output_type -> hivemind.discord.RemoveGuildMemberResponse
-	15, // 29: hivemind.discord.DiscordService.CheckGuildMembership:output_type -> hivemind.discord.CheckGuildMembershipResponse
-	17, // 30: hivemind.discord.DiscordService.ListUserGuilds:output_type -> hivemind.discord.ListUserGuildsResponse
-	21, // 31: hivemind.discord.DiscordService.UpdateGuildSettings:output_type -> hivemind.discord.UpdateGuildSettingsResponse
-	23, // 32: hivemind.discord.DiscordService.GetGuildSettings:output_type -> hivemind.discord.GetGuildSettingsResponse
-	23, // [23:33] is the sub-list for method output_type
-	13, // [13:23] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	30, // 13: hivemind.discord.ReleaseGuildSyncLeaseRequest.sync_started_at:type_name -> google.protobuf.Timestamp
+	30, // 14: hivemind.discord.CheckGuildNeedsSyncResponse.last_sync:type_name -> google.protobuf.Timestamp
+	1,  // 15: hivemind.discord.DiscordService.UpsertGuild:input_type -> hivemind.discord.UpsertGuildRequest
+	3,  // 16: hivemind.discord.DiscordService.DisableGuild:input_type -> hivemind.discord.DisableGuildRequest
+	5,  // 17: hivemind.discord.DiscordService.GetGuild:input_type -> hivemind.discord.GetGuildRequest
+	8,  // 18: hivemind.discord.DiscordService.UpsertGuildMember:input_type -> hivemind.discord.UpsertGuildMemberRequest
+	10, // 19: hivemind.discord.DiscordService.UpsertGuildMembersBatch:input_type -> hivemind.discord.UpsertGuildMembersBatchRequest
+	12, // 20: hivemind.discord.DiscordService.RemoveGuildMember:input_type -> hivemind.discord.RemoveGuildMemberRequest
+	14, // 21: hivemind.discord.DiscordService.CheckGuildMembership:input_type -> hivemind.discord.CheckGuildMembershipRequest
+	16, // 22: hivemind.discord.DiscordService.ListUserGuilds:input_type -> hivemind.discord.ListUserGuildsRequest
+	20, // 23: hivemind.discord.DiscordService.UpdateGuildSettings:input_type -> hivemind.discord.UpdateGuildSettingsRequest
+	22, // 24: hivemind.discord.DiscordService.GetGuildSettings:input_type -> hivemind.discord.GetGuildSettingsRequest
+	24, // 25: hivemind.discord.DiscordService.TryAcquireGuildSyncLease:input_type -> hivemind.discord.TryAcquireGuildSyncLeaseRequest
+	26, // 26: hivemind.discord.DiscordService.ReleaseGuildSyncLease:input_type -> hivemind.discord.ReleaseGuildSyncLeaseRequest
+	28, // 27: hivemind.discord.DiscordService.CheckGuildNeedsSync:input_type -> hivemind.discord.CheckGuildNeedsSyncRequest
+	2,  // 28: hivemind.discord.DiscordService.UpsertGuild:output_type -> hivemind.discord.UpsertGuildResponse
+	4,  // 29: hivemind.discord.DiscordService.DisableGuild:output_type -> hivemind.discord.DisableGuildResponse
+	6,  // 30: hivemind.discord.DiscordService.GetGuild:output_type -> hivemind.discord.GetGuildResponse
+	9,  // 31: hivemind.discord.DiscordService.UpsertGuildMember:output_type -> hivemind.discord.UpsertGuildMemberResponse
+	11, // 32: hivemind.discord.DiscordService.UpsertGuildMembersBatch:output_type -> hivemind.discord.UpsertGuildMembersBatchResponse
+	13, // 33: hivemind.discord.DiscordService.RemoveGuildMember:output_type -> hivemind.discord.RemoveGuildMemberResponse
+	15, // 34: hivemind.discord.DiscordService.CheckGuildMembership:output_type -> hivemind.discord.CheckGuildMembershipResponse
+	17, // 35: hivemind.discord.DiscordService.ListUserGuilds:output_type -> hivemind.discord.ListUserGuildsResponse
+	21, // 36: hivemind.discord.DiscordService.UpdateGuildSettings:output_type -> hivemind.discord.UpdateGuildSettingsResponse
+	23, // 37: hivemind.discord.DiscordService.GetGuildSettings:output_type -> hivemind.discord.GetGuildSettingsResponse
+	25, // 38: hivemind.discord.DiscordService.TryAcquireGuildSyncLease:output_type -> hivemind.discord.TryAcquireGuildSyncLeaseResponse
+	27, // 39: hivemind.discord.DiscordService.ReleaseGuildSyncLease:output_type -> hivemind.discord.ReleaseGuildSyncLeaseResponse
+	29, // 40: hivemind.discord.DiscordService.CheckGuildNeedsSync:output_type -> hivemind.discord.CheckGuildNeedsSyncResponse
+	28, // [28:41] is the sub-list for method output_type
+	15, // [15:28] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_discord_proto_init() }
@@ -1577,7 +1955,7 @@ func file_discord_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_discord_proto_rawDesc), len(file_discord_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   24,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

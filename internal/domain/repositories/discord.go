@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"github.com/devilmonastery/hivemind/internal/domain/entities"
 )
@@ -58,6 +59,17 @@ type DiscordGuildRepository interface {
 
 	// GetSettings retrieves the settings JSONB for a guild
 	GetSettings(ctx context.Context, guildID string) (map[string]interface{}, error)
+
+	// TryAcquireSyncLease attempts to acquire a sync lease for a guild
+	// Returns: acquired (bool), currentHolder (string), error
+	TryAcquireSyncLease(ctx context.Context, guildID, instanceID string, leaseDuration time.Duration) (bool, string, error)
+
+	// ReleaseSyncLease releases a sync lease for a guild
+	ReleaseSyncLease(ctx context.Context, guildID, instanceID string, success bool, memberCount int, syncStartedAt *time.Time) error
+
+	// NeedsSyncSince checks if a guild needs syncing based on last sync time
+	// Returns: needsSync (bool), lastSync (*time.Time), error
+	NeedsSyncSince(ctx context.Context, guildID string, interval time.Duration) (bool, *time.Time, error)
 }
 
 // GuildMemberRepository handles Discord guild membership data persistence

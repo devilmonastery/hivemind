@@ -527,3 +527,20 @@ func (s *DiscordService) GetGuildSettings(ctx context.Context, guildID string) (
 
 	return settings, nil
 }
+
+// TryAcquireGuildSyncLease attempts to acquire a sync lease for a guild
+// Returns: acquired (bool), currentHolder (string), error
+func (s *DiscordService) TryAcquireGuildSyncLease(ctx context.Context, guildID, instanceID string, leaseDurationSeconds int) (bool, string, error) {
+	return s.discordGuildRepo.TryAcquireSyncLease(ctx, guildID, instanceID, time.Duration(leaseDurationSeconds)*time.Second)
+}
+
+// ReleaseGuildSyncLease releases a sync lease for a guild
+func (s *DiscordService) ReleaseGuildSyncLease(ctx context.Context, guildID, instanceID string, success bool, memberCount int, syncStartedAt *time.Time) error {
+	return s.discordGuildRepo.ReleaseSyncLease(ctx, guildID, instanceID, success, memberCount, syncStartedAt)
+}
+
+// CheckGuildNeedsSync checks if a guild needs syncing based on last sync time
+// Returns: needsSync (bool), lastSync (*time.Time), error
+func (s *DiscordService) CheckGuildNeedsSync(ctx context.Context, guildID string, intervalSeconds int) (bool, *time.Time, error) {
+	return s.discordGuildRepo.NeedsSyncSince(ctx, guildID, time.Duration(intervalSeconds)*time.Second)
+}
