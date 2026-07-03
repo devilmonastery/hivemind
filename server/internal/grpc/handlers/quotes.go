@@ -260,6 +260,9 @@ func (h *QuoteHandler) GetRandomQuote(ctx context.Context, req *quotespb.GetRand
 		}
 		return nil, status.Errorf(codes.Internal, "failed to get random quote: %v", err)
 	}
+	if quote == nil {
+		return nil, status.Error(codes.NotFound, "no quotes found")
+	}
 
 	return quoteToProto(quote), nil
 }
