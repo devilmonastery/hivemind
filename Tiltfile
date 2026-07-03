@@ -202,10 +202,10 @@ metadata:
         'hivemind-web',
         labels=['frontend'],
         port_forwards=[
-            port_forward(8080, 8080, name='web'),
+            port_forward(8081, 8080, name='web'),  # local 8081 to avoid clashing with daisybot's web (8080)
         ],
         links=[
-            link('http://localhost:8080', 'Web UI'),
+            link('http://localhost:8081', 'Web UI'),
         ],
         resource_deps=['hivemind-server'],
     )
