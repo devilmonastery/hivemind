@@ -256,6 +256,7 @@ func toProtoWikiPage(page *entities.WikiPage) *wikipb.WikiPage {
 		Tags:           page.Tags,
 		CreatedAt:      timestamppb.New(page.CreatedAt),
 		UpdatedAt:      timestamppb.New(page.UpdatedAt),
+		Score:          page.Score,
 	}
 }
 

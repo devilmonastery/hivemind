@@ -451,11 +451,13 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 	// Get pages with ranking and canonical slug from wiki_titles
 	// Use query text for ranking if provided
 	orderByClause := "wp.created_at DESC"
+	scoreExpr := "0::double precision"
 	if query != "" {
 		// Find the query parameter position
 		for i, arg := range args {
 			if s, ok := arg.(string); ok && s == query {
-				orderByClause = fmt.Sprintf("ts_rank(wp.search_vector, websearch_to_tsquery('english', $%d)) DESC", i+1)
+				scoreExpr = fmt.Sprintf("ts_rank(wp.search_vector, websearch_to_tsquery('english', $%d))::double precision", i+1)
+				orderByClause = scoreExpr + " DESC"
 				break
 			}
 		}
@@ -463,7 +465,7 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 
 	searchQuery := fmt.Sprintf(`
 		SELECT wp.id, wt.display_title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wt.page_slug,
-		       udn.display_name
+		       udn.display_name, %s AS score
 		FROM %s
 		LEFT JOIN discord_guilds dg ON wp.guild_id = dg.guild_id
 		LEFT JOIN wiki_titles wt ON wp.id = wt.page_id AND wt.is_canonical = TRUE
@@ -473,7 +475,7 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		WHERE %s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, fromClause, whereClause, orderByClause, argCount+1, argCount+2)
+	`, scoreExpr, fromClause, whereClause, orderByClause, argCount+1, argCount+2)
 
 	args = append(args, limit, offset)
 
@@ -493,11 +495,12 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		var tagArray pq.StringArray
 		var channelID, guildName, authorDisplayName sql.NullString
 		var pageSlug sql.NullString
+		var score sql.NullFloat64
 
 		err := rows.Scan(
 			&page.ID, &page.Title, &page.Body, &page.AuthorID, &page.GuildID,
 			&guildName, &channelID, &tagArray, &page.CreatedAt, &page.UpdatedAt, &pageSlug,
-			&authorDisplayName,
+			&authorDisplayName, &score,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -507,6 +510,7 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		page.GuildName = guildName.String
 		page.AuthorDisplayName = authorDisplayName.String
 		page.Tags = tagArray
+		page.Score = score.Float64
 		if pageSlug.Valid {
 			page.Slug = pageSlug.String
 		} else {
