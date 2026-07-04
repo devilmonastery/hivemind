@@ -64,6 +64,7 @@ type Quote struct {
 	Tags                           []string   `json:"tags,omitempty"`
 	CreatedAt                      time.Time  `json:"created_at"`
 	DeletedAt                      *time.Time `json:"deleted_at,omitempty"`
+	Score                          float64    `json:"score,omitempty"` // Semantic relevance (cosine similarity), populated by Search only
 }
 
 // WikiMessageReference represents a Discord message tagged with a wiki page topic

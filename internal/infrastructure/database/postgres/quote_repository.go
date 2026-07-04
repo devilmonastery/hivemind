@@ -370,14 +370,11 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 		args = append(args, userDiscordID)
 	}
 
-	// Full-text search on body
-	var queryParamPos int
+	// Semantic search: when a query is provided, restrict to quotes that have an
+	// embedding and rank them by cosine distance to the query embedding (computed
+	// in-DB). The query text is embedded in the ranked query below, not here.
 	if query != "" {
-		argCount++
-		queryParamPos = argCount
-		// Use hybrid search vector: searches both english (stemmed, weight A) and simple (literal, weight B)
-		conditions = append(conditions, fmt.Sprintf("(q.search_vector @@ websearch_to_tsquery('english', $%d) OR q.search_vector @@ websearch_to_tsquery('simple', $%d))", argCount, argCount))
-		args = append(args, query)
+		conditions = append(conditions, "q.embedding IS NOT NULL")
 	}
 
 	// Tag filtering
@@ -389,7 +386,7 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 
 	whereClause := strings.Join(conditions, " AND ")
 
-	// Get total count
+	// Get total count (does not need the query embedding)
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %s WHERE %s", baseFrom, whereClause)
 	if err2 := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err2 != nil {
@@ -397,35 +394,38 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 		return nil, 0, err
 	}
 
-	// Get quotes with ranking
-	var searchQuery string
+	// Build the ranked query. searchArgs extends the count args with the query text
+	// (embedded once in a MATERIALIZED CTE named qe -- the quotes table alias is q)
+	// and pagination. score is cosine similarity (1 - cosine distance): higher is
+	// more relevant.
+	searchArgs := append([]interface{}{}, args...)
+	orderByClause := "q.created_at DESC"
+	scoreExpr := "0::double precision"
+	cteClause := ""
 	if query != "" {
-		searchQuery = fmt.Sprintf(`
-			SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name,
-			       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-			       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at,
-			       udn_author.display_name, udn_author.guild_nick, udn_source.display_name, udn_source.guild_nick
-			%s
-			WHERE %s
-			ORDER BY ts_rank(q.search_vector, websearch_to_tsquery('english', $%d)) DESC
-			LIMIT $%d OFFSET $%d
-		`, baseFrom, whereClause, queryParamPos, argCount+1, argCount+2)
-	} else {
-		searchQuery = fmt.Sprintf(`
-			SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name,
-			       q.source_msg_id, q.source_channel_id, q.source_channel_name,
-			       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at,
-			       udn_author.display_name, udn_author.guild_nick, udn_source.display_name, udn_source.guild_nick
-			%s
-			WHERE %s
-			ORDER BY created_at DESC
-			LIMIT $%d OFFSET $%d
-		`, baseFrom, whereClause, argCount+1, argCount+2)
+		searchArgs = append(searchArgs, query)
+		qIdx := len(searchArgs)
+		cteClause = fmt.Sprintf("WITH qe AS MATERIALIZED (SELECT embed_text('embed_anything', 'sentence-transformers/all-MiniLM-L6-v2', $%d) AS v)\n", qIdx)
+		scoreExpr = "(1 - (q.embedding <=> (SELECT v FROM qe)))::double precision"
+		orderByClause = "q.embedding <=> (SELECT v FROM qe) ASC"
 	}
+	limitIdx := len(searchArgs) + 1
+	offsetIdx := len(searchArgs) + 2
+	searchArgs = append(searchArgs, limit, offset)
 
-	args = append(args, limit, offset)
+	searchQuery := fmt.Sprintf(`%s
+		SELECT q.id, q.body, q.author_id, q.author_discord_id, u.name, q.guild_id, dg.guild_name,
+		       q.source_msg_id, q.source_channel_id, q.source_channel_name,
+		       q.source_msg_author_discord_id, q.source_msg_author_username, q.source_msg_timestamp, q.tags, q.created_at,
+		       udn_author.display_name, udn_author.guild_nick, udn_source.display_name, udn_source.guild_nick,
+		       %s AS score
+		%s
+		WHERE %s
+		ORDER BY %s
+		LIMIT $%d OFFSET $%d
+	`, cteClause, scoreExpr, baseFrom, whereClause, orderByClause, limitIdx, offsetIdx)
 
-	rows, err := r.db.QueryContext(ctx, searchQuery, args...)
+	rows, err := r.db.QueryContext(ctx, searchQuery, searchArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -438,6 +438,7 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 		var guildName, authorDiscordID, authorUsername, sourceChannelName, sourceMsgAuthorUsername sql.NullString
 		var authorDisplayName, authorGuildNick, sourceAuthorDisplayName, sourceAuthorGuildNick sql.NullString
 		var sourceMsgTimestamp sql.NullTime
+		var score sql.NullFloat64
 
 		err := rows.Scan(
 			&quote.ID, &quote.Body, &quote.AuthorID, &authorDiscordID, &authorUsername, &quote.GuildID, &guildName,
@@ -445,6 +446,7 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 			&quote.SourceMsgAuthorDiscordID, &sourceMsgAuthorUsername,
 			&sourceMsgTimestamp, &tagArray, &quote.CreatedAt,
 			&authorDisplayName, &authorGuildNick, &sourceAuthorDisplayName, &sourceAuthorGuildNick,
+			&score,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -463,6 +465,7 @@ func (r *quoteRepository) Search(ctx context.Context, guildID, query string, tag
 			quote.SourceMsgTimestamp = sourceMsgTimestamp.Time
 		}
 		quote.Tags = tagArray
+		quote.Score = score.Float64
 		quotes = append(quotes, quote)
 	}
 

@@ -290,6 +290,7 @@ func quoteToProto(quote *entities.Quote) *quotespb.Quote {
 		SourceMsgAuthorGuildAvatarHash: quote.SourceMsgAuthorGuildAvatarHash, // Guild-specific avatar of who said it
 		SourceMsgAuthorUserAvatarHash:  quote.SourceMsgAuthorUserAvatarHash,  // Global user avatar of who said it
 		CreatedAt:                      timestamppb.New(quote.CreatedAt),
+		Score:                          quote.Score,
 	}
 	if !quote.SourceMsgTimestamp.IsZero() {
 		proto.SourceMsgTimestamp = timestamppb.New(quote.SourceMsgTimestamp)
