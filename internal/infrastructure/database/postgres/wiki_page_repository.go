@@ -417,12 +417,11 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		args = append(args, guildID)
 	}
 
-	// Full-text search on title and body
+	// Semantic search: when a query is provided, restrict to pages that have an
+	// embedding and rank them by cosine distance to the query embedding (computed
+	// in-DB). The query text is embedded in the ranked query below, not here.
 	if query != "" {
-		argCount++
-		// Use hybrid search vector: searches both english and simple dictionaries
-		conditions = append(conditions, fmt.Sprintf("(wp.search_vector @@ websearch_to_tsquery('english', $%d) OR wp.search_vector @@ websearch_to_tsquery('simple', $%d))", argCount, argCount))
-		args = append(args, query)
+		conditions = append(conditions, "wp.embedding IS NOT NULL")
 	}
 
 	// Tag filtering
@@ -434,7 +433,7 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 
 	whereClause := strings.Join(conditions, " AND ")
 
-	// Get total count
+	// Get total count (does not need the query embedding)
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", fromClause, whereClause)
 	r.log.Debug("counting wiki pages for search",
@@ -448,22 +447,27 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		return nil, 0, err
 	}
 
-	// Get pages with ranking and canonical slug from wiki_titles
-	// Use query text for ranking if provided
+	// Build the ranked query. searchArgs extends the count args with the query
+	// text (embedded in a MATERIALIZED CTE so inference runs once) and pagination.
+	// score is cosine similarity (1 - cosine distance): higher is more relevant.
+	// Note: on small per-guild corpora the planner may seq-scan rather than use the
+	// HNSW index; precompute the query vector as a bind param if this ever scales.
+	searchArgs := append([]interface{}{}, args...)
 	orderByClause := "wp.created_at DESC"
 	scoreExpr := "0::double precision"
+	cteClause := ""
 	if query != "" {
-		// Find the query parameter position
-		for i, arg := range args {
-			if s, ok := arg.(string); ok && s == query {
-				scoreExpr = fmt.Sprintf("ts_rank(wp.search_vector, websearch_to_tsquery('english', $%d))::double precision", i+1)
-				orderByClause = scoreExpr + " DESC"
-				break
-			}
-		}
+		searchArgs = append(searchArgs, query)
+		qIdx := len(searchArgs)
+		cteClause = fmt.Sprintf("WITH q AS MATERIALIZED (SELECT embed_text('embed_anything', 'sentence-transformers/all-MiniLM-L6-v2', $%d) AS v)\n", qIdx)
+		scoreExpr = "(1 - (wp.embedding <=> (SELECT v FROM q)))::double precision"
+		orderByClause = "wp.embedding <=> (SELECT v FROM q) ASC"
 	}
+	limitIdx := len(searchArgs) + 1
+	offsetIdx := len(searchArgs) + 2
+	searchArgs = append(searchArgs, limit, offset)
 
-	searchQuery := fmt.Sprintf(`
+	searchQuery := fmt.Sprintf(`%s
 		SELECT wp.id, wt.display_title, wp.body, wp.author_id, wp.guild_id, dg.guild_name, wp.channel_id, wp.tags, wp.created_at, wp.updated_at, wt.page_slug,
 		       udn.display_name, %s AS score
 		FROM %s
@@ -475,15 +479,13 @@ func (r *wikiPageRepository) Search(ctx context.Context, guildID, query string, 
 		WHERE %s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, scoreExpr, fromClause, whereClause, orderByClause, argCount+1, argCount+2)
-
-	args = append(args, limit, offset)
+	`, cteClause, scoreExpr, fromClause, whereClause, orderByClause, limitIdx, offsetIdx)
 
 	r.log.Debug("selecting wiki pages for search",
 		slog.String("select_query", searchQuery),
 		slog.Int("limit", limit),
 		slog.Int("offset", offset))
-	rows, err := r.db.QueryContext(ctx, searchQuery, args...)
+	rows, err := r.db.QueryContext(ctx, searchQuery, searchArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
