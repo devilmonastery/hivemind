@@ -48,7 +48,9 @@ spec:
     spec:
       containers:
       - name: postgres
-        image: postgres:18.1
+        # Custom image: pgvector + pg_gembed (in-DB MiniLM embeddings), pinned by
+        # digest so nodes always repull the exact build (tag reuse won't repull).
+        image: registry.local.rothwell.us/devilmonastery/postgres-gembed:18.4-bookworm@sha256:eaa9bf8116b51eebce929960e70258d4edc399ee9a57c4fcd072fee42dba54c7
         ports:
         - containerPort: 5432
           name: postgres
@@ -69,11 +71,12 @@ spec:
           mountPath: /var/lib/postgresql/data
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100m"
+            memory: "512Mi"
+            cpu: "250m"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            # Headroom for in-DB embedding inference (candle/MiniLM).
+            memory: "2Gi"
+            cpu: "1500m"
         livenessProbe:
           exec:
             command:
