@@ -52,8 +52,10 @@ type Quote struct {
 	// Timestamps
 	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	SourceMsgTimestamp *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=source_msg_timestamp,json=sourceMsgTimestamp,proto3" json:"source_msg_timestamp,omitempty"` // When the original Discord message was sent
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Relevance score (cosine similarity, 0-1), populated by SearchQuotes only.
+	Score         float64 `protobuf:"fixed64,23,opt,name=score,proto3" json:"score,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Quote) Reset() {
@@ -238,6 +240,13 @@ func (x *Quote) GetSourceMsgTimestamp() *timestamppb.Timestamp {
 		return x.SourceMsgTimestamp
 	}
 	return nil
+}
+
+func (x *Quote) GetScore() float64 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
 }
 
 type CreateQuoteRequest struct {
@@ -825,7 +834,7 @@ var File_quotes_proto protoreflect.FileDescriptor
 
 const file_quotes_proto_rawDesc = "" +
 	"\n" +
-	"\fquotes.proto\x12\x0fhivemind.quotes\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x93\b\n" +
+	"\fquotes.proto\x12\x0fhivemind.quotes\x1a\fcommon.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa9\b\n" +
 	"\x05Quote\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1b\n" +
@@ -851,7 +860,8 @@ const file_quotes_proto_rawDesc = "" +
 	"\x04tags\x18\r \x03(\tR\x04tags\x129\n" +
 	"\n" +
 	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12L\n" +
-	"\x14source_msg_timestamp\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\x12sourceMsgTimestamp\"\xa2\x03\n" +
+	"\x14source_msg_timestamp\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\x12sourceMsgTimestamp\x12\x14\n" +
+	"\x05score\x18\x17 \x01(\x01R\x05score\"\xa2\x03\n" +
 	"\x12CreateQuoteRequest\x12\x12\n" +
 	"\x04body\x18\x01 \x01(\tR\x04body\x12\x19\n" +
 	"\bguild_id\x18\x02 \x01(\tR\aguildId\x12\"\n" +

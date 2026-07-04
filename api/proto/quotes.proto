@@ -63,6 +63,9 @@ message Quote {
   // Timestamps
   google.protobuf.Timestamp created_at = 14;
   google.protobuf.Timestamp source_msg_timestamp = 16; // When the original Discord message was sent
+
+  // Relevance score (cosine similarity, 0-1), populated by SearchQuotes only.
+  double score = 23;
 }
 
 message CreateQuoteRequest {
