@@ -1,0 +1,48 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hivemind-server
+  namespace: hivemind
+  labels:
+    app: hivemind-server
+spec:
+  selector:
+    matchLabels:
+      app: hivemind-server
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hivemind-bot
+  namespace: hivemind
+  labels:
+    app: hivemind-bot
+spec:
+  selector:
+    matchLabels:
+      app: hivemind-bot
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hivemind-web
+  namespace: hivemind
+  labels:
+    app: hivemind-web
+spec:
+  selector:
+    matchLabels:
+      app: hivemind-web
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics

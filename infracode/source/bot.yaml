@@ -1,0 +1,139 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hivemind-bot-config
+  namespace: hivemind
+data:
+  config.yaml: |
+    # Discord bot configuration
+    bot:
+      # Bot token from https://discord.com/developers/applications
+      token: ${DISCORD_BOT_TOKEN}
+      # Discord application ID (found on the same page)
+      application_id: ${DISCORD_APPLICATION_ID}
+      # Metrics server port (standard Prometheus port)
+      metrics_port: 9100
+
+    # Backend gRPC server configuration
+    backend:
+      # gRPC server hostname (Kubernetes service name)
+      grpc_host: hivemind-server
+      # gRPC server port
+      grpc_port: 4153
+      # TLS enabled for gRPC connection
+      tls_enabled: false
+      # Service account token for bot authentication
+      # For production: generate with: ./hivemind-server token create-service --name "discord-bot" --role bot
+      # For dev/testing: using dev_bot_token from server config
+      service_token: ${BACKEND_SERVICE_TOKEN}
+      # Base URL for web interface (used in bot responses with links)
+      web_base_url: https://hivemind.dontberu.de
+
+    # Logging configuration
+    logging:
+      # Log level: debug, info, warn, error
+      level: info
+      # Log format: json or text
+      format: json
+      # Log output: stdout or file path
+      output: stdout
+
+    # Feature flags and limits
+    features:
+      # Enable quote commands
+      enable_quotes: true
+      # Enable wiki commands
+      enable_wiki: true
+      # Enable note commands
+      enable_notes: true
+      # Maximum characters for notes
+      max_note_size: 10000
+      # Maximum characters for wiki pages
+      max_wiki_size: 50000
+    reactions:
+      enabled: true
+      quote_emoji_id: "1446823963882950838"
+      wiki_emoji_id: "1446823965204025426"
+      hivemind_emoji_id: "1446823966588014733"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hivemind-bot
+  namespace: hivemind
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivemind-bot
+  namespace: hivemind
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hivemind-bot
+  template:
+    metadata:
+      labels:
+        app: hivemind-bot
+    spec:
+      serviceAccountName: hivemind-bot
+      containers:
+      - name: bot
+        image: registry.local.rothwell.us/devilmonastery/hivemind-bot
+        ports:
+        - containerPort: 9100
+          name: metrics
+        env:
+        - name: DISCORD_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: discord-bot-token
+        - name: DISCORD_APPLICATION_ID
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: discord-application-id
+        - name: BACKEND_SERVICE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hivemind-secrets
+              key: backend-service-token
+        command:
+        - /app/hivemind-bot
+        - run
+        - --config
+        - /etc/hivemind/config.yaml
+        volumeMounts:
+        - name: config
+          mountPath: /etc/hivemind
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+      volumes:
+      - name: config
+        configMap:
+          name: hivemind-bot-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hivemind-bot
+  namespace: hivemind
+  labels:
+    app: hivemind-bot
+spec:
+  selector:
+    app: hivemind-bot
+  ports:
+  - port: 9100
+    targetPort: 9100
+    name: metrics
