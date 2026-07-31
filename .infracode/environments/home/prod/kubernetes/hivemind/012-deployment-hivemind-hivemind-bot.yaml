@@ -20,7 +20,7 @@ spec:
       serviceAccountName: hivemind-bot
       containers:
         - name: bot
-          image: registry.local.rothwell.us/devilmonastery/hivemind-bot
+          image: registry.local.rothwell.us/devilmonastery/hivemind-bot:2026.07.31.16.11
           ports:
             - containerPort: 9100
               name: metrics
