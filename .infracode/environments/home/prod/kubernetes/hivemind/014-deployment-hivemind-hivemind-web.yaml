@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: registry.local.rothwell.us/devilmonastery/hivemind-web
+          image: registry.local.rothwell.us/devilmonastery/hivemind-web:2026.07.31.16.11
           ports:
             - containerPort: 8080
               name: http
