@@ -116,8 +116,8 @@ func (b *Bot) registerHandlers() {
 
 // Start opens the Discord WebSocket connection
 func (b *Bot) Start() error {
-	if err := b.session.Open(); err != nil {
-		return fmt.Errorf("failed to open Discord connection: %w", err)
+	if err := openDiscordConnection(b.session.Open, b.log, time.Sleep); err != nil {
+		return err
 	}
 
 	// Start background member sync job with database coordination
@@ -125,6 +125,41 @@ func (b *Bot) Start() error {
 	go b.StartMemberSync(b.syncCtx)
 
 	return nil
+}
+
+const (
+	discordConnectionAttempts   = 5
+	discordConnectionRetryDelay = 2 * time.Second
+	discordConnectionMaxDelay   = 30 * time.Second
+)
+
+func openDiscordConnection(open func() error, log *slog.Logger, sleep func(time.Duration)) error {
+	delay := discordConnectionRetryDelay
+	var err error
+
+	for attempt := 1; attempt <= discordConnectionAttempts; attempt++ {
+		err = open()
+		if err == nil {
+			return nil
+		}
+
+		if attempt == discordConnectionAttempts {
+			break
+		}
+
+		log.Warn("failed to open Discord connection, retrying",
+			slog.Int("attempt", attempt),
+			slog.Int("max_attempts", discordConnectionAttempts),
+			slog.Duration("retry_delay", delay),
+			slog.String("error", err.Error()))
+		sleep(delay)
+		delay *= 2
+		if delay > discordConnectionMaxDelay {
+			delay = discordConnectionMaxDelay
+		}
+	}
+
+	return fmt.Errorf("failed to open Discord connection after %d attempts: %w", discordConnectionAttempts, err)
 }
 
 // Stop gracefully closes the Discord connection
