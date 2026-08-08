@@ -4,10 +4,13 @@
 # Infracode
 ## generate: Render infracode outputs
 generate:
-	cd infracode && go run -mod=readonly ../../infracode/cmd/generator --repo-root .. --manifest-dir infracode --infracode-local ../../infracode render
+	cd infracode && go run github.com/devilmonastery/infracode/cmd/generator --repo-root .. --manifest-dir infracode render
 ## generate-check: Validate infracode manifest without writing files
 generate-check:
-	cd infracode && go run -mod=readonly ../../infracode/cmd/generator --repo-root .. --manifest-dir infracode --infracode-local ../../infracode check
+	cd infracode && go run github.com/devilmonastery/infracode/cmd/generator --repo-root .. --manifest-dir infracode check
 ## generate-verify: Verify generated infracode outputs
 generate-verify:
-	cd infracode && go run -mod=readonly ../../infracode/cmd/generator --repo-root .. --manifest-dir infracode --infracode-local ../../infracode render --verify
+	cd infracode && go run github.com/devilmonastery/infracode/cmd/generator --repo-root .. --manifest-dir infracode render --verify
+
+# Optional repository-maintained targets.
+-include Makefile.local

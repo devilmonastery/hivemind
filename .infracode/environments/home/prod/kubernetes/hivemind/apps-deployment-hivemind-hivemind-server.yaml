@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: registry.local.rothwell.us/devilmonastery/hivemind-server:2026.07.31.16.11
+          image: registry.local.rothwell.us/devilmonastery/hivemind-server
           ports:
             - containerPort: 4153
               name: grpc

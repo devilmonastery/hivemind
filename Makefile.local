@@ -1,0 +1,12 @@
+# Keep generation on the published infracode toolchain.
+INFRACODE_VERSION ?= v0.1.32
+INFRACODE_GENERATOR := go run github.com/devilmonastery/infracode/cmd/generator@$(INFRACODE_VERSION)
+
+generate:
+	cd infracode && $(INFRACODE_GENERATOR) --repo-root .. --manifest-dir infracode render
+
+generate-check:
+	cd infracode && $(INFRACODE_GENERATOR) --repo-root .. --manifest-dir infracode check
+
+generate-verify:
+	cd infracode && $(INFRACODE_GENERATOR) --repo-root .. --manifest-dir infracode render --verify
