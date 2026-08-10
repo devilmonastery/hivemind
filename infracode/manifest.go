@@ -14,6 +14,7 @@ import (
 	"github.com/devilmonastery/infracode/core/output"
 	"github.com/devilmonastery/infracode/core/products"
 	"github.com/devilmonastery/infracode/domains/cicd/drone"
+	"github.com/devilmonastery/infracode/domains/dev/tilt"
 	"github.com/devilmonastery/infracode/domains/kubernetes/manifestbundle"
 	"github.com/devilmonastery/infracode/domains/makefile"
 	"github.com/devilmonastery/infracode/domains/release"
@@ -26,6 +27,7 @@ var sourceFiles embed.FS
 // Generate is the infracode manifest entrypoint for Hivemind.
 func Generate(gen *infragen.Generator) {
 	home := homeenv.New(gen, "home")
+	dev := home.Development("dev")
 	prod := home.Production("prod",
 		homeenv.DefaultDelivery(delivery.Argo(
 			delivery.WithRepoURL("https://github.com/devilmonastery/hivemind.git"),
@@ -53,6 +55,11 @@ func Generate(gen *infragen.Generator) {
 	)
 	drone.New(gen,
 		drone.WithGoModuleAuth("github.com/devilmonastery/*", "github.com/devilmonastery/*", "github_module_token"),
+	)
+	tilt.DevLoop(gen,
+		tilt.In(dev),
+		tilt.WithDevNamespace("tilt-dev"),
+		tilt.WithWorkloads(workloadRef{}),
 	)
 	makefile.New(gen)
 }
@@ -89,6 +96,8 @@ func (*bundleWorkloadDomain) Resolve(ctx *engine.Context) error {
 		Ref:               workload.NewRef("hivemind"),
 		Name:              "hivemind",
 		Namespace:         "hivemind",
+		Image:             "registry.local.rothwell.us/hivemind-server",
+		Ports:             []workload.Port{{Name: "grpc", Port: 4153}, {Name: "metrics", Port: 4163}},
 		RuntimeOutputPath: ".infracode/environments/home/prod/kubernetes/hivemind",
 	})
 }
