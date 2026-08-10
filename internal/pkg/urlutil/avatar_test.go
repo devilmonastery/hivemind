@@ -48,25 +48,25 @@ func TestConstructAvatarURL(t *testing.T) {
 			guildAvatarHash: "",
 			userAvatarHash:  "",
 			size:            128,
-			expected:        "https://cdn.discordapp.com/embed/avatars/2.png", // (123456789012345678 >> 22) % 6 = 2
+			expected: "https://cdn.discordapp.com/embed/avatars/0.png", // (123456789012345678 >> 22) % 6 = 0
+		},
+		{
+			name:            "default avatar calculation - ID results in index 1",
+			discordID:       "4194304", // (4194304 >> 22) % 6 = 1
+			guildID:         "",
+			guildAvatarHash: "",
+			userAvatarHash:  "",
+			size:            128,
+			expected:        "https://cdn.discordapp.com/embed/avatars/1.png",
 		},
 		{
 			name:            "default avatar calculation - ID results in index 0",
-			discordID:       "4194304", // (4194304 >> 22) % 6 = 0
+			discordID:       "25165824", // (25165824 >> 22) % 6 = 0
 			guildID:         "",
 			guildAvatarHash: "",
 			userAvatarHash:  "",
 			size:            128,
 			expected:        "https://cdn.discordapp.com/embed/avatars/0.png",
-		},
-		{
-			name:            "default avatar calculation - ID results in index 5",
-			discordID:       "25165824", // (25165824 >> 22) % 6 = 5
-			guildID:         "",
-			guildAvatarHash: "",
-			userAvatarHash:  "",
-			size:            128,
-			expected:        "https://cdn.discordapp.com/embed/avatars/5.png",
 		},
 	}
 

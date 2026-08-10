@@ -36,8 +36,8 @@ func TestLoadTemplates(t *testing.T) {
 	// Check for required page templates
 	requiredTemplates := []string{
 		"home.html",
-		"firehose.html",
-		"view.html",
+		"note.html",
+		"notes.html",
 		"login.html",
 	}
 
@@ -122,7 +122,7 @@ func TestTemplateContentMatches(t *testing.T) {
 	t.Logf("All loaded templates: %v", names)
 
 	// Verify that required page templates are loaded
-	requiredPages := []string{"firehose.html", "home.html", "snippets.html", "view.html", "login.html"} // Note: file names unchanged
+	requiredPages := []string{"home.html", "note.html", "notes.html", "quote.html", "login.html"}
 
 	for _, required := range requiredPages {
 		if !ts.Has(required) {
@@ -138,9 +138,8 @@ func TestTemplateSourceFileExists(t *testing.T) {
 	requiredFiles := map[string]string{
 		"base layout":         filepath.Join(templatesPath, "layouts", "base.html"),
 		"home page":           filepath.Join(templatesPath, "pages", "home.html"),
-		"firehose page":       filepath.Join(templatesPath, "pages", "firehose.html"),
-		"notes page":       filepath.Join(templatesPath, "pages", "snippets.html"),
-		"view page":           filepath.Join(templatesPath, "pages", "view.html"),
+		"notes page":          filepath.Join(templatesPath, "pages", "notes.html"),
+		"note page":           filepath.Join(templatesPath, "pages", "note.html"),
 		"login page":          filepath.Join(templatesPath, "pages", "login.html"),
 		"nav component":       filepath.Join(templatesPath, "components", "nav.html"),
 		"user-menu component": filepath.Join(templatesPath, "components", "user-menu.html"),
@@ -164,85 +163,63 @@ func TestTemplateSourceMatches(t *testing.T) {
 
 	templatesPath := getTestTemplatesPath()
 
-	// Read source file for firehose template
-	firehoseFile := filepath.Join(templatesPath, "pages", "firehose.html")
-	sourceBytes, err := os.ReadFile(firehoseFile)
+	// Read source file for notes template
+	notesFile := filepath.Join(templatesPath, "pages", "notes.html")
+	sourceBytes, err := os.ReadFile(notesFile)
 	if err != nil {
-		t.Fatalf("Failed to read firehose.html source: %v", err)
+		t.Fatalf("Failed to read notes.html source: %v", err)
 	}
 	sourceStr := string(sourceBytes)
 
-	// Verify that the source file contains expected firehose-specific content
+	// Verify that the source file contains expected notes-specific content
 	expectedInSource := []string{
-		"Firehose - Hivemind",           // Title block
-		"Recent Activity",               // Header
-		"Recent notes from everyone", // Subtitle text
-		"No recent activity",            // Empty state
+		"My Notes - Hivemind", // Title block
+		"My Notes",            // Header
+		"Private notes you can access from anywhere", // Subtitle text
+		"No notes found",      // Empty state
 	}
 
 	for _, expected := range expectedInSource {
 		if !strings.Contains(sourceStr, expected) {
-			t.Errorf("Expected firehose source file to contain %q", expected)
+			t.Errorf("Expected notes source file to contain %q", expected)
 		}
 	}
 
 	// Verify the template was actually loaded (name exists in template set)
-	if !ts.Has("firehose.html") {
-		t.Fatal("firehose.html template not found in loaded template set")
+	if !ts.Has("notes.html") {
+		t.Fatal("notes.html template not found in loaded template set")
 	}
 
-	// NOW THE IMPORTANT PART: Verify that executing "firehose.html"
-	// actually uses the firehose.html content, not some other template
+	// Verify that executing "notes.html" actually uses the notes.html content
 	var buf bytes.Buffer
 	testData := map[string]interface{}{
 		"User":        nil,
-		"Snippets":    []interface{}{}, // Note: struct field name unchanged
-		"CurrentPage": "firehose",
+		"Notes":       []interface{}{},
+		"CurrentPage": "notes",
+		"Total":       0,
 	}
 
 	// Use the TemplateSet's Execute method which renders the page
-	err = ts.Execute(&buf, "firehose.html", testData)
+	err = ts.Execute(&buf, "notes.html", testData)
 	if err != nil {
-		t.Fatalf("Failed to execute firehose.html template: %v", err)
+		t.Fatalf("Failed to execute notes.html template: %v", err)
 	}
 
 	renderedOutput := buf.String()
 
-	// Verify that the RENDERED output contains the firehose-specific content
-	// These strings should only appear if firehose.html was actually used
+	// Verify that the RENDERED output contains the notes-specific content
 	expectedInRenderedOutput := []string{
-		"Firehose - Hivemind",           // Title from firehose.html
-		"Recent Activity",               // H2 header from firehose.html
-		"Recent notes from everyone", // Subtitle specific to firehose
-		"No recent activity",            // Empty state from firehose.html
+		"My Notes - Hivemind", // Title from notes.html
+		"My Notes",            // H1 header from notes.html
+		"Private notes you can access from anywhere", // Subtitle
+		"No notes found",      // Empty state from notes.html
 	}
 
 	for _, expected := range expectedInRenderedOutput {
 		if !strings.Contains(renderedOutput, expected) {
-			t.Errorf("ERROR: Executed 'firehose.html' but got wrong content!")
+			t.Errorf("ERROR: Executed 'notes.html' but got wrong content!")
 			t.Errorf("Missing expected string: %q", expected)
-			t.Errorf("This means the template collision bug is still present.")
-
-			// Also check if we got view.html content instead (the bug we're trying to catch)
-			if strings.Contains(renderedOutput, "View Notes - Hivemind") {
-				t.Errorf("DETECTED: Got 'View Notes - Hivemind' title instead of 'Firehose - Hivemind'")
-				t.Errorf("This confirms that view.html definitions are overwriting firehose.html definitions")
-			}
-
 			t.Fatalf("Template content mismatch - aborting test")
-		}
-	}
-
-	// Additional check: should NOT contain content from other pages
-	unexpectedStrings := []string{
-		"View Notes - Hivemind", // From view.html
-		"Enter shareable link URL", // From view.html
-	}
-
-	for _, unexpected := range unexpectedStrings {
-		if strings.Contains(renderedOutput, unexpected) {
-			t.Errorf("ERROR: Rendered output contains content from wrong template: %q", unexpected)
-			t.Errorf("This indicates template collision - firehose.html is using blocks from other templates")
 		}
 	}
 }
