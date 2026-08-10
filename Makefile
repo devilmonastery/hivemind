@@ -1,4 +1,17 @@
-.PHONY: all build clean server web bot test lint proto assets build-css watch-css tidy run-server run-web run-bot db-shell docker-server docker-web docker-bot docker-all docker-publish-server docker-publish-web docker-publish-bot docker-publish-all buildx-remote-setup buildx-remote-teardown buildx-info help
+.PHONY: all build clean server web bot test lint proto assets build-css watch-css tidy run-server run-web run-bot db-shell docker-server docker-web docker-bot docker-all docker-publish-server docker-publish-web docker-publish-bot docker-publish-all buildx-remote-setup buildx-remote-teardown buildx-info help generate generate-check generate-verify run-tilt
+
+# Infracode delegation targets
+generate:
+	@$(MAKE) -f Makefile.infracode generate
+
+generate-check:
+	@$(MAKE) -f Makefile.infracode generate-check
+
+generate-verify:
+	@$(MAKE) -f Makefile.infracode generate-verify
+
+run-tilt:
+	@$(MAKE) -f Makefile.infracode run-tilt
 
 # Load .env file if it exists
 -include .env

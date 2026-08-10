@@ -1,12 +1,21 @@
-# Keep generation on the published infracode toolchain.
-INFRACODE_VERSION ?= v0.1.32
+# Repository-maintained infracode command override.
+# Version is resolved from go.mod; override with INFRACODE_VERSION if needed.
+INFRACODE_VERSION ?=
+INFRACODE_LOCAL ?=
+ifneq ($(strip $(INFRACODE_VERSION)),)
 INFRACODE_GENERATOR := go run github.com/devilmonastery/infracode/cmd/generator@$(INFRACODE_VERSION)
+else
+INFRACODE_GENERATOR := go run github.com/devilmonastery/infracode/cmd/generator
+endif
+ifneq ($(strip $(INFRACODE_LOCAL)),)
+INFRACODE_GENERATOR_ARGS := --infracode-local $(INFRACODE_LOCAL)
+endif
 
 generate:
-	cd infracode && $(INFRACODE_GENERATOR) --repo-root .. --manifest-dir infracode render
+	cd infracode && $(INFRACODE_GENERATOR) $(INFRACODE_GENERATOR_ARGS) --repo-root .. --manifest-dir infracode render
 
 generate-check:
-	cd infracode && $(INFRACODE_GENERATOR) --repo-root .. --manifest-dir infracode check
+	cd infracode && $(INFRACODE_GENERATOR) $(INFRACODE_GENERATOR_ARGS) --repo-root .. --manifest-dir infracode check
 
 generate-verify:
-	cd infracode && $(INFRACODE_GENERATOR) --repo-root .. --manifest-dir infracode render --verify
+	cd infracode && $(INFRACODE_GENERATOR) $(INFRACODE_GENERATOR_ARGS) --repo-root .. --manifest-dir infracode render --verify
