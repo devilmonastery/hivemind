@@ -13,6 +13,7 @@ import (
 	"github.com/devilmonastery/infracode/core/engine"
 	"github.com/devilmonastery/infracode/core/output"
 	"github.com/devilmonastery/infracode/core/products"
+	"github.com/devilmonastery/infracode/domains/cicd/drone"
 	"github.com/devilmonastery/infracode/domains/kubernetes/manifestbundle"
 	"github.com/devilmonastery/infracode/domains/makefile"
 	"github.com/devilmonastery/infracode/domains/release"
@@ -49,6 +50,9 @@ func Generate(gen *infragen.Generator) {
 			delivery.WithRepositoryLink("https://github.com/devilmonastery/hivemind"),
 		))),
 		release.Of(workloadRef{}),
+	)
+	drone.New(gen,
+		drone.WithGoModuleAuth("github.com/devilmonastery/*", "github.com/devilmonastery/*", "github_module_token"),
 	)
 	makefile.New(gen)
 }
