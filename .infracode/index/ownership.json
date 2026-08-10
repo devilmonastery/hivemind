@@ -2,6 +2,12 @@
 {
   "paths": {
     ".drone.yml": "cicd.drone/pipeline:.drone.yml",
+    ".infracode/environments/home/dev/tilt/hivemind/Tiltfile": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/Tiltfile",
+    ".infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/deployment.yaml": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/deployment.yaml",
+    ".infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/kustomization.yaml": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/kustomization.yaml",
+    ".infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/namespace.yaml": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/namespace.yaml",
+    ".infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/service.yaml": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/service.yaml",
+    ".infracode/environments/home/dev/tilt/hivemind/tilt-values.yaml": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/tilt-values.yaml",
     ".infracode/environments/home/prod/argo/hivemind/application.yaml": "release/delivery-artifacts:.infracode/environments/home/prod/argo/hivemind/application.yaml",
     ".infracode/environments/home/prod/kubernetes/hivemind/apps-deployment-hivemind-hivemind-bot.yaml": "kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/apps-deployment-hivemind-hivemind-bot.yaml",
     ".infracode/environments/home/prod/kubernetes/hivemind/apps-deployment-hivemind-hivemind-server.yaml": "kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/apps-deployment-hivemind-hivemind-server.yaml",
@@ -25,12 +31,20 @@
     ".infracode/environments/home/prod/kubernetes/hivemind/monitoring-coreos-com-servicemonitor-hivemind-hivemind-web.yaml": "kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/monitoring-coreos-com-servicemonitor-hivemind-hivemind-web.yaml",
     ".infracode/environments/home/prod/kubernetes/hivemind/traefik-io-ingressroute-hivemind-hivemind.yaml": "kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/traefik-io-ingressroute-hivemind-hivemind.yaml",
     ".infracode/generated/.drone.yml": "cicd.drone/pipeline:.drone.yml",
+    ".infracode/generated/.infracode/environments/home/dev/tilt/hivemind/Tiltfile": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/Tiltfile",
+    ".infracode/generated/.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/deployment.yaml": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/deployment.yaml",
+    ".infracode/generated/.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/kustomization.yaml": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/kustomization.yaml",
+    ".infracode/generated/.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/namespace.yaml": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/namespace.yaml",
+    ".infracode/generated/.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/service.yaml": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind/service.yaml",
+    ".infracode/generated/.infracode/environments/home/dev/tilt/hivemind/tilt-values.yaml": "dev.tilt/app-artifacts:.infracode/environments/home/dev/tilt/hivemind/tilt-values.yaml",
     ".infracode/generated/.infracode/environments/home/prod/argo/hivemind/application.yaml": "release/delivery-artifacts:.infracode/environments/home/prod/argo/hivemind/application.yaml",
     ".infracode/generated/.infracode/generated/argocd/hivemind.yaml": "release/argo-discovery:.infracode/generated/argocd/hivemind.yaml",
     ".infracode/generated/.infracode/generated/argocd/kustomization.yaml": "release/argo-discovery:.infracode/generated/argocd/kustomization.yaml",
     ".infracode/generated/Makefile.infracode": "makefile/handoff:Makefile.infracode",
+    ".infracode/generated/Tiltfile.infracode": "dev.tilt/app-artifacts:Tiltfile.infracode",
     ".infracode/generated/argocd/hivemind.yaml": "release/argo-discovery:.infracode/generated/argocd/hivemind.yaml",
     ".infracode/generated/argocd/kustomization.yaml": "release/argo-discovery:.infracode/generated/argocd/kustomization.yaml",
-    "Makefile.infracode": "makefile/handoff:Makefile.infracode"
+    "Makefile.infracode": "makefile/handoff:Makefile.infracode",
+    "Tiltfile.infracode": "dev.tilt/app-artifacts:Tiltfile.infracode"
   }
 }
