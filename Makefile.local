@@ -1,12 +1,8 @@
 # Repository-maintained infracode command override.
 # Version is resolved from go.mod; override with INFRACODE_VERSION if needed.
-INFRACODE_VERSION ?=
+INFRACODE_VERSION ?=$(shell grep 'github.com/devilmonastery/infracode ' infracode/go.mod | awk '{print $$2}')
 INFRACODE_LOCAL ?=
-ifneq ($(strip $(INFRACODE_VERSION)),)
 INFRACODE_GENERATOR := go run github.com/devilmonastery/infracode/cmd/generator@$(INFRACODE_VERSION)
-else
-INFRACODE_GENERATOR := go run github.com/devilmonastery/infracode/cmd/generator
-endif
 ifneq ($(strip $(INFRACODE_LOCAL)),)
 INFRACODE_GENERATOR_ARGS := --infracode-local $(INFRACODE_LOCAL)
 endif
