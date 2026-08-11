@@ -1,7 +1,7 @@
 # Repository-maintained infracode command override.
-# Version is resolved from infracode/go.mod at runtime (no git ls-remote needed).
+# GOWORK=off needed because go.work does not include ./infracode
 INFRACODE_LOCAL ?=
-INFRACODE_GENERATOR := go run github.com/devilmonastery/infracode/cmd/generator
+INFRACODE_GENERATOR := GOWORK=off go run github.com/devilmonastery/infracode/cmd/generator
 ifneq ($(strip $(INFRACODE_LOCAL)),)
 INFRACODE_GENERATOR_ARGS := --infracode-local $(INFRACODE_LOCAL)
 endif
