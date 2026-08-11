@@ -1,7 +1,9 @@
 # Repository-maintained infracode command override.
 # GOWORK=off needed because go.work does not include ./infracode
+# Version pinned from go.mod to avoid git ls-remote on private repo
+INFRACODE_VERSION := $(shell grep 'github.com/devilmonastery/infracode ' go.mod | awk '{print $$2}')
 INFRACODE_LOCAL ?=
-INFRACODE_GENERATOR := GOWORK=off go run github.com/devilmonastery/infracode/cmd/generator
+INFRACODE_GENERATOR := GOWORK=off go run github.com/devilmonastery/infracode/cmd/generator@$(INFRACODE_VERSION)
 ifneq ($(strip $(INFRACODE_LOCAL)),)
 INFRACODE_GENERATOR_ARGS := --infracode-local $(INFRACODE_LOCAL)
 endif
