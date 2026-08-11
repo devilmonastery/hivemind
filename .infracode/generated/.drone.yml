@@ -10,8 +10,6 @@ steps:
     commands:
       - printf 'machine github.com\nlogin oauth2\npassword %s\n' "$GITHUB_TOKEN" > ~/.netrc
       - chmod 600 ~/.netrc
-      - git config --global credential.helper store
-      - echo "https://oauth2:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
       - go version
       - go fmt ./...
     environment:
@@ -31,8 +29,6 @@ steps:
     commands:
       - printf 'machine github.com\nlogin oauth2\npassword %s\n' "$GITHUB_TOKEN" > ~/.netrc
       - chmod 600 ~/.netrc
-      - git config --global credential.helper store
-      - echo "https://oauth2:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
       - go vet ./...
     environment:
       GITHUB_TOKEN:
@@ -51,8 +47,6 @@ steps:
     commands:
       - printf 'machine github.com\nlogin oauth2\npassword %s\n' "$GITHUB_TOKEN" > ~/.netrc
       - chmod 600 ~/.netrc
-      - git config --global credential.helper store
-      - echo "https://oauth2:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
       - go test -race -coverprofile=coverage.txt -covermode=atomic ./...
     environment:
       GITHUB_TOKEN:
@@ -71,8 +65,6 @@ steps:
     commands:
       - printf 'machine github.com\nlogin oauth2\npassword %s\n' "$GITHUB_TOKEN" > ~/.netrc
       - chmod 600 ~/.netrc
-      - git config --global credential.helper store
-      - echo "https://oauth2:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
       - go build ./...
     environment:
       GITHUB_TOKEN:
@@ -91,8 +83,6 @@ steps:
     commands:
       - printf 'machine github.com\nlogin oauth2\npassword %s\n' "$GITHUB_TOKEN" > ~/.netrc
       - chmod 600 ~/.netrc
-      - git config --global credential.helper store
-      - echo "https://oauth2:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
       - make generate-verify
     environment:
       GITHUB_TOKEN:
