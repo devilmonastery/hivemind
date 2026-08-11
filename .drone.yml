@@ -81,8 +81,8 @@ steps:
   - name: generate-verify
     image: golang:1.26.4
     commands:
-      - git config --global credential.helper store
-      - echo "https://x-access-token:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
+      - printf 'machine github.com\nlogin oauth2\npassword %s\n' "$GITHUB_TOKEN" > ~/.netrc
+      - chmod 600 ~/.netrc
       - make generate-verify
     environment:
       GITHUB_TOKEN:
