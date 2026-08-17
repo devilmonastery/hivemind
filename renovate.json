@@ -1,0 +1,14 @@
+{
+  "gitAuthor": "Renovate Bot \u003crenovate@devilmonastery.com\u003e",
+  "semanticCommits": true,
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 4,
+  "postUpgradeTasks": {
+    "commands": [
+      "test -n \"${GITHUB_TOKEN:-}\" \u0026\u0026 printf 'machine github.com\\nlogin x-oauth-basic\\npassword %s\\nmachine api.github.com\\nlogin x-oauth-basic\\npassword %s\\n' \"$GITHUB_TOKEN\" \"$GITHUB_TOKEN\" \u003e \"${HOME:-/tmp}/.netrc\" \u0026\u0026 chmod 600 \"${HOME:-/tmp}/.netrc\" || true",
+      "GOPRIVATE='github.com/devilmonastery/*,github.snooguts.net/*' make generate"
+    ],
+    "executionMode": "branch"
+  },
+  "packageRules": []
+}

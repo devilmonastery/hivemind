@@ -18,6 +18,7 @@ import (
 	"github.com/devilmonastery/infracode/domains/kubernetes/manifestbundle"
 	"github.com/devilmonastery/infracode/domains/makefile"
 	"github.com/devilmonastery/infracode/domains/release"
+	"github.com/devilmonastery/infracode/domains/renovate"
 	"github.com/devilmonastery/infracode/infragen"
 )
 
@@ -62,6 +63,7 @@ func Generate(gen *infragen.Generator) {
 		tilt.WithWorkloads(workloadRef{}),
 	)
 	makefile.New(gen)
+	renovate.New(gen)
 }
 
 func sourceContents() string {
