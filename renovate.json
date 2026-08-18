@@ -1,6 +1,7 @@
 {
-  "gitAuthor": "Renovate Bot \u003crenovate@devilmonastery.com\u003e",
+  "gitAuthor": "Michael Rothwell \u003cmichael@rothwell.us\u003e",
   "semanticCommits": true,
+  "pinDigests": true,
   "prHourlyLimit": 2,
   "prConcurrentLimit": 4,
   "postUpgradeTasks": {
@@ -10,5 +11,20 @@
     ],
     "executionMode": "branch"
   },
-  "packageRules": []
+  "packageRules": [
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "minimumReleaseAge": "7d",
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    },
+    {
+      "groupName": "minor and patch",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ]
+    }
+  ]
 }
