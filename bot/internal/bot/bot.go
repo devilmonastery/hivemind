@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -33,8 +34,10 @@ type Bot struct {
 	syncCoordinator *GuildSyncCoordinator
 
 	// Sync context for background jobs
-	syncCtx    context.Context
-	syncCancel context.CancelFunc
+	syncCtx        context.Context
+	syncCancel     context.CancelFunc
+	gatewayUp      atomic.Bool
+	watchdogCancel context.CancelFunc
 }
 
 // New creates a new Bot instance
@@ -98,6 +101,9 @@ func (b *Bot) GRPCConn() *client.Client {
 func (b *Bot) registerHandlers() {
 	// Ready event
 	b.session.AddHandler(b.onReady)
+	b.session.AddHandler(b.onConnect)
+	b.session.AddHandler(b.onDisconnect)
+	b.session.AddHandler(b.onResumed)
 
 	// Guild events
 	b.session.AddHandler(b.onGuildCreate)
@@ -119,6 +125,10 @@ func (b *Bot) Start() error {
 	if err := openDiscordConnection(b.session.Open, b.log, time.Sleep); err != nil {
 		return err
 	}
+	b.gatewayUp.Store(true)
+	watchdogCtx, watchdogCancel := context.WithCancel(context.Background())
+	b.watchdogCancel = watchdogCancel
+	go b.watchGateway(watchdogCtx)
 
 	// Start background member sync job with database coordination
 	b.log.Info("starting member sync with database coordination")
@@ -168,6 +178,9 @@ func (b *Bot) Stop(ctx context.Context) error {
 	if b.syncCancel != nil {
 		b.syncCancel()
 	}
+	if b.watchdogCancel != nil {
+		b.watchdogCancel()
+	}
 
 	// Close gRPC connection
 	if b.grpcClient != nil {
@@ -214,12 +227,69 @@ func (b *Bot) onReady(s *discordgo.Session, event *discordgo.Ready) {
 
 	// Mark gateway as connected
 	metrics.DiscordGatewayConnected.WithLabelValues("0").Set(1)
+	b.gatewayUp.Store(true)
 
 	// Set bot status
 	err := s.UpdateGameStatus(0, "/wiki • /note • /quote")
 	if err != nil {
 		b.log.Warn("failed to set bot status", slog.String("error", err.Error()))
 		status = "error"
+	}
+}
+
+func (b *Bot) onConnect(*discordgo.Session, *discordgo.Connect) {
+	b.gatewayUp.Store(true)
+	b.log.Info("Discord gateway connected")
+	metrics.DiscordGatewayConnected.WithLabelValues("0").Set(1)
+}
+
+func (b *Bot) onDisconnect(*discordgo.Session, *discordgo.Disconnect) {
+	b.gatewayUp.Store(false)
+	b.log.Warn("Discord gateway disconnected")
+	metrics.DiscordGatewayConnected.WithLabelValues("0").Set(0)
+}
+
+func (b *Bot) onResumed(*discordgo.Session, *discordgo.Resumed) {
+	b.gatewayUp.Store(true)
+	b.log.Info("Discord gateway session resumed")
+	metrics.DiscordGatewayConnected.WithLabelValues("0").Set(1)
+	metrics.DiscordGatewayReconnects.WithLabelValues("0").Inc()
+}
+
+// GatewayHealthy reports whether the gateway has a recent heartbeat acknowledgement.
+func (b *Bot) GatewayHealthy() bool {
+	if !b.gatewayUp.Load() || b.session == nil {
+		return false
+	}
+	b.session.RLock()
+	lastHeartbeatAck := b.session.LastHeartbeatAck
+	b.session.RUnlock()
+	return time.Since(lastHeartbeatAck) < 2*time.Minute
+}
+
+func (b *Bot) watchGateway(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if b.GatewayHealthy() {
+				b.session.RLock()
+				latency := b.session.LastHeartbeatAck.Sub(b.session.LastHeartbeatSent)
+				b.session.RUnlock()
+				metrics.DiscordGatewayHeartbeat.WithLabelValues("0").Set(float64(latency.Milliseconds()))
+				continue
+			}
+			b.gatewayUp.Store(false)
+			metrics.DiscordGatewayConnected.WithLabelValues("0").Set(0)
+			metrics.DiscordGatewayReconnects.WithLabelValues("0").Inc()
+			b.log.Warn("Discord gateway heartbeat stale; forcing reconnect")
+			if err := b.session.Close(); err != nil {
+				b.log.Warn("failed to close stale Discord gateway", slog.String("error", err.Error()))
+			}
+		}
 	}
 }
 

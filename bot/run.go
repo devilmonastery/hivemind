@@ -57,21 +57,7 @@ func newRunCommand() *cobra.Command {
 			// Set as global default logger so slog.Default() returns this configured logger
 			slog.SetDefault(log)
 
-			// Start metrics server on port 9100
-			go func() {
-				metricsMux := http.NewServeMux()
-				metricsMux.Handle("/metrics", promhttp.Handler())
-				metricsMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("OK"))
-				})
-
-				metricsAddr := ":9100"
-				log.Info("starting metrics server", "address", metricsAddr)
-				if metricsErr := http.ListenAndServe(metricsAddr, metricsMux); metricsErr != nil {
-					log.Error("metrics server failed", "error", metricsErr)
-				}
-			}() // Validate required configuration
+			// Validate required configuration
 			if cfg.Backend.ServiceToken == "" {
 				return fmt.Errorf("backend.service_token is required - the bot cannot authenticate with the server without it. See example_bot.yaml for instructions on generating a service token")
 			}
@@ -110,6 +96,28 @@ func newRunCommand() *cobra.Command {
 			}
 
 			log.Info("bot started successfully")
+			go func() {
+				metricsMux := http.NewServeMux()
+				metricsMux.Handle("/metrics", promhttp.Handler())
+				metricsMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+					if !b.GatewayHealthy() {
+						http.Error(w, "Discord gateway unavailable", http.StatusServiceUnavailable)
+						return
+					}
+					w.WriteHeader(http.StatusOK)
+				})
+				metricsMux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+					if !b.GatewayHealthy() {
+						http.Error(w, "Discord gateway unavailable", http.StatusServiceUnavailable)
+						return
+					}
+					w.WriteHeader(http.StatusOK)
+				})
+				log.Info("starting metrics server", "address", ":9100")
+				if metricsErr := http.ListenAndServe(":9100", metricsMux); metricsErr != nil {
+					log.Error("metrics server failed", "error", metricsErr)
+				}
+			}()
 
 			// Wait for interrupt signal
 			stop := make(chan os.Signal, 1)
