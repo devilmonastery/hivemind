@@ -286,6 +286,23 @@ spec:
         image: hivemind-bot
         imagePullPolicy: Always
         args: ["run", "--config", "/app/configs/config.yaml"]
+        ports:
+        - name: metrics
+          containerPort: 9100
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: metrics
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: metrics
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          failureThreshold: 3
         env:
         - name: DISABLE_LEADER_ELECTION
           value: "true"
