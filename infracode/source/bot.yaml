@@ -87,6 +87,20 @@ spec:
         ports:
         - containerPort: 9100
           name: metrics
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: metrics
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: metrics
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          failureThreshold: 3
         env:
         - name: DISCORD_BOT_TOKEN
           valueFrom:
