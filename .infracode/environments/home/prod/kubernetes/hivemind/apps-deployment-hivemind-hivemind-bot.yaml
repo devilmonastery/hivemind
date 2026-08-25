@@ -22,6 +22,7 @@ spec:
       containers:
         - name: bot
           image: registry.local.rothwell.us/devilmonastery/hivemind-bot
+          imagePullPolicy: Always
           ports:
             - containerPort: 9100
               name: metrics
