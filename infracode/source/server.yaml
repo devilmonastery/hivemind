@@ -94,7 +94,7 @@ spec:
     spec:
       containers:
       - name: server
-        image: registry.local.rothwell.us/devilmonastery/hivemind-server
+        image: registry.local.rothwell.us/devilmonastery/hivemind-server@sha256:492ab52b6427e067f2c9ebc7da81e25105053fd72f9952fcfb95187878c9ecc9
         ports:
         - containerPort: 4153
           name: grpc

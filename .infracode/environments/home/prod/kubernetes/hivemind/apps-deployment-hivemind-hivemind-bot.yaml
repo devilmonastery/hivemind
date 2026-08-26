@@ -21,7 +21,7 @@ spec:
       serviceAccountName: hivemind-bot
       containers:
         - name: bot
-          image: registry.local.rothwell.us/devilmonastery/hivemind-bot
+          image: registry.local.rothwell.us/devilmonastery/hivemind-bot@sha256:2155f670b269a8a88611cd6727f208b4e24004905587216ad27f54ab05a289e7
           imagePullPolicy: Always
           ports:
             - containerPort: 9100
