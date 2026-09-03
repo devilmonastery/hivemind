@@ -6,6 +6,6 @@ workloads:
     namespace: tilt-dev
     image: registry.local.rothwell.us/hivemind-server
     runtime_output_path: .infracode/environments/home/prod/kubernetes/hivemind
-    kustomize_path: .infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind
+    kustomize_path: environments/home/dev/tilt/hivemind/kubernetes/hivemind
     port: 4153
     local_port: 4153
