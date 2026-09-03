@@ -7,7 +7,7 @@ def main():
 	buildkit_host = os.getenv("BUILDKIT_CLUSTER_HOST", "tcp://buildkitd.buildkit.svc.cluster.local:1234")
 	goproxy = os.getenv("GOPROXY", "https://proxy.golang.org,direct")
 
-	k8s_yaml(kustomize(".infracode/environments/home/dev/tilt/hivemind/kubernetes/hivemind"))
+	k8s_yaml(kustomize("environments/home/dev/tilt/hivemind/kubernetes/hivemind"))
 
 	k8s_resource(
 		"hivemind",
