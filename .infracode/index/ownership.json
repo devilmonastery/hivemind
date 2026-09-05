@@ -4,6 +4,7 @@
   "paths": {
     ".drone.yml": "cicd.drone/pipeline:.drone.yml",
     ".infracode/.drone.yml": "cicd.drone/pipeline:.drone.yml",
+    ".infracode/AGENTS.md": "agents/guidance:AGENTS.md",
     ".infracode/Makefile.infracode": "makefile/handoff:Makefile.infracode",
     ".infracode/Tiltfile.infracode": "dev.tilt/app-artifacts:Tiltfile.infracode",
     ".infracode/argocd/hivemind.yaml": "release/argo-discovery:argocd/hivemind.yaml",
@@ -36,6 +37,7 @@
     ".infracode/environments/home/prod/kubernetes/hivemind/monitoring-coreos-com-servicemonitor-hivemind-hivemind-server.yaml": "kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/monitoring-coreos-com-servicemonitor-hivemind-hivemind-server.yaml",
     ".infracode/environments/home/prod/kubernetes/hivemind/monitoring-coreos-com-servicemonitor-hivemind-hivemind-web.yaml": "kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/monitoring-coreos-com-servicemonitor-hivemind-hivemind-web.yaml",
     ".infracode/environments/home/prod/kubernetes/hivemind/traefik-io-ingressroute-hivemind-hivemind.yaml": "kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/traefik-io-ingressroute-hivemind-hivemind.yaml",
+    "AGENTS.md": "agents/guidance:AGENTS.md",
     "Makefile.infracode": "makefile/handoff:Makefile.infracode",
     "Tiltfile.infracode": "dev.tilt/app-artifacts:Tiltfile.infracode",
     "argocd/hivemind.yaml": "release/argo-discovery:argocd/hivemind.yaml",

@@ -10,7 +10,7 @@ metadata:
     link.argocd.argoproj.io/docs: https://github.com/devilmonastery/hivemind/blob/main/README.md
     link.argocd.argoproj.io/repository: https://github.com/devilmonastery/hivemind
 spec:
-  project: home
+  project: workloads
   source:
     repoURL: https://github.com/devilmonastery/hivemind.git
     targetRevision: main
