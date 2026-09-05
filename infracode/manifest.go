@@ -28,6 +28,7 @@ var sourceFiles embed.FS
 // Generate is the infracode manifest entrypoint for Hivemind.
 func Generate(gen *infragen.Generator) {
 	home := homeenv.New(gen, "home")
+	homeenv.IncludeGuidance(gen)
 	dev := home.Development("dev")
 	prod := home.Production("prod",
 		homeenv.DefaultDelivery(delivery.Argo(
