@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/golang-migrate/migrate/v4 v4.19.1
+	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/sessions v1.4.0
 	github.com/jmoiron/sqlx v1.4.0
@@ -13,8 +13,8 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/crypto v0.56.0
-	golang.org/x/oauth2 v0.36.0
+	golang.org/x/crypto v0.57.0
+	golang.org/x/oauth2 v0.37.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v2 v2.4.0
