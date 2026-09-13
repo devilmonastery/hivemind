@@ -6,6 +6,8 @@ kind: Service
 metadata:
   name: postgres
   namespace: hivemind
+  annotations:
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
   type: ClusterIP
   selector:
