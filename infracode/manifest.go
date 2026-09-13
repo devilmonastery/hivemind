@@ -112,13 +112,7 @@ func sourceContents() string {
 
 func postgresResources(prod envcontract.Product) []stack.Resource {
 	resources, err := postgresdomain.Resources(postgresdomain.Config{
-		Meta: k8sworkload.Meta{
-			Name:      "postgres",
-			Namespace: "hivemind",
-			Annotations: map[string]string{
-				"argocd.argoproj.io/sync-options": "Replace=true",
-			},
-		},
+		Meta: k8sworkload.Meta{Name: "postgres", Namespace: "hivemind"},
 		Image: postgresdomain.ImageSettings{
 			Reference: "registry.local.rothwell.us/postgres-gembed:18.6-bookworm-pgvector0.8.6-pggembed1.0.0-minilm-l6-v2-r1@sha256:e65b3e85519e8c749c6cef3a94a4801db8f9b7b8f7d053c20ee8c49f20065a16",
 			PGData:    "/var/lib/postgresql/18/docker",
@@ -135,6 +129,9 @@ func postgresResources(prod envcontract.Product) []stack.Resource {
 			storagecontract.WithPurpose(storagecontract.PurposeDatabase),
 			storagecontract.WithRetentionPolicy(storagecontract.RetainIndefinitely),
 		),
+		DeploymentAnnotations: map[string]string{
+			"argocd.argoproj.io/sync-options": "Replace=true",
+		},
 		Resources: &k8sworkload.ResourceRequirements{
 			Requests: map[string]string{"cpu": "250m", "memory": "512Mi"},
 			Limits:   map[string]string{"cpu": "1500m", "memory": "2Gi"},
