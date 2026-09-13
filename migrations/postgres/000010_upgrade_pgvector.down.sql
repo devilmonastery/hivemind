@@ -1,0 +1,1 @@
+-- pgvector extension downgrades are not supported automatically.
