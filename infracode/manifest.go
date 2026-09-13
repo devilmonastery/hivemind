@@ -54,11 +54,14 @@ func Generate(gen *infragen.Generator) {
 			Namespace:            "argocd",
 			Project:              "workloads",
 			RepoURL:              "https://github.com/devilmonastery/hivemind.git",
-			TargetRevision:       "main",
+			TargetRevision:       "HEAD",
 			Path:                 ".infracode/environments/home/prod/kubernetes/hivemind",
 			DestinationServer:    "https://kubernetes.default.svc",
 			DestinationNamespace: "hivemind",
 			SyncPolicy: argo.SyncPolicy{
+				Automated: true,
+				Prune:     true,
+				SelfHeal:  true,
 				SyncOptions: []string{
 					"CreateNamespace=true",
 					"PrunePropagationPolicy=foreground",
@@ -67,7 +70,7 @@ func Generate(gen *infragen.Generator) {
 				},
 			},
 		},
-	})
+		})
 	drone.New(gen,
 		drone.WithGoModuleAuth("github.com/devilmonastery/*", "github.com/devilmonastery/*", "github_module_token"),
 	)

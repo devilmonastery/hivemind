@@ -10,12 +10,15 @@ spec:
   project: workloads
   source:
     repoURL: https://github.com/devilmonastery/hivemind.git
-    targetRevision: main
+    targetRevision: HEAD
     path: .infracode/environments/home/prod/kubernetes/hivemind
   destination:
     server: https://kubernetes.default.svc
     namespace: hivemind
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - PrunePropagationPolicy=foreground
