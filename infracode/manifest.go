@@ -13,11 +13,11 @@ import (
 	"github.com/devilmonastery/infracode/core/engine"
 	"github.com/devilmonastery/infracode/core/output"
 	"github.com/devilmonastery/infracode/core/products"
+	"github.com/devilmonastery/infracode/domains/argo"
 	"github.com/devilmonastery/infracode/domains/cicd/drone"
 	"github.com/devilmonastery/infracode/domains/dev/tilt"
 	"github.com/devilmonastery/infracode/domains/kubernetes/manifestbundle"
 	"github.com/devilmonastery/infracode/domains/makefile"
-	"github.com/devilmonastery/infracode/domains/release"
 	"github.com/devilmonastery/infracode/domains/renovate"
 	"github.com/devilmonastery/infracode/infragen"
 )
@@ -30,7 +30,7 @@ func Generate(gen *infragen.Generator) {
 	home := homeenv.New(gen, "home")
 	homeenv.IncludeGuidance(gen)
 	dev := home.Development("dev")
-	prod := home.Production("prod",
+	home.Production("prod",
 		homeenv.DefaultDelivery(delivery.Argo(
 			delivery.WithRepoURL("https://github.com/devilmonastery/hivemind.git"),
 			delivery.WithDocsLink("https://github.com/devilmonastery/hivemind/blob/main/README.md"),
@@ -46,15 +46,28 @@ func Generate(gen *infragen.Generator) {
 
 	workloadDomain := &bundleWorkloadDomain{}
 	gen.Register(workloadDomain)
-	release.New(gen,
-		release.In(prod),
-		release.DeliveredBy(prod.ApplyDeliveryPolicy(delivery.Argo(
-			delivery.WithRepoURL("https://github.com/devilmonastery/hivemind.git"),
-			delivery.WithDocsLink("https://github.com/devilmonastery/hivemind/blob/main/README.md"),
-			delivery.WithRepositoryLink("https://github.com/devilmonastery/hivemind"),
-		))),
-		release.Of(workloadRef{}),
-	)
+	gen.PublishShadowRoute(argo.RouteApplications)
+	argo.NewApplicationsDomain(gen, argo.Config{
+		OutputPath: "environments/home/prod/argocd",
+		Umbrella: argo.Application{
+			Name:                 "hivemind",
+			Namespace:            "argocd",
+			Project:              "workloads",
+			RepoURL:              "https://github.com/devilmonastery/hivemind.git",
+			TargetRevision:       "main",
+			Path:                 ".infracode/environments/home/prod/kubernetes/hivemind",
+			DestinationServer:    "https://kubernetes.default.svc",
+			DestinationNamespace: "hivemind",
+			SyncPolicy: argo.SyncPolicy{
+				SyncOptions: []string{
+					"CreateNamespace=true",
+					"PrunePropagationPolicy=foreground",
+					"PruneLast=true",
+					"ServerSideApply=true",
+				},
+			},
+		},
+	})
 	drone.New(gen,
 		drone.WithGoModuleAuth("github.com/devilmonastery/*", "github.com/devilmonastery/*", "github_module_token"),
 	)
