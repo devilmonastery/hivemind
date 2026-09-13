@@ -30,13 +30,14 @@ func Generate(gen *infragen.Generator) {
 	home := homeenv.New(gen, "home")
 	homeenv.IncludeGuidance(gen)
 	dev := home.Development("dev")
-	home.Production("prod",
+	prod := home.Production("prod",
 		homeenv.DefaultDelivery(delivery.Argo(
 			delivery.WithRepoURL("https://github.com/devilmonastery/hivemind.git"),
 			delivery.WithDocsLink("https://github.com/devilmonastery/hivemind/blob/main/README.md"),
 			delivery.WithRepositoryLink("https://github.com/devilmonastery/hivemind"),
 		)),
 	)
+	homeenv.EnableEnvironmentRunbooks(gen, prod)
 
 	manifestbundle.New(gen,
 		manifestbundle.Named("hivemind"),
@@ -70,7 +71,7 @@ func Generate(gen *infragen.Generator) {
 				},
 			},
 		},
-		})
+	})
 	drone.New(gen,
 		drone.WithGoModuleAuth("github.com/devilmonastery/*", "github.com/devilmonastery/*", "github_module_token"),
 	)

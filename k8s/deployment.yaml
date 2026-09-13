@@ -48,9 +48,8 @@ spec:
     spec:
       containers:
       - name: postgres
-        # Custom image: pgvector + pg_gembed (in-DB MiniLM embeddings), pinned by
-        # digest so nodes always repull the exact build (tag reuse won't repull).
-        image: registry.local.rothwell.us/devilmonastery/postgres-gembed:18.4-bookworm@sha256:eaa9bf8116b51eebce929960e70258d4edc399ee9a57c4fcd072fee42dba54c7
+        # pgvector + pg_gembed (in-DB MiniLM embeddings), pinned by digest.
+        image: registry.local.rothwell.us/postgres-gembed:18.6-bookworm-pgvector0.8.6-pggembed1.0.0-minilm-l6-v2-r1@sha256:e65b3e85519e8c749c6cef3a94a4801db8f9b7b8f7d053c20ee8c49f20065a16
         ports:
         - containerPort: 5432
           name: postgres
@@ -65,10 +64,10 @@ spec:
               name: hivemind-secrets
               key: DB_PASSWORD
         - name: PGDATA
-          value: /var/lib/postgresql/data/pgdata
+          value: /var/lib/postgresql/18/docker
         volumeMounts:
         - name: postgres-data
-          mountPath: /var/lib/postgresql/data
+          mountPath: /var/lib/postgresql
         resources:
           requests:
             memory: "512Mi"
