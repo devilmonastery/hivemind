@@ -7,20 +7,19 @@ resources:
   - core-configmap-hivemind-hivemind-bot-config.yaml
   - core-configmap-hivemind-hivemind-server-config.yaml
   - core-configmap-hivemind-hivemind-web-config.yaml
-  - core-configmap-hivemind-postgres-config.yaml
   - core-namespace-cluster-hivemind.yaml
-  - core-persistentvolumeclaim-hivemind-postgres-pvc.yaml
   - core-service-hivemind-hivemind-bot.yaml
   - core-service-hivemind-hivemind-server.yaml
   - core-service-hivemind-hivemind-web.yaml
-  - core-service-hivemind-postgres.yaml
   - core-serviceaccount-hivemind-hivemind-bot.yaml
   - apps-deployment-hivemind-hivemind-bot.yaml
   - apps-deployment-hivemind-hivemind-server.yaml
   - apps-deployment-hivemind-hivemind-web.yaml
-  - apps-deployment-hivemind-postgres.yaml
   - cert-manager-io-certificate-hivemind-hivemind-tls-cert.yaml
   - monitoring-coreos-com-servicemonitor-hivemind-hivemind-bot.yaml
   - monitoring-coreos-com-servicemonitor-hivemind-hivemind-server.yaml
   - monitoring-coreos-com-servicemonitor-hivemind-hivemind-web.yaml
   - traefik-io-ingressroute-hivemind-hivemind.yaml
+  - core-deployment-hivemind-postgres.yaml
+  - core-persistentvolumeclaim-hivemind-postgres-pvc.yaml
+  - core-service-hivemind-postgres.yaml

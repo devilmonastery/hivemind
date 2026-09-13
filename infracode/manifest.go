@@ -8,6 +8,8 @@ import (
 
 	homeenv "github.com/devilmonastery/env-k8s-home/home"
 	"github.com/devilmonastery/infracode/contracts/delivery"
+	envcontract "github.com/devilmonastery/infracode/contracts/environment"
+	storagecontract "github.com/devilmonastery/infracode/contracts/storage"
 	"github.com/devilmonastery/infracode/contracts/workload"
 	"github.com/devilmonastery/infracode/core/diag"
 	"github.com/devilmonastery/infracode/core/engine"
@@ -17,6 +19,9 @@ import (
 	"github.com/devilmonastery/infracode/domains/cicd/drone"
 	"github.com/devilmonastery/infracode/domains/dev/tilt"
 	"github.com/devilmonastery/infracode/domains/kubernetes/manifestbundle"
+	postgresdomain "github.com/devilmonastery/infracode/domains/kubernetes/postgres"
+	"github.com/devilmonastery/infracode/domains/kubernetes/stack"
+	k8sworkload "github.com/devilmonastery/infracode/domains/kubernetes/workload"
 	"github.com/devilmonastery/infracode/domains/makefile"
 	"github.com/devilmonastery/infracode/domains/renovate"
 	"github.com/devilmonastery/infracode/infragen"
@@ -43,6 +48,7 @@ func Generate(gen *infragen.Generator) {
 		manifestbundle.Named("hivemind"),
 		manifestbundle.WithOutputPath(".infracode/environments/home/prod/kubernetes/hivemind"),
 		manifestbundle.WithContents(sourceContents()),
+		manifestbundle.WithResources(postgresResources(prod)...),
 	)
 
 	workloadDomain := &bundleWorkloadDomain{}
@@ -92,6 +98,9 @@ func sourceContents() string {
 	sort.Strings(entries)
 	var documents []string
 	for _, name := range entries {
+		if name == "source/postgres.yaml" {
+			continue
+		}
 		body, err := sourceFiles.ReadFile(name)
 		if err != nil {
 			panic(err)
@@ -99,6 +108,36 @@ func sourceContents() string {
 		documents = append(documents, strings.TrimSpace(string(body)))
 	}
 	return strings.Join(documents, "\n---\n")
+}
+
+func postgresResources(prod envcontract.Product) []stack.Resource {
+	resources, err := postgresdomain.Resources(postgresdomain.Config{
+		Meta: k8sworkload.Meta{Name: "postgres", Namespace: "hivemind"},
+		Image: postgresdomain.ImageSettings{
+			Reference: "registry.local.rothwell.us/postgres-gembed:18.6-bookworm-pgvector0.8.6-pggembed1.0.0-minilm-l6-v2-r1@sha256:e65b3e85519e8c749c6cef3a94a4801db8f9b7b8f7d053c20ee8c49f20065a16",
+			PGData:    "/var/lib/postgresql/18/docker",
+			Ownership: postgresdomain.OwnershipEntrypoint,
+		},
+		Database: postgresdomain.DatabaseSettings{
+			Name:              "hivemind",
+			User:              "postgres",
+			PasswordSecret:    "postgres-secret",
+			PasswordSecretKey: "db-password",
+		},
+		Volume: storagecontract.NewVolumeIntent(
+			homeenv.DatabaseRWORef(prod), "postgres-pvc", "10Gi", "/var/lib/postgresql",
+			storagecontract.WithPurpose(storagecontract.PurposeDatabase),
+			storagecontract.WithRetentionPolicy(storagecontract.RetainIndefinitely),
+		),
+		Resources: &k8sworkload.ResourceRequirements{
+			Requests: map[string]string{"cpu": "250m", "memory": "512Mi"},
+			Limits:   map[string]string{"cpu": "1500m", "memory": "2Gi"},
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	return resources
 }
 
 type workloadRef struct{}
