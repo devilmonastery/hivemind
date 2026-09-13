@@ -7,10 +7,10 @@ metadata:
   name: postgres
   namespace: hivemind
 spec:
+  type: ClusterIP
   selector:
     app: postgres
   ports:
     - port: 5432
-      targetPort: 5432
+      targetPort: postgres
       name: postgres
-  type: ClusterIP
