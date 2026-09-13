@@ -22,6 +22,13 @@ profile, workspace settings, developer guidance, and dev recipe for general
 configuration and workflow concepts. Reserve "contract" for genuine
 interfaces, provider requirements, or validation boundaries.
 
+## PostgreSQL workloads
+
+For PostgreSQL images whose data directory is below a mounted PVC, mount the
+PVC at the image's declared parent data path. Do not use subPath for the
+database volume and do not mount directly over the data directory. Use the
+PostgreSQL runbook for ownership, extension, backup, and rollback procedures.
+
 ---
 
 # Hivemind Local Instructions

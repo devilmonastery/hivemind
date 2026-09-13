@@ -37,6 +37,7 @@
     ".infracode/environments/home/prod/kubernetes/hivemind/monitoring-coreos-com-servicemonitor-hivemind-hivemind-server.yaml": "kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/monitoring-coreos-com-servicemonitor-hivemind-hivemind-server.yaml",
     ".infracode/environments/home/prod/kubernetes/hivemind/monitoring-coreos-com-servicemonitor-hivemind-hivemind-web.yaml": "kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/monitoring-coreos-com-servicemonitor-hivemind-hivemind-web.yaml",
     ".infracode/environments/home/prod/kubernetes/hivemind/traefik-io-ingressroute-hivemind-hivemind.yaml": "kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/traefik-io-ingressroute-hivemind-hivemind.yaml",
+    ".infracode/runbooks/index.json": "runbooks/index-json:runbooks/index.json",
     "AGENTS.md": "agents/guidance:AGENTS.md",
     "Makefile.infracode": "makefile/handoff:Makefile.infracode",
     "Tiltfile.infracode": "dev.tilt/app-artifacts:Tiltfile.infracode",
