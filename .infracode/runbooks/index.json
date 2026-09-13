@@ -1,0 +1,65 @@
+{
+  "generated_by": "infracode",
+  "runbooks": [
+    {
+      "id": "argo-cd-adoption-rollback",
+      "title": "Argo CD v3.1.8 Adoption and Rollback/Recovery",
+      "kind": "sop",
+      "scope": "referenced",
+      "exported": true,
+      "source": {
+        "repo": "devilmonastery/env-k8s-home",
+        "revision": "main",
+        "path": "docs/runbooks/argo-cd-adoption-rollback.md"
+      }
+    },
+    {
+      "id": "argo-cd-upgrade-rollback",
+      "title": "Argo CD v3.1.8 to v3.4.3 Upgrade and Rollback",
+      "kind": "sop",
+      "scope": "referenced",
+      "exported": true,
+      "source": {
+        "repo": "devilmonastery/env-k8s-home",
+        "revision": "main",
+        "path": "docs/runbooks/argo-cd-upgrade-rollback.md"
+      }
+    },
+    {
+      "id": "exec-env-debug",
+      "title": "Debug the Execution Environment",
+      "kind": "sop",
+      "scope": "referenced",
+      "exported": true,
+      "source": {
+        "repo": "devilmonastery/env-k8s-home",
+        "revision": "main",
+        "path": "docs/runbooks/exec-env-debug.md"
+      }
+    },
+    {
+      "id": "infracode-managed",
+      "title": "Operate an Infracode-Managed Service",
+      "kind": "sop",
+      "scope": "referenced",
+      "exported": true,
+      "source": {
+        "repo": "devilmonastery/env-k8s-home",
+        "revision": "main",
+        "path": "docs/runbooks/infracode-managed.md"
+      }
+    },
+    {
+      "id": "postgresql",
+      "title": "Operate a PostgreSQL Workload",
+      "kind": "sop",
+      "scope": "referenced",
+      "exported": true,
+      "source": {
+        "repo": "devilmonastery/env-k8s-home",
+        "revision": "main",
+        "path": "docs/runbooks/postgresql.md"
+      }
+    }
+  ]
+}
