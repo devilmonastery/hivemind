@@ -6,8 +6,6 @@ kind: PersistentVolumeClaim
 metadata:
   name: postgres-pvc
   namespace: hivemind
-  annotations:
-    argocd.argoproj.io/sync-options: Replace=true
 spec:
   accessModes:
     - ReadWriteOnce

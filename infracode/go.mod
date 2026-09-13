@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/devilmonastery/env-k8s-home v0.1.17
-	github.com/devilmonastery/infracode v0.2.28
+	github.com/devilmonastery/infracode v0.2.29
 )
 
 require gopkg.in/yaml.v3 v3.0.1 // indirect
