@@ -41,10 +41,4 @@
 {"artifactId":"kubernetes.manifestbundle/manifests:.infracode/environments/home/prod/kubernetes/hivemind/traefik-io-ingressroute-hivemind-hivemind.yaml","mode":"direct","path":".infracode/environments/home/prod/kubernetes/hivemind/traefik-io-ingressroute-hivemind-hivemind.yaml"}
 {"artifactId":"makefile/handoff:Makefile.infracode","mode":"mirror","path":".infracode/Makefile.infracode"}
 {"artifactId":"makefile/handoff:Makefile.infracode","mode":"mirror","path":"Makefile.infracode"}
-{"artifactId":"release/argo-discovery:argocd/hivemind.yaml","mode":"mirror","path":".infracode/argocd/hivemind.yaml"}
-{"artifactId":"release/argo-discovery:argocd/hivemind.yaml","mode":"mirror","path":"argocd/hivemind.yaml"}
-{"artifactId":"release/argo-discovery:argocd/kustomization.yaml","mode":"mirror","path":".infracode/argocd/kustomization.yaml"}
-{"artifactId":"release/argo-discovery:argocd/kustomization.yaml","mode":"mirror","path":"argocd/kustomization.yaml"}
-{"artifactId":"release/delivery-artifacts:environments/home/prod/argo/hivemind/application.yaml","mode":"mirror","path":".infracode/environments/home/prod/argo/hivemind/application.yaml"}
-{"artifactId":"release/delivery-artifacts:environments/home/prod/argo/hivemind/application.yaml","mode":"mirror","path":"environments/home/prod/argo/hivemind/application.yaml"}
 {"artifactId":"renovate/root:renovate.json","mode":"direct","path":"renovate.json"}

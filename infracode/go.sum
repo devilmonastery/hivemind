@@ -1,7 +1,7 @@
 github.com/devilmonastery/env-k8s-home v0.1.15 h1:NAiGNDl5Al5KPcM91i4yT5XBaNAQt5hxTN+yPdTv30Y=
 github.com/devilmonastery/env-k8s-home v0.1.15/go.mod h1:IBTLGq6YCsCc3T7KP/TVXKg4iH5omlExCTrBxMRiqqM=
-github.com/devilmonastery/infracode v0.2.17 h1:VEWgsUPoF8OuR91NgRBX9d/sFncfOTYz9yBMIQui9a0=
-github.com/devilmonastery/infracode v0.2.17/go.mod h1:qkO7f22yqLscLLC1Svp7lN0m6dPYv3m5K7wS39FveuE=
+github.com/devilmonastery/infracode v0.2.25 h1:PANkn1rn8mV4STi38q4QZNy96cwKqk5outC4W1G+ztA=
+github.com/devilmonastery/infracode v0.2.25/go.mod h1:qkO7f22yqLscLLC1Svp7lN0m6dPYv3m5K7wS39FveuE=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
