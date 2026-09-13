@@ -115,7 +115,7 @@ func postgresResources(prod envcontract.Product) []stack.Resource {
 		Meta: k8sworkload.Meta{Name: "postgres", Namespace: "hivemind"},
 		Image: postgresdomain.ImageSettings{
 			Reference: "registry.local.rothwell.us/postgres-gembed:18.6-bookworm-pgvector0.8.6-pggembed1.0.0-minilm-l6-v2-r1@sha256:e65b3e85519e8c749c6cef3a94a4801db8f9b7b8f7d053c20ee8c49f20065a16",
-			PGData:    "/var/lib/postgresql/18/docker",
+			PGData:    "/var/lib/postgresql/pgdata/18/docker",
 			Ownership: postgresdomain.OwnershipEntrypoint,
 		},
 		Database: postgresdomain.DatabaseSettings{
