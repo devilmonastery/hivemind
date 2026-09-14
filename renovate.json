@@ -7,7 +7,7 @@
   "postUpgradeTasks": {
     "commands": [
       "test -n \"${GITHUB_TOKEN:-}\" \u0026\u0026 printf 'machine github.com\\nlogin x-oauth-basic\\npassword %s\\nmachine api.github.com\\nlogin x-oauth-basic\\npassword %s\\n' \"$GITHUB_TOKEN\" \"$GITHUB_TOKEN\" \u003e \"${HOME:-/tmp}/.netrc\" \u0026\u0026 chmod 600 \"${HOME:-/tmp}/.netrc\" || true",
-      "GOPRIVATE='github.com/devilmonastery/*,github.example.com/*' make generate"
+      "GOPRIVATE='github.com/devilmonastery/*' make generate"
     ],
     "executionMode": "branch"
   },
