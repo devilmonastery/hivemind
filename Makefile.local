@@ -12,11 +12,14 @@ ifneq ($(strip $(INFRACODE_LOCAL)),)
 INFRACODE_GENERATOR_ARGS := --infracode-local $(INFRACODE_LOCAL)
 endif
 
+# infracode:override generate
 generate:
 	cd infracode && $(INFRACODE_GENERATOR) $(INFRACODE_GENERATOR_ARGS) --repo-root .. --manifest-dir infracode render
 
+# infracode:override generate-check
 generate-check:
 	cd infracode && $(INFRACODE_GENERATOR) $(INFRACODE_GENERATOR_ARGS) --repo-root .. --manifest-dir infracode check
 
+# infracode:override generate-verify
 generate-verify:
 	cd infracode && $(INFRACODE_GENERATOR) $(INFRACODE_GENERATOR_ARGS) --repo-root .. --manifest-dir infracode render --verify

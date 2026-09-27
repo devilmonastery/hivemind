@@ -3,8 +3,17 @@
 
 allow_k8s_contexts(["default", "turing"])
 
+def cache_args(ref):
+	args = ""
+	if not ref:
+		return args
+	args += " --cache-from type=registry,ref=" + ref
+	if os.getenv("TILT_CACHE_PUSH") == "1":
+		args += " --cache-to type=registry,ref=" + ref + ",mode=min,image-manifest=true,oci-mediatypes=true"
+	return args
+
 def main():
-	buildkit_host = os.getenv("BUILDKIT_CLUSTER_HOST", "tcp://buildkitd.buildkit.svc.cluster.local:1234")
+	buildkit_host = os.getenv("BUILDKIT_CLUSTER_HOST", "tcp://buildkit.local.rothwell.us:1234")
 	goproxy = os.getenv("GOPROXY", "https://proxy.golang.org,direct")
 
 	k8s_yaml(kustomize("environments/home/dev/tilt/hivemind/kubernetes/hivemind"))
@@ -21,7 +30,8 @@ def main():
 		"make templ css && docker buildx build" +
 		" --builder=remote --platform=linux/amd64" +
 		" --build-arg GOPROXY=" + goproxy +
-		" -f Dockerfile --tag $EXPECTED_REF --push .",
+		" -f Dockerfile --tag $EXPECTED_REF --push" + cache_args("registry.local.rothwell.us/cache/hivemind-server") +
+		" .",
 		deps=[
 			"cmd/",
 			"internal/",
