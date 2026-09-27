@@ -3,7 +3,7 @@ module github.com/devilmonastery/hivemind/infracode
 go 1.26.4
 
 require (
-	github.com/devilmonastery/env-k8s-home v0.1.18
+	github.com/devilmonastery/env-k8s-home v0.1.19
 	github.com/devilmonastery/infracode v0.2.32
 )
 

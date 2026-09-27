@@ -1,5 +1,5 @@
-github.com/devilmonastery/env-k8s-home v0.1.18 h1:XRNFi0pQ+KTl/2l/DhanY/ekCG7Qw1LUaWUp4HNxo1o=
-github.com/devilmonastery/env-k8s-home v0.1.18/go.mod h1:27kSOjshCTZouWGkKRP+KROaBqovqnSJginD7xkwqQU=
+github.com/devilmonastery/env-k8s-home v0.1.19 h1:yo/WVrzoXFc+mOJ6VzHKxd4u2MsKbByW0FfoBXk2/as=
+github.com/devilmonastery/env-k8s-home v0.1.19/go.mod h1:27kSOjshCTZouWGkKRP+KROaBqovqnSJginD7xkwqQU=
 github.com/devilmonastery/infracode v0.2.32 h1:vGC2Wugk8yuu/asvg3B94dPqa2QT444WnCGKjx8RbZk=
 github.com/devilmonastery/infracode v0.2.32/go.mod h1:qkO7f22yqLscLLC1Svp7lN0m6dPYv3m5K7wS39FveuE=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
