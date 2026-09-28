@@ -6,6 +6,24 @@ name: default
 platform:
   os: linux
 steps:
+  - name: generate-verify
+    image: golang:1.26.4
+    commands:
+      - printf 'machine github.com\nlogin oauth2\npassword %s\n' "$GITHUB_TOKEN" > ~/.netrc
+      - chmod 600 ~/.netrc
+      - make generate-verify
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_module_token
+      GONOSUMDB: github.com/devilmonastery/*
+      GOPRIVATE: github.com/devilmonastery/*
+    when:
+      event:
+        - push
+        - pull_request
+        - custom
+      branch:
+        - main
   - name: fmt
     image: golang:1.26.4
     commands:
@@ -43,24 +61,6 @@ steps:
         - custom
       branch:
         - main
-  - name: test
-    image: golang:1.26.4
-    commands:
-      - printf 'machine github.com\nlogin oauth2\npassword %s\n' "$GITHUB_TOKEN" > ~/.netrc
-      - chmod 600 ~/.netrc
-      - go test -race -coverprofile=coverage.txt -covermode=atomic ./...
-    environment:
-      GITHUB_TOKEN:
-        from_secret: github_module_token
-      GONOSUMDB: github.com/devilmonastery/*
-      GOPRIVATE: github.com/devilmonastery/*
-    when:
-      event:
-        - push
-        - pull_request
-        - custom
-      branch:
-        - main
   - name: build
     image: golang:1.26.4
     commands:
@@ -79,12 +79,12 @@ steps:
         - custom
       branch:
         - main
-  - name: generate-verify
+  - name: test
     image: golang:1.26.4
     commands:
       - printf 'machine github.com\nlogin oauth2\npassword %s\n' "$GITHUB_TOKEN" > ~/.netrc
       - chmod 600 ~/.netrc
-      - make generate-verify
+      - go test -race -coverprofile=coverage.txt -covermode=atomic ./...
     environment:
       GITHUB_TOKEN:
         from_secret: github_module_token
