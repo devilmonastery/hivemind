@@ -15,6 +15,8 @@ steps:
     environment:
       GITHUB_TOKEN:
         from_secret: github_module_token
+      GOCACHE: /drone/go-cache/build
+      GOMODCACHE: /drone/go-cache/mod
       GONOSUMDB: github.com/devilmonastery/*
       GOPRIVATE: github.com/devilmonastery/*
     when:
@@ -24,6 +26,9 @@ steps:
         - custom
       branch:
         - main
+    volumes:
+      - name: go-cache
+        path: /drone/go-cache
   - name: fmt
     image: golang:1.26.4
     commands:
@@ -34,6 +39,8 @@ steps:
     environment:
       GITHUB_TOKEN:
         from_secret: github_module_token
+      GOCACHE: /drone/go-cache/build
+      GOMODCACHE: /drone/go-cache/mod
       GONOSUMDB: github.com/devilmonastery/*
       GOPRIVATE: github.com/devilmonastery/*
     when:
@@ -43,6 +50,9 @@ steps:
         - custom
       branch:
         - main
+    volumes:
+      - name: go-cache
+        path: /drone/go-cache
   - name: vet
     image: golang:1.26.4
     commands:
@@ -52,6 +62,8 @@ steps:
     environment:
       GITHUB_TOKEN:
         from_secret: github_module_token
+      GOCACHE: /drone/go-cache/build
+      GOMODCACHE: /drone/go-cache/mod
       GONOSUMDB: github.com/devilmonastery/*
       GOPRIVATE: github.com/devilmonastery/*
     when:
@@ -61,6 +73,9 @@ steps:
         - custom
       branch:
         - main
+    volumes:
+      - name: go-cache
+        path: /drone/go-cache
   - name: build
     image: golang:1.26.4
     commands:
@@ -70,6 +85,8 @@ steps:
     environment:
       GITHUB_TOKEN:
         from_secret: github_module_token
+      GOCACHE: /drone/go-cache/build
+      GOMODCACHE: /drone/go-cache/mod
       GONOSUMDB: github.com/devilmonastery/*
       GOPRIVATE: github.com/devilmonastery/*
     when:
@@ -79,6 +96,9 @@ steps:
         - custom
       branch:
         - main
+    volumes:
+      - name: go-cache
+        path: /drone/go-cache
   - name: test
     image: golang:1.26.4
     commands:
@@ -88,6 +108,8 @@ steps:
     environment:
       GITHUB_TOKEN:
         from_secret: github_module_token
+      GOCACHE: /drone/go-cache/build
+      GOMODCACHE: /drone/go-cache/mod
       GONOSUMDB: github.com/devilmonastery/*
       GOPRIVATE: github.com/devilmonastery/*
     when:
@@ -97,3 +119,9 @@ steps:
         - custom
       branch:
         - main
+    volumes:
+      - name: go-cache
+        path: /drone/go-cache
+volumes:
+  - name: go-cache
+    temp: {}

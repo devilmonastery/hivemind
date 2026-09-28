@@ -3,8 +3,8 @@ module github.com/devilmonastery/hivemind/infracode
 go 1.26.4
 
 require (
-	github.com/devilmonastery/env-k8s-home v0.1.22
-	github.com/devilmonastery/infracode v0.2.35
+	github.com/devilmonastery/env-k8s-home v0.1.24
+	github.com/devilmonastery/infracode v0.2.37
 )
 
 require gopkg.in/yaml.v3 v3.0.1 // indirect
