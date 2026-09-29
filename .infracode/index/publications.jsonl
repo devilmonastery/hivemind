@@ -2,6 +2,7 @@
 # Edit source manifests, run `make generate`, and commit the generated artifacts.
 {"artifactId":"agents/guidance:AGENTS.md","mode":"mirror","path":".infracode/AGENTS.md"}
 {"artifactId":"agents/guidance:AGENTS.md","mode":"mirror","path":"AGENTS.md"}
+{"artifactId":"cicd.drone/bridge-workflow:.github/workflows/drone-bridge.yml","mode":"direct","path":".github/workflows/drone-bridge.yml"}
 {"artifactId":"cicd.drone/pipeline:.drone.yml","mode":"mirror","path":".drone.yml"}
 {"artifactId":"cicd.drone/pipeline:.drone.yml","mode":"mirror","path":".infracode/.drone.yml"}
 {"artifactId":"dev.tilt/app-artifacts:Tiltfile.infracode","mode":"mirror","path":".infracode/Tiltfile.infracode"}

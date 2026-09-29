@@ -3,6 +3,7 @@
 {
   "paths": {
     ".drone.yml": "cicd.drone/pipeline:.drone.yml",
+    ".github/workflows/drone-bridge.yml": "cicd.drone/bridge-workflow:.github/workflows/drone-bridge.yml",
     ".infracode/.drone.yml": "cicd.drone/pipeline:.drone.yml",
     ".infracode/AGENTS.md": "agents/guidance:AGENTS.md",
     ".infracode/Makefile.infracode": "makefile/handoff:Makefile.infracode",

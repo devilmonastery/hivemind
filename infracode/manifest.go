@@ -78,6 +78,7 @@ func Generate(gen *infragen.Generator) {
 			},
 		},
 	})
+	homeenv.IncludeDroneBridge(gen)
 	drone.New(gen,
 		drone.WithGoModuleAuth("github.com/devilmonastery/*", "github.com/devilmonastery/*", "github_module_token"),
 	)
