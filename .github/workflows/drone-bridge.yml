@@ -6,6 +6,15 @@ on:
     branches: [main]
 jobs:
   trigger:
-    uses: devilmonastery/drone-bridge/.github/workflows/trigger-drone.yml@main
-    secrets:
-      DRONE_TOKEN: ${{ secrets.DRONE_TOKEN }}
+    name: trigger-drone
+    runs-on: home-runner
+    steps:
+      - name: Trigger Drone build
+        env:
+          DRONE_TOKEN: ${{ secrets.DRONE_TOKEN }}
+          DRONE_API: http://drone-server.ci.svc.cluster.local
+          REPOSITORY: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          curl -fsS -X POST -H "Authorization: Bearer ${DRONE_TOKEN}" \
+            "${DRONE_API}/api/repos/${REPOSITORY}/builds?branch=${BRANCH}"
